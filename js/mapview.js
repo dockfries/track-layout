@@ -37,6 +37,15 @@
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
+  function formatScaleDistance(meters) {
+    if (!Number.isFinite(meters) || meters <= 0) return '';
+    if (meters >= 10000) return `${Math.round(meters / 1000)} km`;
+    if (meters >= 1000) return `${(meters / 1000).toFixed(1)} km`;
+    if (meters >= 100) return `${Math.round(meters / 10) * 10} m`;
+    if (meters >= 10) return `${Math.round(meters)} m`;
+    return `${Math.max(1, Math.round(meters))} m`;
+  }
+
   function hideCoords() {
     clearTimeout(coordsTimer);
     const el = document.getElementById('map-coords');
@@ -84,7 +93,31 @@
     cpGroup = L.layerGroup().addTo(map);
 
     L.control.zoom({ position: 'topright' }).addTo(map);
-    L.control.scale({ position: 'bottomright', metric: true, imperial: false, maxWidth: 110 }).addTo(map);
+    const SimpleScale = L.Control.extend({
+      options: { position: 'bottomright', width: 100 },
+      onAdd(leafletMap) {
+        this._map = leafletMap;
+        const container = L.DomUtil.create('div', 'leaflet-control-scale leaflet-control');
+        this._line = L.DomUtil.create('div', 'leaflet-control-scale-line', container);
+        leafletMap.on('zoomend moveend resize', this._update, this);
+        this._update();
+        return container;
+      },
+      onRemove(leafletMap) {
+        leafletMap.off('zoomend moveend resize', this._update, this);
+      },
+      _update() {
+        if (!this._map || !this._line) return;
+        const width = this.options.width;
+        const y = Math.max(1, this._map.getSize().y / 2);
+        const left = this._map.containerPointToLatLng([0, y]);
+        const right = this._map.containerPointToLatLng([width, y]);
+        const meters = this._map.distance(left, right);
+        this._line.style.width = `${width}px`;
+        this._line.textContent = formatScaleDistance(meters);
+      },
+    });
+    new SimpleScale().addTo(map);
 
     map.on('click', (e) => {
       if (handlers.onMapClick) handlers.onMapClick({ x: e.latlng.lng, y: e.latlng.lat });
