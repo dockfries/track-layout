@@ -599,6 +599,8 @@
     '折叠路段提示': 'Collapse route notes',
     '展开路段提示': 'Expand route notes',
     '停止动画': 'Stop animation',
+    '地图跟随播放': 'Follow playback',
+    '拖动或缩放地图会自动关闭跟随。': 'Dragging or zooming the map turns following off.',
   };
 
   // Rich-text blocks (help dialog) keep inline <code>; keyed separately so the

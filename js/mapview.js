@@ -566,6 +566,11 @@
     });
   }
 
+  function centerOn(point) {
+    if (!map || !point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
+    map.panTo([point.y, point.x], { animate: false });
+  }
+
   function setPlaybackMarker(point) {
     if (!map || !point) return;
     if (!playbackMarker) {
@@ -607,7 +612,7 @@
   root.MapView = {
     init, setBaseMap, setData, setRouteOnly, setStyleOnly, setSelected,
     fitRoute, fitBase, focusCp, setAddMode, setCpLocked, getExportMap, getViewBounds,
-    setPlaybackMarker, clearPlaybackMarker,
+    setPlaybackMarker, clearPlaybackMarker, centerOn,
     refreshOverlays: updateOverlays, getZoom, map: () => map,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

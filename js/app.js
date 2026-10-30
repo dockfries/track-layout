@@ -53,7 +53,7 @@ const state = {
   cpLocked: true,
   undoStack: [],
   redoStack: [],
-  playback: { playing: false, progress: 0, speed: 1, raf: 0, lastTs: 0, path: null },
+  playback: { playing: false, progress: 0, speed: 1, follow: true, raf: 0, lastTs: 0, path: null },
   graph: null,
   netState: 'loading',
   samples: [],
@@ -284,6 +284,7 @@ function restorePrefs() {
     };
   }
   state.cpLocked = typeof saved.cpLocked === 'boolean' ? saved.cpLocked : true;
+  state.playback.follow = saved.playbackFollow !== false;
   if (saved.base && saved.base.bounds) {
     const b = saved.base.bounds;
     if ([b.minX, b.maxX, b.minY, b.maxY].every(Number.isFinite) && b.maxX > b.minX && b.maxY > b.minY) {
@@ -309,6 +310,7 @@ function saveSession() {
       track: state.track ? Track.toJSON(state.track) : null,
       empty: !state.track || !state.track.checkpoints.length,
       cpLocked: state.cpLocked,
+      playbackFollow: state.playback.follow,
       routing: state.routing,
       style: state.style,
       exportOpts: state.exportOpts,
@@ -512,6 +514,11 @@ function syncPlaybackUI() {
     if (document.activeElement !== speed) speed.value = String(pb.speed);
     updateRangeFill(speed);
   }
+  const follow = $('playback-follow');
+  if (follow) {
+    follow.disabled = !hasRoute;
+    if (document.activeElement !== follow) follow.checked = pb.follow;
+  }
   const out = $('playback-speed-out');
   if (out) out.textContent = `${Number(pb.speed).toFixed(1)}×`;
   updatePlaybackStatus();
@@ -519,7 +526,9 @@ function syncPlaybackUI() {
 
 function drawPlayback() {
   const point = playbackPoint(state.playback.progress);
-  if (point) MapView.setPlaybackMarker(point);
+  if (!point) return;
+  MapView.setPlaybackMarker(point);
+  if (state.playback.follow) MapView.centerOn(point);
 }
 
 function playbackTick(ts) {
@@ -603,7 +612,28 @@ function bindPlayback() {
     speed.value = '1';
     syncPlaybackUI();
   });
+  const follow = $('playback-follow');
+  if (follow) {
+    follow.addEventListener('change', () => {
+      state.playback.follow = follow.checked;
+      syncPlaybackUI();
+      saveSessionSoon();
+      if (state.playback.follow && state.playback.path) drawPlayback();
+    });
+  }
   syncPlaybackUI();
+}
+
+function bindPlaybackFollowGuard() {
+  const map = MapView.map();
+  if (!map) return;
+  const release = () => {
+    if (!state.playback.follow || state.playback.progress <= 0) return;
+    state.playback.follow = false;
+    syncPlaybackUI();
+    saveSessionSoon();
+  };
+  map.on('dragstart zoomstart', release);
 }
 
 // ── Rendering: track pane ──────────────────────────────────────────────
@@ -3093,6 +3123,7 @@ async function boot() {
   }
   const saved = restorePrefs();
   MapView.init(mapHandlers);
+  bindPlaybackFollowGuard();
   MapView.setCpLocked(!!state.cpLocked);
   MapView.setData({ track: null, route: null, style: state.style, selected: -1 });
   bindUi();
