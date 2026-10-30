@@ -34,7 +34,7 @@
     selected: -1,
     addMode: false,
     dragging: false,
-    cpLocked: false,
+    cpLocked: true,
   };
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
@@ -403,7 +403,7 @@
       const label = cp.label ? `${role} · ${escapeHtml(cp.label)}` : role;
       marker.bindTooltip(
         `<div class="tl-tip-title">${label}</div><div class="tl-tip-coord">${cp.x.toFixed(1)}, ${cp.y.toFixed(1)}${cp.hasZ ? `, ${cp.z.toFixed(1)}` : ''}</div>` +
-        (routeCp && routeCp.snap && routeCp.snap.dist > 3 ? `<div class="tl-tip-note">${escapeHtml(I18n.t('吸附 {0} m', routeCp.snap.dist.toFixed(0)))}</div>` : ''),
+        (routeCp && routeCp.snap && routeCp.snap.dist > 3 ? `<div class="tl-tip-note">${escapeHtml(I18n.t('cp.snapDistanceLong', routeCp.snap.dist.toFixed(0)))}</div>` : ''),
         { direction: 'top', offset: [0, -total / 2], opacity: 1, className: 'tl-tooltip', sticky: false }
       );
       marker.addTo(cpGroup);
@@ -431,7 +431,7 @@
       const show = !!track && style.title.show;
       titleEl.classList.toggle('hidden', !show);
       if (show) {
-        const title = (style.title.text || '').trim() || track.name || I18n.t('未命名赛道');
+        const title = (style.title.text || '').trim() || track.name || I18n.t('cp.untitled');
         let sub = (style.title.sub || '').trim();
         if (!sub) {
           const parts = [];
@@ -467,14 +467,14 @@
       if (show) {
         const rows = [];
         if (style.cp.visible === false) {
-          rows.push([I18n.t('路线'), style.route.color]);
+          rows.push([I18n.t('label.route'), style.route.color]);
         } else if (track.closed) {
-          rows.push([I18n.t('起点 / 终点'), style.cp.startColor]);
-          rows.push([I18n.t('检查点'), style.cp.border]);
+          rows.push([I18n.t('label.startFinish'), style.cp.startColor]);
+          rows.push([I18n.t('field.checkpoints'), style.cp.border]);
         } else {
-          rows.push([I18n.t('起点'), style.cp.startColor]);
-          rows.push([I18n.t('检查点'), style.cp.border]);
-          rows.push([I18n.t('终点'), style.cp.finishColor]);
+          rows.push([I18n.t('cp.start'), style.cp.startColor]);
+          rows.push([I18n.t('field.checkpoints'), style.cp.border]);
+          rows.push([I18n.t('cp.finish'), style.cp.finishColor]);
         }
         legendEl.style.background = style.legend.background;
         legendEl.style.color = style.legend.color;

@@ -23,7 +23,7 @@
   <meta name="description" content="Import GTA San Andreas track JSON, route CPs along the road graph, style the map, and export PNG / SVG.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0e15'/%3E%3Cpath d='M6 23c5 0 5-14 10-14s5 12 10 12' stroke='%23f97316' stroke-width='3.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
   <noscript><div style="padding:20px;font-family:sans-serif;color:#fff;background:#0b0e15">Track Layout requires JavaScript. / 需要启用 JavaScript。</div></noscript>
@@ -95,8 +95,8 @@
           <button class="map-btn map-btn-add" data-action="add-cp" title="点击地图添加检查点" aria-pressed="false">
             <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-map-pin-plus"></use></svg>
           </button>
-          <button class="map-btn" data-action="toggle-cp-lock" title="锁定地图 CP 拖动 (L)" aria-pressed="false">
-            <svg class="ico" aria-hidden="true" focusable="false"><use id="cp-lock-use" href="assets/icons/sprite.svg#i-lock-open"></use></svg>
+          <button class="map-btn active" data-action="toggle-cp-lock" title="解锁地图 CP 拖动 (L)" aria-label="解锁地图 CP 拖动 (L)" aria-pressed="true">
+            <svg class="ico" aria-hidden="true" focusable="false"><use id="cp-lock-use" href="assets/icons/sprite.svg#i-lock"></use></svg>
           </button>
           <button class="map-btn" data-action="toggle-cp" title="显示 / 隐藏检查点 (C)" aria-pressed="true">
             <svg class="ico" aria-hidden="true" focusable="false"><use id="cp-visibility-use" href="assets/icons/sprite.svg#i-eye"></use></svg>
@@ -723,11 +723,11 @@
   <input id="map-input" type="file" accept="image/*" hidden>
 
   <script src="vendor/leaflet/leaflet.js"></script>
-  <script src="js/track.js?v=19"></script>
-  <script src="js/style.js?v=19"></script>
-  <script src="js/i18n.js?v=19"></script>
-  <script src="js/mapview.js?v=19"></script>
-  <script src="js/export.js?v=19"></script>
-  <script src="js/app.js?v=19"></script>
+  <script src="js/track.js?v=20"></script>
+  <script src="js/style.js?v=20"></script>
+  <script src="js/i18n.js?v=20"></script>
+  <script src="js/mapview.js?v=20"></script>
+  <script src="js/export.js?v=20"></script>
+  <script src="js/app.js?v=20"></script>
 </body>
 </html>

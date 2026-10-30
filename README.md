@@ -6,7 +6,7 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 
 > **Pure vibe coding**: architecture, code, debugging, docs and samples were iterated by AI in conversation. It works, but review and test it before production use.
 
-![Track Layout dark UI](docs/preview.jpg)
+![Track Layout dark UI](docs/preview.webp)
 
 > Inspired by and built on data from [neufox's Node Viewer](https://github.com/itsneufox/neufox-node-viewer) and [neufox's Rec Editor](https://github.com/itsneufox/neufox-rec-editor): plain HTML/CSS/JS + Leaflet `CRS.Simple` + `samap.png`, with no build step and no application backend (`server.js` is only a local static file server).
 
@@ -26,7 +26,7 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **Stacked toasts**: rapid actions show up to five top-center notices at once; extra notices queue and dismiss oldest-first.
 - **Shortcut reference**: press `?` or click the keyboard icon to open a grouped keyboard-shortcut dialog.
 - **Slider helpers**: double-click a range input to restore its current theme/default value; click the numeric readout to type an exact value with min/max validation.
-- **Safe CP editing**: lock map marker dragging to avoid accidental moves, and undo/redo checkpoint edits (drag, coordinate input, add/delete/reorder).
+- **Safe CP editing**: map marker dragging is locked by default to prevent accidental moves; press `L` or use the lock button to unlock, and undo/redo checkpoint edits (drag, coordinate input, add/delete/reorder).
 - **Responsive map**: window resizing is debounced (180 ms), then the map re-fits the current track; virtual lists and the scale bar refresh at the same time.
 - **Route playback**: play a direction arrow from start to finish with a 0.5×–4× speed slider; the animation is map-preview only and never appears in exports.
 - **Clear local cache**: the sidebar footer has a cache reset action that removes this app's `localStorage` and Cache Storage data, then reloads.
@@ -69,12 +69,12 @@ npm test
 - **Default language**: the first visit reads `navigator.languages`. Chinese locales such as `zh`, `zh-CN` and `zh-Hans` get Simplified Chinese; every other locale gets English.
 - **Switch and remember**: use the `EN / 中文` picker in the top bar. The choice is stored in `localStorage` under `track-layout:lang`.
 - **Coverage**: static UI, tabs, help dialog, map title/legend, CP list, route notices, toasts, sample names, theme names, and PNG/SVG title, legend and CP labels all follow the active language.
-- **Adding strings**: `js/i18n.js` maps Chinese source strings to English in the `EN` dictionary; rich help HTML lives in `RICH`. Add an entry when you add UI copy.
+- **Adding strings**: UI copy uses semantic English keys in the `MESSAGES` table in `js/i18n.js` (`key: { en, zh }`); legacy Chinese text in static HTML is mapped through `STATIC_TEXT`, and rich help HTML lives in `RICH`. Add entries when you add UI copy.
 - `html.i18n-pending` hides the UI until a language is applied, so English users do not see a flash of Chinese text.
 
 ## Appearance
 
-![Light UI](docs/preview-light.jpg)
+![Light UI](docs/preview-light.webp)
 
 - Use the **System / Dark / Light** picker in the top bar to switch the workbench appearance.
 - **System** follows `prefers-color-scheme` and updates live when the OS changes.
@@ -205,7 +205,7 @@ index.html              page shell
 style.css               workbench styling
 js/track.js             JSON parsing, road graph, A*, smoothing, geometry
 js/style.js             style model, themes, colors, marker SVG
-js/i18n.js              EN/ZH strings, browser locale detection, language switch
+js/i18n.js              semantic i18n messages + static-text fallback + language switch
 js/mapview.js           Leaflet map rendering and CP interaction
 js/export.js            PNG / SVG renderer
 js/app.js               app state and UI wiring
@@ -213,8 +213,8 @@ data/nodes.json         SA vehicle road graph (required, commit it)
 assets/samap.png        SA base map (required, commit it)
 assets/icons/           Lucide / Iconify sprite and license
 samples/                sample tracks + index.json (commit them)
-docs/preview.jpg        dark README screenshot
-docs/preview-light.jpg  light README screenshot
+docs/preview.webp        dark README screenshot
+docs/preview-light.webp  light README screenshot
 vendor/leaflet/         Leaflet 1.9.4 (commit it)
 tools/make-samples.js   regenerate samples from the road graph
 tests/run.js            parser / geometry / routing tests
@@ -226,7 +226,7 @@ track.schema.json       track JSON Schema
 
 `.gitignore` only excludes local artifacts such as `node_modules/`, logs, build caches, `.env`, editor/OS files, temporary backups, and headless-browser artifacts such as `tools/debug/`, `tools/edge-*/` and `tools/*-profile/`.
 
-`data/nodes.json`, `assets/samap.png`, `assets/icons/`, `docs/preview.jpg`, `docs/preview-light.jpg`, `samples/*.json` and `vendor/leaflet/` are required runtime or documentation assets. **Keep them in the repository**; do not delete them or add them to the ignore list.
+`data/nodes.json`, `assets/samap.png`, `assets/icons/`, `docs/preview.webp`, `docs/preview-light.webp`, `samples/*.json` and `vendor/leaflet/` are required runtime or documentation assets. **Keep them in the repository**; do not delete them or add them to the ignore list.
 
 ## Regenerating Samples
 
@@ -259,7 +259,7 @@ Source code, documentation and configuration generated by this project are relea
 MIT covers this repository's source, docs and generated configuration only. The following retain their original rights:
 
 - `assets/samap.png`, `data/nodes.json`: from `neufox-node-viewer` / GTA: San Andreas; rights belong to Rockstar Games and the original project authors.
-- `docs/preview.jpg`, `docs/preview-light.jpg`: screenshots containing GTA: San Andreas map imagery; not covered by MIT.
+- `docs/preview.webp`, `docs/preview-light.webp`: screenshots containing GTA: San Andreas map imagery; not covered by MIT.
 - `assets/icons/`: Lucide icons, ISC license; see `assets/icons/LICENSE`.
 - `vendor/leaflet/`: Leaflet, BSD-2-Clause; see `vendor/leaflet/LICENSE`.
 - GTA coordinate data in sample tracks is subject to the original game-data rights as well.
@@ -269,3 +269,4 @@ The GTA map and road data are included for this unofficial fan project with attr
 ## Privacy
 
 Track JSON, dropped images and style settings are processed entirely in the browser. There is no upload endpoint and no analytics. The only external requests are for local `data/nodes.json`, `samples/*.json` and base-map files.
+

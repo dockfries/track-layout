@@ -50,7 +50,7 @@ const state = {
   routing: { mode: 'auto', snapRadius: 80, smooth: 45, closed: false },
   selected: -1,
   addMode: false,
-  cpLocked: false,
+  cpLocked: true,
   undoStack: [],
   redoStack: [],
   playback: { playing: false, progress: 0, speed: 1, raf: 0, lastTs: 0, path: null },
@@ -153,12 +153,12 @@ function closeOpenDialogs() {
 
 function modeLabel(mode) {
   return {
-    auto: t('自动'),
-    road: t('路网 A*'),
-    spline: t('平滑曲线'),
-    straight: t('直线连接'),
-    point: t('单点'),
-    empty: t('空'),
+    auto: t("mode.auto"),
+    road: t("mode.roadAStar"),
+    spline: t("mode.spline"),
+    straight: t("mode.straight"),
+    point: t("mode.point"),
+    empty: t("mode.empty"),
   }[mode] || mode;
 }
 
@@ -282,7 +282,7 @@ function restorePrefs() {
       closed: !!saved.routing.closed,
     };
   }
-  state.cpLocked = !!saved.cpLocked;
+  state.cpLocked = typeof saved.cpLocked === 'boolean' ? saved.cpLocked : true;
   if (saved.base && saved.base.bounds) {
     const b = saved.base.bounds;
     if ([b.minX, b.maxX, b.minY, b.maxY].every(Number.isFinite) && b.maxX > b.minX && b.maxY > b.minY) {
@@ -364,12 +364,12 @@ function recomputeRoute(opts = {}) {
     renderCpList();
     renderWarnings();
     syncPlaybackUI();
-    setSideStatus('ready', t('准备就绪'));
+    setSideStatus('ready', t("status.ready"));
     return;
   }
   state.track.closed = !!state.routing.closed;
   Track.assignRoles(state.track);
-  setSideStatus('busy', state.graph ? t('计算路线…') : t('计算路线（路网载入中）…'));
+  setSideStatus('busy', state.graph ? t("status.calculating") : t("status.calculatingGraph"));
   let route;
   try {
     route = Track.computeRoute(state.track, state.graph, {
@@ -380,7 +380,7 @@ function recomputeRoute(opts = {}) {
     });
   } catch (err) {
     console.error(err);
-    toast(t('路线计算失败：{0}', I18n.errorText(err)), 'error');
+    toast(t("error.routeFailed", I18n.errorText(err)), 'error');
     route = Track.computeRoute(state.track, null, {
       mode: state.routing.mode === 'road' ? 'spline' : state.routing.mode,
       snapRadius: state.routing.snapRadius,
@@ -402,7 +402,7 @@ function recomputeRoute(opts = {}) {
   }
   renderWarnings();
   const km = route.length >= 1000 ? `${(route.length / 1000).toFixed(2)} km` : `${Math.round(route.length)} m`;
-  setSideStatus('ready', route.partial ? t('路线就绪 · {0} · 部分路网', km) : route.modeUsed === 'road' ? t('路线就绪 · {0}', km) : t('路线就绪 · {0}', modeLabel(route.modeUsed)));
+  setSideStatus('ready', route.partial ? t("status.routeReadyPartial", km) : route.modeUsed === 'road' ? t("status.routeReady", km) : t("status.routeReady", modeLabel(route.modeUsed)));
   if (opts.fit) requestAnimationFrame(() => MapView.fitRoute());
   syncPlaybackUI();
   saveSessionSoon();
@@ -470,17 +470,17 @@ function syncPlaybackUI() {
   const reset = $('playback-reset');
   if (toggle) {
     toggle.disabled = !hasRoute;
-    toggle.title = t(pb.playing ? '暂停动画' : '播放路线动画');
-    toggle.setAttribute('aria-label', t(pb.playing ? '暂停动画' : '播放路线动画'));
+    toggle.title = t(pb.playing ? 'playback.pause' : 'playback.play');
+    toggle.setAttribute('aria-label', t(pb.playing ? 'playback.pause' : 'playback.play'));
   }
   if (reset) reset.disabled = !hasRoute;
   const label = $('playback-label');
-  if (label) label.textContent = t(pb.playing ? '暂停' : '播放');
+  if (label) label.textContent = t(pb.playing ? 'playback.pauseShort' : 'playback.playShort');
   const icon = $('playback-icon');
   if (icon) icon.setAttribute('href', `assets/icons/sprite.svg#i-${pb.playing ? 'pause' : 'play'}`);
   const speed = $('playback-speed');
   if (speed) {
-    speed.title = t('双击恢复 1.0×');
+    speed.title = t("hint.playbackSpeedDefault");
     if (document.activeElement !== speed) speed.value = String(pb.speed);
     updateRangeFill(speed);
   }
@@ -516,7 +516,7 @@ function startPlayback() {
   const pb = state.playback;
   if (pb.playing) return;
   if (!state.route || !state.route.points || state.route.points.length < 2) {
-    toast(t('先载入至少两个检查点'), 'error');
+    toast(t("cp.minTwo"), 'error');
     return;
   }
   pb.path = buildPlaybackPath();
@@ -558,7 +558,7 @@ function togglePlayback() {
 function bindPlayback() {
   const speed = $('playback-speed');
   if (!speed) return;
-  speed.title = t('双击恢复 1.0×');
+  speed.title = t("hint.playbackSpeedDefault");
   speed.addEventListener('input', () => {
     const value = Number(speed.value);
     if (!Number.isFinite(value)) return;
@@ -596,9 +596,9 @@ function renderTrackSummary() {
   }
   const r = state.route;
   el.innerHTML = [
-    [t('总长度'), r ? Track.formatDistance(r.length) : '–'],
-    [t('检查点'), String(state.track.checkpoints.length)],
-    [t('计算方式'), r ? modeLabel(r.modeUsed) : '–'],
+    [t("field.length"), r ? Track.formatDistance(r.length) : '–'],
+    [t("field.checkpoints"), String(state.track.checkpoints.length)],
+    [t("field.routing"), r ? modeLabel(r.modeUsed) : '–'],
   ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${escapeHtml(v)}</div></div>`).join('');
   if (count) count.textContent = String(state.track.checkpoints.length);
 }
@@ -611,9 +611,9 @@ function roleBadge(cp) {
 }
 
 function cpRoleName(cp, i) {
-  if (cp.role === Track.ROLE.START) return t('起点');
-  if (cp.role === Track.ROLE.FINISH) return t('终点');
-  if (cp.role === Track.ROLE.LOOP) return t('起终点');
+  if (cp.role === Track.ROLE.START) return t("cp.start");
+  if (cp.role === Track.ROLE.FINISH) return t("cp.finish");
+  if (cp.role === Track.ROLE.LOOP) return t("cp.loop");
   return `CP ${i}`;
 }
 
@@ -627,12 +627,12 @@ function cpSnapState(index) {
     const dist = routeCp.snap.dist;
     const offroad = dist > Math.min(50, state.routing.snapRadius * 0.6);
     return {
-      text: t('路网 {0}m', Math.round(dist)),
+      text: t("cp.snapDistance", Math.round(dist)),
       className: `cp-snap ${offroad ? 'warn' : 'ok'}`,
       offroad,
     };
   }
-  return { text: t('未吸附'), className: 'cp-snap warn', offroad: true };
+  return { text: t("cp.notSnapped"), className: 'cp-snap warn', offroad: true };
 }
 
 function cpRowHtml(cp, i, total) {
@@ -659,9 +659,9 @@ function cpRowHtml(cp, i, total) {
         </div>
       </div>
       <div class="cp-actions">
-        <button class="cp-btn" data-move="-1" title="${escapeHtml(t('上移'))}" ${i === 0 ? 'disabled' : ''}><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-arrow-up"></use></svg></button>
-        <button class="cp-btn" data-move="1" title="${escapeHtml(t('下移'))}" ${i === total - 1 ? 'disabled' : ''}><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-arrow-down"></use></svg></button>
-        <button class="cp-btn danger" data-del title="${escapeHtml(t('删除'))}"><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-trash-2"></use></svg></button>
+        <button class="cp-btn" data-move="-1" title="${escapeHtml(t("action.moveUp"))}" ${i === 0 ? 'disabled' : ''}><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-arrow-up"></use></svg></button>
+        <button class="cp-btn" data-move="1" title="${escapeHtml(t("action.moveDown"))}" ${i === total - 1 ? 'disabled' : ''}><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-arrow-down"></use></svg></button>
+        <button class="cp-btn danger" data-del title="${escapeHtml(t("action.delete"))}"><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-trash-2"></use></svg></button>
       </div>
     </div>`;
 }
@@ -691,7 +691,7 @@ function renderCpList(opts = {}) {
   if (!list) return;
   state.cpWindow = null;
   if (!state.track || !state.track.checkpoints.length) {
-    list.innerHTML = `<div class="cp-empty">${escapeHtml(t('还没有检查点。打开 JSON，或点「地图添加」。'))}</div>`;
+    list.innerHTML = `<div class="cp-empty">${escapeHtml(t("cp.empty"))}</div>`;
     return;
   }
   if (state.cpListCollapsed) {
@@ -725,7 +725,7 @@ function ensureCpRowVisible(index) {
 function syncCpCollapseButton() {
   const btn = $('cp-collapse');
   if (!btn) return;
-  const label = t(state.cpListCollapsed ? '展开检查点' : '折叠检查点');
+  const label = t(state.cpListCollapsed ? 'cp.expand' : 'cp.collapse');
   btn.title = label;
   btn.setAttribute('aria-label', label);
   btn.setAttribute('aria-expanded', String(!state.cpListCollapsed));
@@ -849,7 +849,7 @@ function restoreEmptyTrackState() {
   renderCpList();
   renderWarnings();
   updateDocumentTitle();
-  setSideStatus('ready', t('准备就绪'));
+  setSideStatus('ready', t("status.ready"));
   saveSessionSoon();
 }
 
@@ -879,7 +879,7 @@ function undo() {
   state.redoStack.push(current);
   restoreTrackSnapshot(previous);
   syncHistoryButtons();
-  toast(t('已撤销检查点编辑'), 'ok');
+  toast(t("cp.undo"), 'ok');
 }
 
 function redo() {
@@ -889,13 +889,13 @@ function redo() {
   state.undoStack.push(current);
   restoreTrackSnapshot(next);
   syncHistoryButtons();
-  toast(t('已重做检查点编辑'), 'ok');
+  toast(t("cp.redo"), 'ok');
 }
 
 function syncCpLockButton() {
   const btn = qs('.map-btn[data-action="toggle-cp-lock"]');
   if (!btn) return;
-  const label = t(state.cpLocked ? '解锁地图 CP 拖动 (L)' : '锁定地图 CP 拖动 (L)');
+  const label = t(state.cpLocked ? 'cp.unlockDrag' : 'cp.lockDrag');
   btn.classList.toggle('active', state.cpLocked);
   btn.setAttribute('aria-pressed', String(state.cpLocked));
   btn.title = label;
@@ -909,7 +909,7 @@ function toggleCpLock() {
   MapView.setCpLocked(state.cpLocked);
   syncCpLockButton();
   saveSessionSoon();
-  toast(t(state.cpLocked ? '检查点拖动已锁定' : '检查点拖动已解锁'), 'ok');
+  toast(t(state.cpLocked ? 'cp.locked' : 'cp.unlocked'), 'ok');
 }
 
 function moveCp(index, dir) {
@@ -929,7 +929,7 @@ function moveCp(index, dir) {
 function deleteCp(index) {
   if (!state.track) return;
   if (state.track.checkpoints.length <= 1) {
-    toast(t('至少保留一个检查点'), 'error');
+    toast(t("cp.keepAtLeastOne"), 'error');
     return;
   }
   pushUndoSnapshot();
@@ -945,7 +945,7 @@ function ensureTrack() {
   if (state.track) return state.track;
   const track = {
     format: Track.FORMAT,
-    name: t('未命名赛道'),
+    name: t("cp.untitled"),
     author: '',
     description: '',
     map: 'san-andreas',
@@ -980,7 +980,7 @@ function addCpAt(x, y) {
   renderCpList();
   selectCp(state.selected, { focus: false, scroll: true });
   saveSessionSoon();
-  toast(t('已添加 {0}', cpRoleName(track.checkpoints[state.selected], state.selected)), 'ok');
+  toast(t("cp.added", cpRoleName(track.checkpoints[state.selected], state.selected)), 'ok');
 }
 
 function setAddMode(on) {
@@ -1001,7 +1001,7 @@ function toggleAddMode() {
 }
 
 function newTrack() {
-  if (state.track && !confirm(t('新建会清空当前赛道（样式与导出设置会保留），继续？'))) return;
+  if (state.track && !confirm(t("cp.newConfirm"))) return;
   clearHistory();
   resetPlayback();
   state.track = null;
@@ -1022,13 +1022,13 @@ function newTrack() {
   syncAll();
   renderCpList();
   renderWarnings();
-  setSideStatus('ready', t('准备就绪'));
+  setSideStatus('ready', t("status.ready"));
   saveSessionSoon();
-  toast(t('已新建空白赛道'));
+  toast(t("cp.newBlank"));
 }
 
 async function clearLocalCache() {
-  if (!confirm(t('清除本地缓存会删除赛道、样式、主题和语言设置，并刷新页面。继续？'))) return;
+  if (!confirm(t("dialog.clearCache"))) return;
   try {
     for (const key of Object.keys(localStorage)) {
       if (key.startsWith('track-layout:')) localStorage.removeItem(key);
@@ -1052,10 +1052,10 @@ function renderRouteStats() {
       el.innerHTML = '';
     } else {
       el.innerHTML = [
-        [t('路线长度'), Track.formatDistance(route.length)],
-        [t('检查点数'), String(state.track.checkpoints.length)],
-        [t('路线点数'), String(route.points.length)],
-        [t('计算耗时'), `${route.ms.toFixed(0)} ms`],
+        [t("field.routeLength"), Track.formatDistance(route.length)],
+        [t("field.checkpointCount"), String(state.track.checkpoints.length)],
+        [t("field.routePoints"), String(route.points.length)],
+        [t("field.computeTime"), `${route.ms.toFixed(0)} ms`],
       ].map(([k, v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${escapeHtml(v)}</div></div>`).join('');
     }
   }
@@ -1066,13 +1066,13 @@ function renderRouteStats() {
       chip.className = 'chip chip-muted';
     } else {
       const partial = route.modeUsed === 'road' && route.partial;
-      chip.textContent = partial ? t('路网 A* · 部分') : modeLabel(route.modeUsed);
+      chip.textContent = partial ? t("mode.roadAStarPartial") : modeLabel(route.modeUsed);
       const cls = partial ? 'chip-warn' : route.modeUsed === 'road' ? 'chip-ok' : route.modeUsed === 'spline' || route.modeUsed === 'straight' ? 'chip-warn' : 'chip-muted';
       chip.className = `chip ${cls}`;
     }
   }
   const time = $('route-time');
-  if (time) time.textContent = route ? `${route.ms.toFixed(1)} ms · ${t('{0} 点', route.points.length)}` : '';
+  if (time) time.textContent = route ? `${route.ms.toFixed(1)} ms · ${t("unit.points", route.points.length)}` : '';
 
   let total = 0;
   let routed = 0;
@@ -1084,10 +1084,10 @@ function renderRouteStats() {
   const text = $('coverage-text');
   if (route && route.modeUsed === 'road' && total) {
     if (fill) fill.style.width = `${(routed / total) * 100}%`;
-    if (text) text.textContent = t('{0}/{1} 段', routed, total);
+    if (text) text.textContent = t("unit.segments", routed, total);
   } else {
     if (fill) fill.style.width = '0%';
-    if (text) text.textContent = route && route.modeUsed !== 'point' ? t('未使用路网') : '–';
+    if (text) text.textContent = route && route.modeUsed !== 'point' ? t("status.roadGraphNotUsed") : '–';
   }
 }
 
@@ -1138,7 +1138,7 @@ function renderWarnList(el, items) {
 function syncWarnCollapseButton() {
   const btn = $('warn-collapse');
   if (!btn) return;
-  const label = t(state.warnListCollapsed ? '展开提示' : '折叠提示');
+  const label = t(state.warnListCollapsed ? 'warning.expand' : 'warning.collapse');
   btn.title = label;
   btn.setAttribute('aria-label', label);
   btn.setAttribute('aria-expanded', String(!state.warnListCollapsed));
@@ -1202,9 +1202,9 @@ function renderWarnings() {
       trackEl.innerHTML = '';
     } else {
       trackEl.classList.remove('hidden');
-      empty(trackEl, t('载入赛道后，这里会列出检查点与路网吸附的提示。'));
+      empty(trackEl, t("warning.emptyTrack"));
     }
-    empty(routeEl, t('载入赛道后，这里会列出无法寻路的路段。'));
+    empty(routeEl, t("warning.emptyRoute"));
     return;
   }
   if (state.warnListCollapsed) {
@@ -1216,15 +1216,15 @@ function renderWarnings() {
   } else {
     trackEl.classList.remove('hidden');
     if (all.length) renderWarnList(trackEl, all);
-    else empty(trackEl, t('没有发现明显问题。'));
+    else empty(trackEl, t("warning.noIssues"));
   }
   const routeOnly = (state.route && state.route.warnings) || [];
   if (routeOnly.length) {
     renderWarnList(routeEl, routeOnly);
   } else if (state.route && state.route.modeUsed === 'road') {
-    empty(routeEl, t('所有路段都已使用路网。'));
+    empty(routeEl, t("warning.allSegmentsRoad"));
   } else {
-    empty(routeEl, t('当前使用{0}，不依赖路网吸附。', modeLabel(state.route ? state.route.modeUsed : 'spline')));
+    empty(routeEl, t("warning.usingNoGraph", modeLabel(state.route ? state.route.modeUsed : 'spline')));
   }
 }
 
@@ -1297,10 +1297,10 @@ function syncRoutingInputs() {
   const hint = $('mode-hint');
   if (hint) {
     hint.textContent = {
-      auto: t('自动：优先全程走 A*；无法全程吸附时尽量沿路网连接，缺口用直线补齐。'),
-      road: t('路网：逐段吸附到车辆道路节点并 A* 寻路；失败的路段用直线补齐。'),
-      spline: t('平滑：用 Catmull-Rom 曲线穿过所有 CP，适合空中、水上或自制地图。'),
-      straight: t('直线：按顺序直接连接 CP，适合快速草图。'),
+      auto: t("hint.mode.auto"),
+      road: t("hint.mode.road"),
+      spline: t("hint.mode.spline"),
+      straight: t("hint.mode.straight"),
     }[state.routing.mode] || '';
   }
   updateOutputs();
@@ -1327,14 +1327,14 @@ function syncExportInputs() {
   const hint = $('format-hint');
   if (hint) {
     hint.textContent = state.exportOpts.format === 'svg'
-      ? t('SVG：路线、CP、标题与图例保持矢量；底图以位图嵌入，适合印刷或二次编辑。')
-      : t('PNG：适合直接分享；支持透明背景与 2× / 4K 输出。');
+      ? t("hint.export.svg")
+      : t("hint.export.png");
   }
   const note = $('export-note');
   if (note) {
     note.textContent = state.exportOpts.format === 'svg'
-      ? t('SVG 会把底图作为嵌入位图；关闭「包含底图」可得到纯矢量路线图。')
-      : t('导出会按输出分辨率重新绘制，底图滤镜、渐变与文字都会一并烘焙。');
+      ? t("hint.export.svgMap")
+      : t("hint.export.redraw");
   }
   updateHexLabels();
   updateOutputs();
@@ -1348,7 +1348,7 @@ function syncBoundsInputs() {
   set('base-miny', b.minY);
   set('base-maxy', b.maxY);
   const name = $('custom-map-name');
-  if (name) name.textContent = state.base.customUrl ? (state.base.customName || t('自定义图片')) : t('未选择');
+  if (name) name.textContent = state.base.customUrl ? (state.base.customName || t("label.customImage")) : t("label.notSelected");
 }
 
 function syncThemeCards() {
@@ -1433,15 +1433,15 @@ function findRangeForOutput(output) {
 function syncRangeHelperLabels() {
   for (const range of qsa('input[type="range"]')) {
     if (!rangePath(range)) continue;
-    range.title = t('双击恢复默认值');
+    range.title = t("hint.sliderDefault");
   }
   for (const output of qsa('[data-out]')) {
     if (!findRangeForOutput(output)) continue;
     output.tabIndex = 0;
     output.setAttribute('role', 'button');
-    output.title = t('点击手动输入');
+    output.title = t("hint.numericEdit");
     const label = output.closest('.field-line')?.querySelector('label')?.textContent.trim();
-    output.setAttribute('aria-label', label ? `${label} · ${t('手动输入数值')}` : t('手动输入数值'));
+    output.setAttribute('aria-label', label ? `${label} · ${t("aria.numericInput")}` : t("aria.numericInput"));
   }
 }
 
@@ -1457,12 +1457,12 @@ function startOutputEdit(output) {
   editor.autocomplete = 'off';
   editor.spellcheck = false;
   editor.value = range.value;
-  editor.setAttribute('aria-label', output.getAttribute('aria-label') || t('手动输入数值'));
+  editor.setAttribute('aria-label', output.getAttribute('aria-label') || t("aria.numericInput"));
   output.hidden = true;
   output.after(editor);
 
   let closed = false;
-  const invalidMessage = () => t('数值必须在 {0}–{1} 之间', range.min, range.max);
+  const invalidMessage = () => t("error.valueRange", range.min, range.max);
 
   const close = (focusOutput) => {
     if (closed) return;
@@ -1588,7 +1588,7 @@ function syncAll() {
   renderRouteStats();
   renderWarnings();
   const miniEmpty = qs('.mini-empty');
-  if (miniEmpty) miniEmpty.textContent = t('点击「预览导出」查看最终画面');
+  if (miniEmpty) miniEmpty.textContent = t("hint.preview");
 }
 
 // ── Style changes ──────────────────────────────────────────────────────
@@ -1649,7 +1649,7 @@ function setTheme(key) {
   saveSessionSoon();
   if (state.activeTab === 'export') scheduleMiniPreview();
   const theme = Style.THEMES.find((item) => item.key === key);
-  toast(t('已切换主题：{0}', I18n.themeName(theme) || key), 'ok');
+  toast(t("toast.themeChanged", I18n.themeName(theme) || key), 'ok');
 }
 
 function resetStyle() {
@@ -1661,7 +1661,7 @@ function resetStyle() {
   syncAll();
   MapView.setStyleOnly(state.style);
   saveSessionSoon();
-  toast(t('样式已重置'), 'ok');
+  toast(t("toast.styleReset"), 'ok');
 }
 
 function toggleMapVisible() {
@@ -1670,7 +1670,7 @@ function toggleMapVisible() {
   updateConditional();
   MapView.setStyleOnly(state.style);
   saveSessionSoon();
-  toast(t(state.style.map.visible ? '底图已显示' : '底图已隐藏'));
+  toast(t(state.style.map.visible ? 'toast.mapShown' : 'toast.mapHidden'));
 }
 
 function toggleGrid() {
@@ -1679,7 +1679,7 @@ function toggleGrid() {
   updateConditional();
   MapView.setStyleOnly(state.style);
   saveSessionSoon();
-  toast(t(state.style.map.grid ? '网格已显示' : '网格已隐藏'));
+  toast(t(state.style.map.grid ? 'toast.gridShown' : 'toast.gridHidden'));
 }
 
 function toggleCpVisible() {
@@ -1690,7 +1690,7 @@ function toggleCpVisible() {
   MapView.setStyleOnly(state.style);
   saveSessionSoon();
   if (state.activeTab === 'export') scheduleMiniPreview();
-  toast(t(visible ? '已显示检查点' : '已隐藏检查点'));
+  toast(t(visible ? 'toast.cpShown' : 'toast.cpHidden'));
 }
 
 // ── Base map ───────────────────────────────────────────────────────────
@@ -1706,23 +1706,23 @@ async function setBuiltinBase(fit = true) {
 async function loadCustomMap(file) {
   if (!file) return;
   if (!/^image\//.test(file.type)) {
-    toast(t('请选择图片文件'), 'error');
+    toast(t("error.imageFile"), 'error');
     return;
   }
   if (file.size > 30 * 1024 * 1024) {
-    toast(t('图片太大（上限 30 MB）'), 'error');
+    toast(t("error.imageTooLarge"), 'error');
     return;
   }
   const url = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error(t('读取图片失败')));
+    reader.onerror = () => reject(new Error(t("error.readImage")));
     reader.readAsDataURL(file);
   });
   await new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = resolve;
-    img.onerror = () => reject(new Error(t('图片无法解码')));
+    img.onerror = () => reject(new Error(t("error.imageDecode")));
     img.src = url;
   }).catch((err) => { toast(err.message, 'error'); throw err; });
 
@@ -1736,7 +1736,7 @@ async function loadCustomMap(file) {
   await MapView.setBaseMap(url, state.base.bounds, true);
   MapView.setStyleOnly(state.style);
   saveSessionSoon();
-  toast(t('已载入底图：{0}', file.name), 'ok');
+  toast(t("toast.mapLoaded", file.name), 'ok');
 }
 
 async function applyCustomBounds() {
@@ -1747,11 +1747,11 @@ async function applyCustomBounds() {
     maxY: Number($('base-maxy').value),
   };
   if (![b.minX, b.maxX, b.minY, b.maxY].every(Number.isFinite) || b.maxX <= b.minX || b.maxY <= b.minY) {
-    toast(t('范围无效：max 必须大于 min'), 'error');
+    toast(t("error.boundsInvalid"), 'error');
     return;
   }
   if (!state.base.customUrl && state.style.map.source !== 'custom') {
-    toast(t('请先选择一张自定义底图'), 'error');
+    toast(t("error.customMapFirst"), 'error');
     return;
   }
   state.base.bounds = b;
@@ -1765,7 +1765,7 @@ async function applyCustomBounds() {
   await MapView.setBaseMap(url, b, true);
   MapView.setStyleOnly(state.style);
   saveSessionSoon();
-  toast(t('底图范围已更新'), 'ok');
+  toast(t("toast.mapBoundsUpdated"), 'ok');
 }
 
 // ── File I/O ───────────────────────────────────────────────────────────
@@ -1778,9 +1778,9 @@ async function readTrackFile(file) {
   try {
     const text = await file.text();
     const track = Track.parseTrack(text, file.name);
-    applyTrack(track, { fit: true, toast: t('已载入 {0} · {1} 个检查点', track.name, track.checkpoints.length) });
+    applyTrack(track, { fit: true, toast: t("cp.loaded", track.name, track.checkpoints.length) });
   } catch (err) {
-    toast(t('载入失败：{0}', I18n.errorText(err)), 'error');
+    toast(t("error.load", I18n.errorText(err)), 'error');
   }
 }
 
@@ -1798,10 +1798,10 @@ async function loadSample(file, opts = {}) {
       track.description = I18n.sampleNote(sample) || track.description;
       track.sampleFile = sample.file;
     }
-    applyTrack(track, { fit: true, toast: opts.silent ? null : t('已载入示例：{0}', track.name) });
+    applyTrack(track, { fit: true, toast: opts.silent ? null : t("sample.loaded", track.name) });
     for (const dlg of qsa('dialog[open]')) closeDialog(dlg);
   } catch (err) {
-    toast(t('示例载入失败：{0}', I18n.errorText(err)), 'error');
+    toast(t("error.sampleLoad", I18n.errorText(err)), 'error');
   }
 }
 
@@ -1929,9 +1929,9 @@ function updateSampleFooter() {
   if (state.samplesLoading) {
     footer.textContent = '';
   } else if (state.sampleQuery) {
-    footer.textContent = t('{0} / {1} 个示例', state.sampleFiltered.length, state.samples.length);
+    footer.textContent = t("sample.countFiltered", state.sampleFiltered.length, state.samples.length);
   } else {
-    footer.textContent = t('{0} 个示例', state.samples.length);
+    footer.textContent = t("sample.count", state.samples.length);
   }
 }
 
@@ -1948,13 +1948,13 @@ function renderSampleMenu(opts = {}) {
   if (opts.resetScroll) list.scrollTop = 0;
   updateSampleClearButton();
   if (!state.samples.length) {
-    list.innerHTML = `<div class="menu-loading">${escapeHtml(state.samplesLoading ? t('载入中…') : t('没有可用示例'))}</div>`;
+    list.innerHTML = `<div class="menu-loading">${escapeHtml(state.samplesLoading ? t("common.loading") : t("sample.none"))}</div>`;
     state.sampleFiltered = [];
     updateSampleFooter();
     return;
   }
   if (!state.sampleFiltered.length) {
-    list.innerHTML = `<div class="sample-empty">${escapeHtml(t('没有匹配的示例'))}</div>`;
+    list.innerHTML = `<div class="sample-empty">${escapeHtml(t("sample.noMatch"))}</div>`;
     updateSampleFooter();
     return;
   }
@@ -2010,7 +2010,7 @@ function renderSampleChips() {
   const el = $('sample-chips');
   if (!el) return;
   if (!state.samples.length) {
-    el.innerHTML = `<span class="muted">${escapeHtml(state.samplesLoading ? t('载入中…') : t('没有可用示例'))}</span>`;
+    el.innerHTML = `<span class="muted">${escapeHtml(state.samplesLoading ? t("common.loading") : t("sample.none"))}</span>`;
     return;
   }
   const shown = state.samples.slice(0, SAMPLE_CHIP_LIMIT);
@@ -2019,17 +2019,17 @@ function renderSampleChips() {
     <span class="meta">${Number(s.cps) || '?'} CP</span>
   </button>`).join('');
   if (state.samples.length > SAMPLE_CHIP_LIMIT) {
-    html += `<button class="chip-btn chip-more" data-action="open-samples-menu" type="button">${escapeHtml(t('全部 {0} 个示例', state.samples.length))}</button>`;
+    html += `<button class="chip-btn chip-more" data-action="open-samples-menu" type="button">${escapeHtml(t("sample.all", state.samples.length))}</button>`;
   }
   el.innerHTML = html;
 }
 
 function saveTrackJSON() {
-  if (!state.track) return toast(t('还没有赛道'), 'error');
+  if (!state.track) return toast(t("status.noTrack"), 'error');
   const data = Track.toJSON(state.track);
   const text = JSON.stringify(data, null, 2);
   downloadText(`${safeFileName(state.track.name)}.json`, text, 'application/json');
-  toast(t('赛道 JSON 已保存'), 'ok');
+  toast(t("toast.trackSaved"), 'ok');
 }
 
 // ── Export ─────────────────────────────────────────────────────────────
@@ -2054,7 +2054,7 @@ function buildExportOptions(overrides = {}) {
 
 function ensureExportReady() {
   if (!state.track || !state.track.checkpoints.length) {
-    toast(t('先载入或创建一个赛道'), 'error');
+    toast(t("error.loadTrackFirst"), 'error');
     return false;
   }
   if (!state.route) {
@@ -2065,7 +2065,7 @@ function ensureExportReady() {
 
 async function openPreview() {
   if (!ensureExportReady()) return;
-  setSideStatus('busy', t('渲染预览…'));
+  setSideStatus('busy', t("status.renderingPreview"));
   await nextFrame();
   try {
     const { canvas } = Exporter.renderCanvas(buildExportOptions());
@@ -2080,11 +2080,11 @@ async function openPreview() {
     updatePreviewLabels();
     openDialog($('preview-dialog'));
     updateMiniPreview(canvas);
-    setSideStatus('ready', t('预览已生成'));
+    setSideStatus('ready', t("status.previewReady"));
   } catch (err) {
     console.error(err);
-    setSideStatus('error', t('预览失败'));
-    toast(t('预览失败：{0}', I18n.errorText(err)), 'error');
+    setSideStatus('error', t("status.previewFailed"));
+    toast(t("error.preview", I18n.errorText(err)), 'error');
   }
 }
 
@@ -2093,8 +2093,8 @@ function updatePreviewLabels() {
   const { width, height, includeMap } = state.previewInfo;
   const meta = $('preview-meta');
   const note = $('preview-note');
-  if (meta) meta.textContent = `${width} × ${height} · ${t('PNG 预览')}`;
-  if (note) note.textContent = includeMap ? t('底图已包含在导出中') : t('未包含底图');
+  if (meta) meta.textContent = `${width} × ${height} · ${t("label.pngPreview")}`;
+  if (note) note.textContent = includeMap ? t("label.mapIncluded") : t("label.mapExcluded");
 }
 
 function updateMiniPreview(canvas) {
@@ -2111,7 +2111,7 @@ function updateMiniPreview(canvas) {
   const el = $('export-mini');
   if (el) {
     const type = state.exportOpts.background === 'transparent' ? 'image/png' : 'image/jpeg';
-    el.innerHTML = `<img src="${mini.toDataURL(type, 0.84)}" alt="${escapeHtml(t('导出预览'))}">`;
+    el.innerHTML = `<img src="${mini.toDataURL(type, 0.84)}" alt="${escapeHtml(t("label.exportPreview"))}">`;
   }
 }
 
@@ -2133,38 +2133,38 @@ function scheduleMiniPreview(delay = 600) {
 
 async function downloadPNG() {
   if (!ensureExportReady()) return;
-  setSideStatus('busy', t('渲染 PNG…'));
+  setSideStatus('busy', t("status.renderingPng"));
   await nextFrame();
   try {
     const { canvas } = Exporter.renderCanvas(buildExportOptions());
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-    if (!blob) throw new Error(t('浏览器无法生成 PNG'));
+    if (!blob) throw new Error(t("error.pngCreate"));
     const name = `${safeFileName(state.track.name)}-${canvas.width}x${canvas.height}.png`;
     downloadBlob(blob, name);
 
-    setSideStatus('ready', t('PNG 已导出'));
-    toast(t('已导出 {0}', name), 'ok');
+    setSideStatus('ready', t("status.pngExported"));
+    toast(t("toast.exported", name), 'ok');
   } catch (err) {
     console.error(err);
-    setSideStatus('error', t('导出失败'));
-    toast(t('PNG 导出失败：{0}', I18n.errorText(err)), 'error');
+    setSideStatus('error', t("status.exportFailed"));
+    toast(t("error.pngExport", I18n.errorText(err)), 'error');
   }
 }
 
 async function downloadSVG() {
   if (!ensureExportReady()) return;
-  setSideStatus('busy', t('渲染 SVG…'));
+  setSideStatus('busy', t("status.renderingSvg"));
   await nextFrame();
   try {
     const svg = Exporter.renderSVG(buildExportOptions());
     const name = `${safeFileName(state.track.name)}-${state.exportOpts.width}x${state.exportOpts.height}.svg`;
     downloadText(name, svg, 'image/svg+xml');
-    setSideStatus('ready', t('SVG 已导出'));
-    toast(t('已导出 {0}', name), 'ok');
+    setSideStatus('ready', t("status.svgExported"));
+    toast(t("toast.exported", name), 'ok');
   } catch (err) {
     console.error(err);
-    setSideStatus('error', t('SVG 导出失败'));
-    toast(t('SVG 导出失败：{0}', I18n.errorText(err)), 'error');
+    setSideStatus('error', t("status.svgExportFailed"));
+    toast(t("error.svgExport", I18n.errorText(err)), 'error');
   }
 }
 
@@ -2185,7 +2185,7 @@ function downloadText(name, text, mime) {
 async function loadGraph() {
   state.netState = 'loading';
   refreshNetStatus();
-  setSideStatus('busy', t('载入路网数据…'));
+  setSideStatus('busy', t("status.loadingRoadGraphData"));
   try {
     const res = await fetch('data/nodes.json', { cache: 'force-cache' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -2197,7 +2197,7 @@ async function loadGraph() {
     state.graphMs = ms;
 
     refreshNetStatus();
-    setSideStatus('ready', t('路网已就绪 · {0} ms', ms.toFixed(0)));
+    setSideStatus('ready', t("status.roadGraphReady", ms.toFixed(0)));
     if (state.track && (state.routing.mode === 'auto' || state.routing.mode === 'road')) {
       recomputeRoute({ fit: false, markers: true });
     }
@@ -2207,18 +2207,18 @@ async function loadGraph() {
     state.graph = null;
     state.netState = 'error';
     refreshNetStatus();
-    setSideStatus('error', t('路网载入失败'));
-    toast(t('路网载入失败：{0}。仍可使用平滑 / 直线模式。', I18n.errorText(err)), 'error');
+    setSideStatus('error', t("status.roadGraphFailed"));
+    toast(t("error.roadGraphFailed", I18n.errorText(err)), 'error');
   }
 }
 
 function refreshNetStatus() {
   if (state.graph) {
-    setNetStatus('ok', t('路网 {0} 节点', fmtInt(state.graph.stats.nodes)));
+    setNetStatus('ok', t("status.roadGraphNodes", fmtInt(state.graph.stats.nodes)));
   } else if (state.netState === 'error') {
-    setNetStatus('error', t('路网不可用'));
+    setNetStatus('error', t("status.roadGraphUnavailable"));
   } else {
-    setNetStatus('muted', t('路网载入中…'));
+    setNetStatus('muted', t("status.loadingRoadGraph"));
   }
 }
 
@@ -2433,7 +2433,7 @@ function bindUi() {
   // Track meta
   const onMeta = () => {
     if (!state.track) return;
-    state.track.name = $('track-name').value.trim() || t('未命名赛道');
+    state.track.name = $('track-name').value.trim() || t("cp.untitled");
     state.track.author = $('track-author').value.trim();
     updateDocumentTitle();
     MapView.refreshOverlays();
@@ -2826,14 +2826,14 @@ function closeMenus() {
 async function copyText(text) {
   try {
     await navigator.clipboard.writeText(text);
-    toast(t('示例 JSON 已复制'), 'ok');
+    toast(t("toast.specCopied"), 'ok');
   } catch {
     const ta = document.createElement('textarea');
     ta.value = text;
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand('copy'); toast(t('示例 JSON 已复制'), 'ok'); }
-    catch { toast(t('复制失败，请手动选择文本'), 'error'); }
+    try { document.execCommand('copy'); toast(t("toast.specCopied"), 'ok'); }
+    catch { toast(t("error.copyFailed"), 'error'); }
     ta.remove();
   }
 }
@@ -2939,8 +2939,8 @@ function setThemeMode(mode) {
 // ── Language ───────────────────────────────────────────────────────────
 function updateDocumentTitle() {
   document.title = state.track
-    ? `${state.track.name || t('未命名赛道')} · Track Layout`
-    : t('Track Layout · 赛道路线图工作台');
+    ? `${state.track.name || t("cp.untitled")} · Track Layout`
+    : t("app.title");
   I18n.updateMeta();
 }
 
@@ -2959,7 +2959,7 @@ function localizeSampleTrack() {
 function localizeUntitledTrack() {
   if (!state.track) return;
   if (state.track.name === '未命名赛道' || state.track.name === 'Untitled track') {
-    state.track.name = t('未命名赛道');
+    state.track.name = t("cp.untitled");
     const input = $('track-name');
     if (input && document.activeElement !== input) input.value = state.track.name;
   }
@@ -2984,7 +2984,7 @@ function refreshLanguage() {
     syncAll();
     renderCpList();
     renderWarnings();
-    setSideStatus('ready', t('准备就绪'));
+    setSideStatus('ready', t("status.ready"));
   }
   syncAll();
   if (state.activeTab === 'export') scheduleMiniPreview(120);
@@ -3004,7 +3004,7 @@ async function boot() {
   I18n.setLanguage(I18n.detectLanguage());
   initTheme();
   if (location.protocol === 'file:') {
-    setTimeout(() => toast(t('请通过 node server.js 启动本地服务器后访问，file:// 无法读取路网数据'), 'error'), 600);
+    setTimeout(() => toast(t("error.fileProtocol"), 'error'), 600);
   }
   const saved = restorePrefs();
   MapView.init(mapHandlers);
@@ -3019,7 +3019,7 @@ async function boot() {
   renderSampleChips();
   updateDocumentTitle();
   refreshNetStatus();
-  setSideStatus('ready', t('准备就绪'));
+  setSideStatus('ready', t("status.ready"));
 
   MapView.setBaseMap('assets/samap.png', SA_BOUNDS, false).then(() => {
     MapView.setStyleOnly(state.style);
@@ -3043,7 +3043,7 @@ async function boot() {
     // First visit: show a ready-made example instead of an empty map.
     loadSample('los-santos-loop', { silent: true });
   }
-  setSideStatus('ready', t('准备就绪'));
+  setSideStatus('ready', t("status.ready"));
 }
 
 boot();

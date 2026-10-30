@@ -397,7 +397,7 @@
 
   // ── Title / legend ─────────────────────────────────────────────────────
   function titleContent(track, route, style) {
-    const title = ((style.title.text || '').trim()) || track.name || I18n.t('未命名赛道');
+    const title = ((style.title.text || '').trim()) || track.name || I18n.t('cp.untitled');
     let sub = (style.title.sub || '').trim();
     if (!sub) {
       const parts = [];
@@ -512,16 +512,16 @@
     const loop = track.closed;
     const rows = [];
     if (style.cp.visible === false) {
-      rows.push([I18n.t('路线'), style.route.color]);
+      rows.push([I18n.t('label.route'), style.route.color]);
       return rows;
     }
     if (loop) {
-      rows.push([I18n.t('起点 / 终点'), style.cp.startColor]);
-      rows.push([I18n.t('检查点'), style.cp.border]);
+      rows.push([I18n.t('label.startFinish'), style.cp.startColor]);
+      rows.push([I18n.t('field.checkpoints'), style.cp.border]);
     } else {
-      rows.push([I18n.t('起点'), style.cp.startColor]);
-      rows.push([I18n.t('检查点'), style.cp.border]);
-      rows.push([I18n.t('终点'), style.cp.finishColor]);
+      rows.push([I18n.t('cp.start'), style.cp.startColor]);
+      rows.push([I18n.t('field.checkpoints'), style.cp.border]);
+      rows.push([I18n.t('cp.finish'), style.cp.finishColor]);
     }
     return rows;
   }

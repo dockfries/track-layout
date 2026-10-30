@@ -1,14 +1,176 @@
-// Track Layout: interface languages. English is the default; Chinese is the
-// source language for the current markup, so the dictionary below maps the
-// Chinese UI strings to English. The UI language follows the browser locale
-// (zh* -> Chinese, everything else -> English) unless the user picks one.
+// Track Layout: interface languages. English is the default. UI code uses
+// semantic English keys in MESSAGES; STATIC_TEXT maps the legacy Chinese text
+// in the static HTML to English as a fallback. The UI follows the browser
+// locale (zh* -> Chinese, everything else -> English) unless the user picks one.
 (function (root) {
   'use strict';
 
   const I18N_LANGS = { en: 'EN', zh: '中文' };
   const STORAGE_KEY = 'track-layout:lang';
 
-  const EN = {
+  // Semantic message keys. English is the source language; zh values are the translations.
+  const MESSAGES = {
+    "action.delete": { en: "Delete", zh: "删除" },
+    "action.moveDown": { en: "Move down", zh: "下移" },
+    "action.moveUp": { en: "Move up", zh: "上移" },
+    "app.title": { en: "Track Layout · Race Route Studio", zh: "Track Layout · 赛道路线图工作台" },
+    "aria.numericInput": { en: "Enter a numeric value", zh: "手动输入数值" },
+    "common.loading": { en: "Loading…", zh: "载入中…" },
+    "cp.added": { en: "Added {0}", zh: "已添加 {0}" },
+    "cp.empty": { en: "No checkpoints yet. Open a JSON file or use \"Add on map\".", zh: "还没有检查点。打开 JSON，或点「地图添加」。" },
+    "cp.finish": { en: "Finish", zh: "终点" },
+    "cp.keepAtLeastOne": { en: "Keep at least one checkpoint", zh: "至少保留一个检查点" },
+    "cp.loaded": { en: "Loaded {0} · {1} checkpoints", zh: "已载入 {0} · {1} 个检查点" },
+    "cp.loop": { en: "Start / Finish", zh: "起终点" },
+    "cp.minTwo": { en: "Load at least two checkpoints first", zh: "先载入至少两个检查点" },
+    "cp.newBlank": { en: "Created a blank track", zh: "已新建空白赛道" },
+    "cp.newConfirm": { en: "Creating a new track clears the current track (style and export settings are kept). Continue?", zh: "新建会清空当前赛道（样式与导出设置会保留），继续？" },
+    "cp.notSnapped": { en: "Not snapped", zh: "未吸附" },
+    "cp.redo": { en: "Redid the checkpoint edit", zh: "已重做检查点编辑" },
+    "cp.snapDistance": { en: "Snap {0}m", zh: "路网 {0}m" },
+    "cp.start": { en: "Start", zh: "起点" },
+    "cp.undo": { en: "Undid the checkpoint edit", zh: "已撤销检查点编辑" },
+    "cp.untitled": { en: "Untitled track", zh: "未命名赛道" },
+    "dialog.clearCache": { en: "Clearing local cache will remove the track, styles, theme, and language settings, then reload. Continue?", zh: "清除本地缓存会删除赛道、样式、主题和语言设置，并刷新页面。继续？" },
+    "error.boundsInvalid": { en: "Invalid bounds: max must be greater than min", zh: "范围无效：max 必须大于 min" },
+    "error.checkpointsEmpty": { en: "Checkpoint array is empty", zh: "检查点数组是空的" },
+    "error.copyFailed": { en: "Copy failed; select the text manually", zh: "复制失败，请手动选择文本" },
+    "error.customMapFirst": { en: "Choose a custom base map first", zh: "请先选择一张自定义底图" },
+    "error.fileProtocol": { en: "Start a local server (node server.js) and open it over HTTP; file:// cannot load the road graph.", zh: "请通过 node server.js 启动本地服务器后访问，file:// 无法读取路网数据" },
+    "error.graphBadData": { en: "Road graph data has an invalid format", zh: "路网数据格式不正确" },
+    "error.imageDecode": { en: "Could not decode the image", zh: "图片无法解码" },
+    "error.imageFile": { en: "Choose an image file", zh: "请选择图片文件" },
+    "error.imageTooLarge": { en: "Image is too large (30 MB max)", zh: "图片太大（上限 30 MB）" },
+    "error.jsonParse": { en: "JSON parse failed: {0}", zh: "JSON 解析失败：{0}" },
+    "error.jsonParseNear": { en: "JSON parse failed near character {0}: {1}", zh: "JSON 解析失败（第 {0} 个字符附近）：{1}" },
+    "error.load": { en: "Load failed: {0}", zh: "载入失败：{0}" },
+    "error.loadTrackFirst": { en: "Load or create a track first", zh: "先载入或创建一个赛道" },
+    "error.noCheckpoints": { en: "No checkpoint array found: use checkpoints / cps / points, or a top-level JSON array", zh: "找不到检查点数组：需要 checkpoints / cps / points 其中之一，或直接使用 JSON 数组" },
+    "error.pngCreate": { en: "The browser could not create the PNG", zh: "浏览器无法生成 PNG" },
+    "error.pngExport": { en: "PNG export failed: {0}", zh: "PNG 导出失败：{0}" },
+    "error.pointBadXY": { en: "Checkpoint {0} has an invalid x / y value", zh: "第 {0} 个检查点的 x / y 不是有效数字" },
+    "error.pointBadZ": { en: "Checkpoint {0} has an invalid z value", zh: "第 {0} 个检查点的 z 不是有效数字" },
+    "error.pointNoCoords": { en: "Checkpoint {0} has no coordinates: use {x, y, z} or [x, y, z]", zh: "第 {0} 个检查点没有坐标：需要 {x, y, z} 或 [x, y, z]" },
+    "error.pointTooFar": { en: "Checkpoint {0} at {1}, {2} is far outside the map", zh: "第 {0} 个检查点坐标 {1}, {2} 远超地图范围" },
+    "error.preview": { en: "Preview failed: {0}", zh: "预览失败：{0}" },
+    "error.readImage": { en: "Could not read the image", zh: "读取图片失败" },
+    "error.roadGraphFailed": { en: "Road graph failed to load: {0}. Spline/straight modes still work.", zh: "路网载入失败：{0}。仍可使用平滑 / 直线模式。" },
+    "error.routeFailed": { en: "Route calculation failed: {0}", zh: "路线计算失败：{0}" },
+    "error.sampleLoad": { en: "Sample failed: {0}", zh: "示例载入失败：{0}" },
+    "error.svgExport": { en: "SVG export failed: {0}", zh: "SVG 导出失败：{0}" },
+    "error.trackFileEmpty": { en: "Track file is empty", zh: "赛道文件是空的" },
+    "error.trackFileNotText": { en: "Track file is not text", zh: "赛道文件不是文本" },
+    "error.valueRange": { en: "Value must be between {0} and {1}", zh: "数值必须在 {0}–{1} 之间" },
+    "field.checkpointCount": { en: "Checkpoints", zh: "检查点数" },
+    "field.checkpoints": { en: "Checkpoints", zh: "检查点" },
+    "field.computeTime": { en: "Compute time", zh: "计算耗时" },
+    "field.length": { en: "Length", zh: "总长度" },
+    "field.routeLength": { en: "Route length", zh: "路线长度" },
+    "field.routePoints": { en: "Route points", zh: "路线点数" },
+    "field.routing": { en: "Routing", zh: "计算方式" },
+    "hint.export.png": { en: "PNG: easy to share; supports transparent backgrounds and 2×/4K output.", zh: "PNG：适合直接分享；支持透明背景与 2× / 4K 输出。" },
+    "hint.export.redraw": { en: "Export re-renders at the chosen resolution; map filters, gradients, and text are baked in.", zh: "导出会按输出分辨率重新绘制，底图滤镜、渐变与文字都会一并烘焙。" },
+    "hint.export.svg": { en: "SVG: route, CPs, title, and legend stay vector; the base map is embedded as a bitmap — good for print or further editing.", zh: "SVG：路线、CP、标题与图例保持矢量；底图以位图嵌入，适合印刷或二次编辑。" },
+    "hint.export.svgMap": { en: "SVG embeds the base map as a bitmap; turn off \"Include base map\" for a pure vector route.", zh: "SVG 会把底图作为嵌入位图；关闭「包含底图」可得到纯矢量路线图。" },
+    "hint.mode.auto": { en: "Auto: prefer a full A* route; if some CPs cannot snap, keep as much road as possible and fill gaps with straight lines.", zh: "自动：优先全程走 A*；无法全程吸附时尽量沿路网连接，缺口用直线补齐。" },
+    "hint.mode.road": { en: "Road: snap each CP to vehicle nodes and route with A*; failed segments fall back to straight lines.", zh: "路网：逐段吸附到车辆道路节点并 A* 寻路；失败的路段用直线补齐。" },
+    "hint.mode.spline": { en: "Spline: a Catmull-Rom curve through all CPs; good for air, water, or custom maps.", zh: "平滑：用 Catmull-Rom 曲线穿过所有 CP，适合空中、水上或自制地图。" },
+    "hint.mode.straight": { en: "Straight: connect CPs in order; good for quick drafts.", zh: "直线：按顺序直接连接 CP，适合快速草图。" },
+    "hint.numericEdit": { en: "Click to enter a value", zh: "点击手动输入" },
+    "hint.playbackSpeedDefault": { en: "Double-click to reset to 1.0×", zh: "双击恢复 1.0×" },
+    "hint.preview": { en: "Click \"Preview export\" to see the final image", zh: "点击「预览导出」查看最终画面" },
+    "hint.sliderDefault": { en: "Double-click to reset to the default", zh: "双击恢复默认值" },
+    "label.customImage": { en: "Custom image", zh: "自定义图片" },
+    "label.exportPreview": { en: "Export preview", zh: "导出预览" },
+    "label.mapExcluded": { en: "Base map excluded", zh: "未包含底图" },
+    "label.mapIncluded": { en: "Base map included in export", zh: "底图已包含在导出中" },
+    "label.notSelected": { en: "Not selected", zh: "未选择" },
+    "label.pngPreview": { en: "PNG preview", zh: "PNG 预览" },
+    "meta.description": { en: "Import GTA San Andreas track JSON, route CPs along the road graph, style the map, and export PNG / SVG.", zh: "导入 GTA San Andreas 赛道 JSON，自动沿路网计算 CP 路线，定制视觉风格并导出 PNG / SVG。" },
+    "mode.auto": { en: "Auto", zh: "自动" },
+    "mode.empty": { en: "Empty", zh: "空" },
+    "mode.point": { en: "Single point", zh: "单点" },
+    "mode.roadAStar": { en: "Road A*", zh: "路网 A*" },
+    "mode.roadAStarPartial": { en: "Road A* · partial", zh: "路网 A* · 部分" },
+    "mode.spline": { en: "Spline", zh: "平滑曲线" },
+    "mode.straight": { en: "Straight", zh: "直线连接" },
+    "sample.all": { en: "All {0} samples", zh: "全部 {0} 个示例" },
+    "sample.count": { en: "{0} samples", zh: "{0} 个示例" },
+    "sample.countFiltered": { en: "{0} / {1} samples", zh: "{0} / {1} 个示例" },
+    "sample.loaded": { en: "Loaded sample: {0}", zh: "已载入示例：{0}" },
+    "sample.noMatch": { en: "No matching samples", zh: "没有匹配的示例" },
+    "sample.none": { en: "No samples available", zh: "没有可用示例" },
+    "status.calculating": { en: "Calculating route…", zh: "计算路线…" },
+    "status.calculatingGraph": { en: "Calculating route (loading road graph)…", zh: "计算路线（路网载入中）…" },
+    "status.exportFailed": { en: "Export failed", zh: "导出失败" },
+    "status.loadingRoadGraph": { en: "Loading road graph…", zh: "路网载入中…" },
+    "status.loadingRoadGraphData": { en: "Loading road graph data…", zh: "载入路网数据…" },
+    "status.noTrack": { en: "No track loaded", zh: "还没有赛道" },
+    "status.pngExported": { en: "PNG exported", zh: "PNG 已导出" },
+    "status.previewFailed": { en: "Preview failed", zh: "预览失败" },
+    "status.previewReady": { en: "Preview ready", zh: "预览已生成" },
+    "status.ready": { en: "Ready", zh: "准备就绪" },
+    "status.renderingPng": { en: "Rendering PNG…", zh: "渲染 PNG…" },
+    "status.renderingPreview": { en: "Rendering preview…", zh: "渲染预览…" },
+    "status.renderingSvg": { en: "Rendering SVG…", zh: "渲染 SVG…" },
+    "status.roadGraphFailed": { en: "Road graph failed to load", zh: "路网载入失败" },
+    "status.roadGraphNodes": { en: "Road graph · {0} nodes", zh: "路网 {0} 节点" },
+    "status.roadGraphNotUsed": { en: "Road graph not used", zh: "未使用路网" },
+    "status.roadGraphReady": { en: "Road graph ready · {0} ms", zh: "路网已就绪 · {0} ms" },
+    "status.roadGraphUnavailable": { en: "Road graph unavailable", zh: "路网不可用" },
+    "status.routeReady": { en: "Route ready · {0}", zh: "路线就绪 · {0}" },
+    "status.routeReadyPartial": { en: "Route ready · {0} · partial road", zh: "路线就绪 · {0} · 部分路网" },
+    "status.svgExported": { en: "SVG exported", zh: "SVG 已导出" },
+    "status.svgExportFailed": { en: "SVG export failed", zh: "SVG 导出失败" },
+    "toast.exported": { en: "Exported {0}", zh: "已导出 {0}" },
+    "toast.mapBoundsUpdated": { en: "Base map bounds updated", zh: "底图范围已更新" },
+    "toast.mapLoaded": { en: "Base map loaded: {0}", zh: "已载入底图：{0}" },
+    "toast.specCopied": { en: "Example JSON copied", zh: "示例 JSON 已复制" },
+    "toast.styleReset": { en: "Style reset", zh: "样式已重置" },
+    "toast.themeChanged": { en: "Theme: {0}", zh: "已切换主题：{0}" },
+    "toast.trackSaved": { en: "Track JSON saved", zh: "赛道 JSON 已保存" },
+    "unit.points": { en: "{0} pts", zh: "{0} 点" },
+    "unit.segments": { en: "{0}/{1} segments", zh: "{0}/{1} 段" },
+    "warning.allSegmentsRoad": { en: "All segments use the road graph.", zh: "所有路段都已使用路网。" },
+    "warning.autoSpline": { en: "Could not snap the whole track to the road graph; using a smooth spline", zh: "未能全程吸附到路网，已自动改用平滑曲线" },
+    "warning.duplicate": { en: "{0} is at the same position as the previous one", zh: "{0} 与上一个位置重复" },
+    "warning.emptyRoute": { en: "Load a track to see segments that could not be routed.", zh: "载入赛道后，这里会列出无法寻路的路段。" },
+    "warning.emptyTrack": { en: "Load a track to see checkpoint and snapping notes.", zh: "载入赛道后，这里会列出检查点与路网吸附的提示。" },
+    "warning.noIssues": { en: "No obvious issues.", zh: "没有发现明显问题。" },
+    "warning.noRoadAtAll": { en: "No segment could use the road graph; connected with straight lines", zh: "没有任何路段能使用路网，已用直线连接" },
+    "warning.noSnap": { en: "{0}: no drivable road node within {1}m", zh: "{0}：{1}m 内没有可驾驶道路节点" },
+    "warning.outsideMap": { en: "{0} ({1}, {2}) is outside the San Andreas map", zh: "{0} ({1}, {2}) 在 San Andreas 地图边界之外" },
+    "warning.partialRoad": { en: "Could not snap the whole track to the road graph; kept as much road as possible and filled the gaps with straight lines", zh: "未能全程吸附到路网，已尽量沿路网连接，缺口用直线补齐" },
+    "warning.roadGraphNotLoadedLine": { en: "Road graph is not loaded; connected with straight lines", zh: "路网数据尚未载入，已用直线连接" },
+    "warning.roadGraphNotLoadedSpline": { en: "Road graph is not loaded; using a smooth spline", zh: "路网数据尚未载入，已使用平滑曲线" },
+    "warning.roadGraphUnavailable": { en: "Road graph unavailable; connected with straight lines", zh: "路网不可用，已用直线连接" },
+    "warning.unreachable": { en: "No road route from {0} to {1}; connected with a straight line", zh: "{0} → {1} 路网不可达，已用直线连接" },
+    "warning.unreachableClosed": { en: "No road route from {0} to {1}; closed with a straight line", zh: "{0} → {1} 路网不可达，已用直线闭合" },
+    "warning.usingNoGraph": { en: "Using {0}; road snapping is not used.", zh: "当前使用{0}，不依赖路网吸附。" },
+    "playback.play": { en: "Play route animation", zh: "播放路线动画" },
+    "playback.pause": { en: "Pause animation", zh: "暂停动画" },
+    "playback.playShort": { en: "Play", zh: "播放" },
+    "playback.pauseShort": { en: "Pause", zh: "暂停" },
+    "cp.expand": { en: "Expand checkpoints", zh: "展开检查点" },
+    "cp.collapse": { en: "Collapse checkpoints", zh: "折叠检查点" },
+    "cp.lockDrag": { en: "Lock map CP dragging (L)", zh: "锁定地图 CP 拖动 (L)" },
+    "cp.unlockDrag": { en: "Unlock map CP dragging (L)", zh: "解锁地图 CP 拖动 (L)" },
+    "cp.locked": { en: "Checkpoint dragging locked", zh: "检查点拖动已锁定" },
+    "cp.unlocked": { en: "Checkpoint dragging unlocked", zh: "检查点拖动已解锁" },
+    "warning.expand": { en: "Expand notes", zh: "展开提示" },
+    "warning.collapse": { en: "Collapse notes", zh: "折叠提示" },
+    "toast.mapShown": { en: "Base map shown", zh: "底图已显示" },
+    "toast.mapHidden": { en: "Base map hidden", zh: "底图已隐藏" },
+    "toast.gridShown": { en: "Grid shown", zh: "网格已显示" },
+    "toast.gridHidden": { en: "Grid hidden", zh: "网格已隐藏" },
+    "toast.cpShown": { en: "Checkpoints shown", zh: "已显示检查点" },
+    "toast.cpHidden": { en: "Checkpoints hidden", zh: "已隐藏检查点" },
+    "label.route": { en: "Route", zh: "路线" },
+    "label.startFinish": { en: "Start / Finish", zh: "起点 / 终点" },
+    "cp.snapDistanceLong": { en: "Snap {0} m", zh: "吸附 {0} m" },
+  };
+
+  const STATIC_TEXT = {
     // ── brand / document ──
     'Track Layout · 赛道路线图工作台': 'Track Layout · Race Route Studio',
     '赛道路线图工作台': 'Race Route Studio',
@@ -487,9 +649,9 @@
     return /^zh(-|$)/i.test(String(langs[0] || 'en')) ? 'zh' : 'en';
   }
 
-  function t(text, ...args) {
-    let out = text;
-    if (i18nLang === 'en' && Object.prototype.hasOwnProperty.call(EN, text)) out = EN[text];
+  function t(key, ...args) {
+    const message = MESSAGES[key];
+    let out = message ? (i18nLang === 'zh' ? message.zh : message.en) : key;
     return args.length
       ? out.replace(/\{(\d+)\}/g, (m, i) => (args[i] !== undefined ? args[i] : m))
       : out;
@@ -514,7 +676,7 @@
       const key = source.trim();
       const lead = source.match(/^\s*/)[0];
       const trail = source.match(/\s*$/)[0];
-      const translated = i18nLang === 'en' ? t(key) : key;
+      const translated = i18nLang === 'en' ? (STATIC_TEXT[key] || key) : key;
       node.nodeValue = lead + translated + trail;
     }
 
@@ -529,7 +691,7 @@
         originalAttrs.set(el, saved);
       }
       for (const [attr, value] of Object.entries(saved)) {
-        el.setAttribute(attr, i18nLang === 'en' ? t(value) : value);
+        el.setAttribute(attr, i18nLang === 'en' ? (STATIC_TEXT[value] || value) : value);
       }
     }
 
@@ -554,7 +716,7 @@
   function updateMeta() {
     const meta = document.querySelector('meta[name="description"]');
     if (meta) {
-      meta.setAttribute('content', t('导入 GTA San Andreas 赛道 JSON，自动沿路网计算 CP 路线，定制视觉风格并导出 PNG / SVG。'));
+      meta.setAttribute('content', t("meta.description"));
     }
   }
 
@@ -562,9 +724,9 @@
 
   function roleLabel(cp, index) {
     if (!cp) return '';
-    if (cp.role === 'start') return t('起点');
-    if (cp.role === 'finish') return t('终点');
-    if (cp.role === 'loop') return t('起终点');
+    if (cp.role === 'start') return t("cp.start");
+    if (cp.role === 'finish') return t("cp.finish");
+    if (cp.role === 'loop') return t("cp.loop");
     return `CP ${index}`;
   }
 
@@ -615,28 +777,28 @@
     };
     switch (w.code) {
       case 'duplicate':
-        return t('{0} 与上一个位置重复', cpLabel(w.index || 0));
+        return t("warning.duplicate", cpLabel(w.index || 0));
       case 'bounds': {
         const cp = track && track.checkpoints && track.checkpoints[w.index];
         const x = w.x !== undefined ? w.x : (cp ? cp.x : 0);
         const y = w.y !== undefined ? w.y : (cp ? cp.y : 0);
-        return t('{0} ({1}, {2}) 在 San Andreas 地图边界之外', cpLabel(w.index || 0), round(x, 1), round(y, 1));
+        return t("warning.outsideMap", cpLabel(w.index || 0), round(x, 1), round(y, 1));
       }
       case 'no-snap':
-        return t('{0}：{1}m 内没有可驾驶道路节点', cpLabel(w.index || 0), Math.round(w.radius || 80));
+        return t("warning.noSnap", cpLabel(w.index || 0), Math.round(w.radius || 80));
       case 'unreachable':
-        if (w.closed) return t('{0} → {1} 路网不可达，已用直线闭合', cpLabel(w.from || 0), cpLabel(w.to || 0));
-        return t('{0} → {1} 路网不可达，已用直线连接', cpLabel(w.from || 0), cpLabel(w.to || 0));
+        if (w.closed) return t("warning.unreachableClosed", cpLabel(w.from || 0), cpLabel(w.to || 0));
+        return t("warning.unreachable", cpLabel(w.from || 0), cpLabel(w.to || 0));
       case 'partial-road':
-        return t('未能全程吸附到路网，已尽量沿路网连接，缺口用直线补齐');
+        return t("warning.partialRoad");
       case 'fallback':
-        if (w.reason === 'auto') return t('未能全程吸附到路网，已自动改用平滑曲线');
-        if (w.reason === 'road-no-graph') return t('路网数据尚未载入，已用直线连接');
-        if (w.reason === 'no-road') return t('没有任何路段能使用路网，已用直线连接');
-        if (w.reason === 'road') return t('路网不可用，已用直线连接');
-        return t('路网数据尚未载入，已使用平滑曲线');
+        if (w.reason === 'auto') return t("warning.autoSpline");
+        if (w.reason === 'road-no-graph') return t("warning.roadGraphNotLoadedLine");
+        if (w.reason === 'no-road') return t("warning.noRoadAtAll");
+        if (w.reason === 'road') return t("warning.roadGraphUnavailable");
+        return t("warning.roadGraphNotLoadedSpline");
       default:
-        return t(w.text || '');
+        return i18nLang === 'en' ? (STATIC_TEXT[w.text] || w.text || '') : (w.text || '');
     }
   }
 
@@ -645,20 +807,22 @@
     const code = err.code;
     const args = Array.isArray(err.args) ? err.args : [];
     switch (code) {
-      case 'track-file-not-text': return t('赛道文件不是文本');
-      case 'track-file-empty': return t('赛道文件是空的');
+      case 'track-file-not-text': return t("error.trackFileNotText");
+      case 'track-file-empty': return t("error.trackFileEmpty");
       case 'json-parse':
-        if (args[0] !== null && args[0] !== undefined) return t('JSON 解析失败（第 {0} 个字符附近）：{1}', args[0], args[1] || '');
-        return t('JSON 解析失败：{0}', args[1] || '');
-      case 'checkpoints-missing': return t('找不到检查点数组：需要 checkpoints / cps / points 其中之一，或直接使用 JSON 数组');
-      case 'checkpoints-empty': return t('检查点数组是空的');
-      case 'point-no-coords': return t('第 {0} 个检查点没有坐标：需要 {x, y, z} 或 [x, y, z]', args[0]);
-      case 'point-bad-xy': return t('第 {0} 个检查点的 x / y 不是有效数字', args[0]);
-      case 'point-too-far': return t('第 {0} 个检查点坐标 {1}, {2} 远超地图范围', args[0], args[1], args[2]);
-      case 'point-bad-z': return t('第 {0} 个检查点的 z 不是有效数字', args[0]);
-      case 'graph-bad-data': return t('路网数据格式不正确');
+        if (args[0] !== null && args[0] !== undefined) return t("error.jsonParseNear", args[0], args[1] || '');
+        return t("error.jsonParse", args[1] || '');
+      case 'checkpoints-missing': return t("error.noCheckpoints");
+      case 'checkpoints-empty': return t("error.checkpointsEmpty");
+      case 'point-no-coords': return t("error.pointNoCoords", args[0]);
+      case 'point-bad-xy': return t("error.pointBadXY", args[0]);
+      case 'point-too-far': return t("error.pointTooFar", args[0], args[1], args[2]);
+      case 'point-bad-z': return t("error.pointBadZ", args[0]);
+      case 'graph-bad-data': return t("error.graphBadData");
       default:
-        return t(err.message || String(err));
+        return i18nLang === 'en'
+          ? (STATIC_TEXT[err.message || String(err)] || err.message || String(err))
+          : (err.message || String(err));
     }
   }
 
@@ -668,7 +832,7 @@
   }
 
   root.I18n = {
-    I18N_LANGS, STORAGE_KEY, EN, RICH,
+    I18N_LANGS, STORAGE_KEY, MESSAGES, STATIC_TEXT, RICH,
     detectLanguage, setLanguage, getLanguage, t, translatePage, updateMeta,
     roleLabel, authorLine, themeName, themeNote, sampleName, sampleNote,
     localizeEyebrow, warningText, errorText,

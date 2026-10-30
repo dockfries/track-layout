@@ -6,7 +6,7 @@ Track Layout 是一个纯前端的 **GTA San Andreas 赛道路线图生成器**�
 
 > **纯 vibe coding 产物**：从架构、代码、调试到文档与示例，均由 AI 在对话中迭代生成；功能可用，但用于生产前请自行 review 与测试。
 
-![Track Layout 深色界面](docs/preview.jpg)
+![Track Layout 深色界面](docs/preview.webp)
 
 > 灵感与底层数据来自 [neufox's Node Viewer](https://github.com/itsneufox/neufox-node-viewer) 与 [neufox's Rec Editor](https://github.com/itsneufox/neufox-rec-editor)：同样是纯 HTML/CSS/JS + Leaflet `CRS.Simple` + `samap.png`，没有构建步骤，也没有业务后端（`server.js` 只是本地静态文件服务器）。
 
@@ -26,7 +26,7 @@ Track Layout 是一个纯前端的 **GTA San Andreas 赛道路线图生成器**�
 - **堆叠提示**：连续操作最多同时显示 5 条顶部居中提示，多出的会排队，并按从旧到新的顺序消失。
 - **快捷键面板**：按 `?` 或点击键盘图标，打开按场景分组的键盘快捷键说明。
 - **滑杆助手**：双击滑杆恢复当前主题/默认值；点击右侧数字可手动输入精确值，并校验范围。
-- **安全检查点编辑**：可锁定地图标记拖动，避免误移动；支持撤销/重做检查点编辑（拖动、坐标输入、增删、排序）。
+- **安全检查点编辑**：地图标记拖动默认锁定，避免误移动；按 `L` 或点击锁按钮解锁；支持撤销/重做检查点编辑（拖动、坐标输入、增删、排序）。
 - **响应式地图**：窗口缩放做 180 ms 防抖，随后重新适配当前赛道；虚拟列表和比例尺也会同步刷新。
 - **路线动画**：方向箭头从起点跑到终点，支持 0.5×–4× 速度滑杆；动画只用于地图预览，不会出现在导出中。
 - **清除本地缓存**：侧栏底部提供缓存清理入口，会删除本应用的 `localStorage` 和 Cache Storage 数据后刷新页面。
@@ -69,12 +69,12 @@ npm test
 - **默认语言**：首次访问根据浏览器 `navigator.languages` 判断。`zh`、`zh-CN`、`zh-Hans` 等中文 locale 显示简体中文；其他 locale 默认英文。
 - **切换与记忆**：顶栏右侧的 `EN / 中文` 选择器可手动切换，选择保存在 `localStorage` 的 `track-layout:lang`。
 - **覆盖范围**：静态界面、Tabs、帮助弹窗、地图标题/图例、CP 列表、路线提示、Toast、示例名称、主题名称，以及 PNG/SVG 导出里的标题/图例/CP 名称都会使用当前语言。
-- **加新文案**：`js/i18n.js` 的 `EN` 字典把中文源文案映射到英文；帮助弹窗里的富文本在 `RICH`。新增 UI 文案时补对应条目即可。
+- **加新文案**：UI 文案使用 `js/i18n.js` 里的英文语义 key（`MESSAGES`，格式 `key: { en, zh }`）；静态 HTML 中的中文通过 `STATIC_TEXT` 兜底映射，帮助富文本在 `RICH`。新增 UI 文案时补对应条目即可。
 - `html.i18n-pending` 会在语言应用前隐藏 UI，避免英文用户先看到中文闪烁。
 
 ## 外观 / Appearance
 
-![浅色模式](docs/preview-light.jpg)
+![浅色模式](docs/preview-light.webp)
 
 - 顶栏右侧的 `跟随系统 / 深色 / 浅色` 选择器切换工作台外观。
 - `跟随系统` 使用系统 `prefers-color-scheme`；系统切换深/浅色时页面实时跟随。
@@ -205,7 +205,7 @@ index.html              页面骨架
 style.css               界面样式
 js/track.js             JSON 解析、路网、A*、平滑、几何
 js/style.js             样式模型、主题、颜色、标记 SVG
-js/i18n.js              中英文文案、浏览器 locale 检测、语言切换
+js/i18n.js              语义化中英文文案 + 静态文本兜底 + 语言切换
 js/mapview.js           Leaflet 地图渲染与 CP 交互
 js/export.js            PNG / SVG 渲染器
 js/app.js               应用状态与 UI 绑定
@@ -213,8 +213,8 @@ data/nodes.json         SA 车辆路网（运行必需，需要提交）
 assets/samap.png        SA 底图（运行必需，需要提交）
 assets/icons/           Lucide / Iconify 图标 sprite 与许可证
 samples/                示例赛道 + index.json（需要提交）
-docs/preview.jpg        README 深色截图
-docs/preview-light.jpg  README 浅色截图
+docs/preview.webp        README 深色截图
+docs/preview-light.webp  README 浅色截图
 vendor/leaflet/         Leaflet 1.9.4（需要提交）
 tools/make-samples.js   从路网重新生成示例
 tests/run.js            解析 / 几何 / 寻路测试
@@ -226,7 +226,7 @@ track.schema.json       赛道 JSON Schema
 
 `.gitignore` 只忽略本地产生的文件，例如 `node_modules/`、日志、构建缓存、`.env`、编辑器/系统文件、临时备份，以及 `tools/debug/`、`tools/edge-*/`、`tools/*-profile/` 这类无头浏览器测试产物。
 
-`data/nodes.json`、`assets/samap.png`、`assets/icons/`、`docs/preview.jpg`、`docs/preview-light.jpg`、`samples/*.json` 和 `vendor/leaflet/` 是运行或展示所需资源，**需要保留在仓库中**，不要误删或加入忽略列表。
+`data/nodes.json`、`assets/samap.png`、`assets/icons/`、`docs/preview.webp`、`docs/preview-light.webp`、`samples/*.json` 和 `vendor/leaflet/` 是运行或展示所需资源，**需要保留在仓库中**，不要误删或加入忽略列表。
 
 ## 重新生成示例
 
@@ -259,7 +259,7 @@ npm run samples
 MIT 仅覆盖本仓库中的源代码、文档和本项目生成的配置；以下内容不适用 MIT，仍归各自原始权利人所有：
 
 - `assets/samap.png`、`data/nodes.json`：来自 `neufox-node-viewer` / GTA: San Andreas，版权归 Rockstar Games 及原项目作者。
-- `docs/preview.jpg`、`docs/preview-light.jpg`：包含 GTA: San Andreas 地图画面的截图，不适用 MIT。
+- `docs/preview.webp`、`docs/preview-light.webp`：包含 GTA: San Andreas 地图画面的截图，不适用 MIT。
 - `assets/icons/`：Lucide 图标，ISC 许可；详见 `assets/icons/LICENSE`。
 - `vendor/leaflet/`：Leaflet，BSD-2-Clause；详见 `vendor/leaflet/LICENSE`。
 - 示例赛道中的 GTA 坐标数据同样受原始游戏数据权利约束。
@@ -269,3 +269,4 @@ GTA 地图与路网数据仅作为非官方粉丝项目的一部分、并保留�
 ## 隐私
 
 赛道 JSON、拖入的图片、样式设置全部在浏览器本地处理；没有上传接口、没有分析脚本。唯一的外发请求是加载本地的 `data/nodes.json` / `samples/*.json` / 底图文件。
+
