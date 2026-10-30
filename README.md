@@ -25,6 +25,7 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **Autosave**: track, styles and export settings live in this browser's `localStorage` and survive reloads.
 - **Stacked toasts**: rapid actions show up to five top-center notices at once; extra notices queue and dismiss oldest-first.
 - **Shortcut reference**: press `?` or click the keyboard icon to open a grouped keyboard-shortcut dialog.
+- **Slider helpers**: double-click a range input to restore its current theme/default value; click the numeric readout to type an exact value with min/max validation.
 - **Internationalization**: first visit follows the browser locale (`zh*` → Simplified Chinese, everything else → English); the `EN / 中文` picker in the top bar overrides it. UI, map title/legend, CP list, notices, help and PNG/SVG export text all follow the active language.
 - **Dark / light UI**: choose **System / Dark / Light** in the top bar. **System** follows `prefers-color-scheme` live, and the choice is remembered in this browser. This only affects the app chrome, not the route-map artwork itself.
 

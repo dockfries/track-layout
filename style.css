@@ -923,6 +923,36 @@ html.i18n-pending #ui { visibility: hidden; }
 .field-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .field-line label { color: var(--text); font-size: 12px; }
 .field-line output { color: var(--accent-2); font-family: var(--mono); font-size: 10.5px; }
+.field-line output[role="button"] {
+  cursor: text;
+  border-bottom: 1px dashed var(--border-strong);
+  padding-bottom: 1px;
+}
+.field-line output[role="button"]:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.field-line output[role="button"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+.field-line output[hidden] { display: none; }
+.out-edit {
+  width: 70px;
+  height: 22px;
+  padding: 0 5px;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  outline: none;
+  background: var(--surface2);
+  color: var(--accent-2);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  text-align: right;
+}
+.out-edit:focus { box-shadow: 0 0 0 2px var(--accent-dim); }
+.out-edit.is-invalid {
+  border-color: #f43f5e;
+  box-shadow: 0 0 0 2px rgba(244,63,94,.22);
+}
 input[type="range"] {
   --range-progress: 50%;
   width: 100%;

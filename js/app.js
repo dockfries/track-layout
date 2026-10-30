@@ -16,6 +16,7 @@ const SAMPLE_ROW_HEIGHT = 48;
 const SAMPLE_ROW_STEP = 52;
 const SAMPLE_ROW_OVERSCAN = 3;
 const SAMPLE_CHIP_LIMIT = 8;
+const ROUTING_DEFAULTS = { snapRadius: 80, smooth: 45 };
 const t = (text, ...args) => I18n.t(text, ...args);
 let themeMode = 'system';
 let themeMedia = null;
@@ -1095,6 +1096,147 @@ function updateOutputs() {
   }
 }
 
+function rangePath(range) {
+  if (range.dataset.bind) return range.dataset.bind;
+  if (range.dataset.style) return `style.${range.dataset.style}`;
+  return '';
+}
+
+function defaultRangeValue(path) {
+  if (path.startsWith('routing.')) return ROUTING_DEFAULTS[path.slice(8)];
+  if (path.startsWith('style.')) {
+    const defaults = Style.applyTheme(state.style.theme);
+    return getPath(defaults, path.slice(6));
+  }
+  return undefined;
+}
+
+function resetRangeToDefault(range) {
+  const path = rangePath(range);
+  const value = defaultRangeValue(path);
+  if (value === undefined || value === null) return;
+  range.value = String(value);
+  range.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function findRangeForOutput(output) {
+  const path = output.dataset.out;
+  return qsa('input[type="range"]').find((range) => rangePath(range) === path) || null;
+}
+
+function syncRangeHelperLabels() {
+  for (const range of qsa('input[type="range"]')) {
+    range.title = t('双击恢复默认值');
+  }
+  for (const output of qsa('[data-out]')) {
+    if (!findRangeForOutput(output)) continue;
+    output.tabIndex = 0;
+    output.setAttribute('role', 'button');
+    output.title = t('点击手动输入');
+    const label = output.closest('.field-line')?.querySelector('label')?.textContent.trim();
+    output.setAttribute('aria-label', label ? `${label} · ${t('手动输入数值')}` : t('手动输入数值'));
+  }
+}
+
+function startOutputEdit(output) {
+  if (!output || output.hidden || output._editing) return;
+  const range = findRangeForOutput(output);
+  if (!range) return;
+  output._editing = true;
+  const editor = document.createElement('input');
+  editor.type = 'text';
+  editor.className = 'out-edit';
+  editor.inputMode = 'decimal';
+  editor.autocomplete = 'off';
+  editor.spellcheck = false;
+  editor.value = range.value;
+  editor.setAttribute('aria-label', output.getAttribute('aria-label') || t('手动输入数值'));
+  output.hidden = true;
+  output.after(editor);
+
+  let closed = false;
+  const invalidMessage = () => t('数值必须在 {0}–{1} 之间', range.min, range.max);
+
+  const close = (focusOutput) => {
+    if (closed) return;
+    closed = true;
+    output._editing = false;
+    editor.remove();
+    output.hidden = false;
+    updateOutputs();
+    if (focusOutput) output.focus();
+  };
+
+  const commit = (fromBlur) => {
+    if (closed) return false;
+    const raw = editor.value.trim().replace(',', '.');
+    const value = Number(raw);
+    const min = Number(range.min);
+    const max = Number(range.max);
+    const step = Number(range.step) || 1;
+    if (!Number.isFinite(value) || value < min || value > max) {
+      if (fromBlur) {
+        close(false);
+        toast(invalidMessage(), 'error');
+        return false;
+      }
+      editor.classList.add('is-invalid');
+      editor.setAttribute('aria-invalid', 'true');
+      toast(invalidMessage(), 'error');
+      editor.focus();
+      editor.select();
+      return false;
+    }
+    const snapped = Math.min(max, Math.max(min, min + Math.round((value - min) / step) * step));
+    range.value = String(Number(snapped.toFixed(6)));
+    range.dispatchEvent(new Event('input', { bubbles: true }));
+    close(!fromBlur);
+    return true;
+  };
+
+  editor.addEventListener('input', () => {
+    editor.classList.remove('is-invalid');
+    editor.removeAttribute('aria-invalid');
+  });
+  editor.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      ev.preventDefault();
+      commit(false);
+    } else if (ev.key === 'Escape') {
+      ev.preventDefault();
+      close(true);
+    }
+  });
+  editor.addEventListener('blur', () => {
+    if (!closed) commit(true);
+  });
+  editor.focus();
+  editor.select();
+}
+
+function bindRangeInteractions() {
+  for (const range of qsa('input[type="range"]')) {
+    range.addEventListener('dblclick', (ev) => {
+      ev.preventDefault();
+      resetRangeToDefault(range);
+    });
+  }
+  for (const output of qsa('[data-out]')) {
+    if (!findRangeForOutput(output)) continue;
+    output.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      startOutputEdit(output);
+    });
+    output.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'Enter' && ev.key !== ' ') return;
+      ev.preventDefault();
+      startOutputEdit(output);
+    });
+  }
+  syncRangeHelperLabels();
+}
+
 function updateConditional() {
   const style = state.style;
   const rules = {
@@ -2170,6 +2312,8 @@ function bindUi() {
   });
 
   // Keyboard shortcuts
+  bindRangeInteractions();
+
   document.addEventListener('keydown', (ev) => {
     const typing = ev.target instanceof Element && ev.target.matches('input, select, textarea, [contenteditable="true"]');
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'o') {
@@ -2488,6 +2632,7 @@ function refreshLanguage() {
   updatePreviewLabels();
   syncCpCollapseButton();
   syncWarnCollapseButton();
+  syncRangeHelperLabels();
   renderThemes();
   renderSampleMenu();
   renderSampleChips();
