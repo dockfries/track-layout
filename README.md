@@ -166,6 +166,7 @@ Can visual styles be saved to JSON? Currently they are autosaved in `localStorag
 - **SVG**: route, CPs, arrows, title and legend stay vector; the base map is embedded as a cropped raster with current filters/tint. Turn off **Include base map** for a pure-vector route map.
 - Exports crop to the track bounds with padding; near map edges the viewport is pushed back inside the map where possible to avoid blank strips.
 - Title scale, title/subtitle font sizes, theme colors and map filters are re-rendered for export, not screenshotted.
+- Very long titles and subtitles are ellipsized to fit the export instead of running past the canvas edge.
 
 ## Keyboard Shortcuts
 

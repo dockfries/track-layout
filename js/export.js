@@ -423,7 +423,34 @@
     return measureText.ctx.measureText(text).width;
   }
 
-  function drawTitleScrim(ctx, style, layout, bg) {
+  function ellipsizeText(text, font, maxWidth) {
+    const value = String(text || '');
+    if (measureText(value, font) <= maxWidth) return value;
+    const chars = Array.from(value);
+    let lo = 0, hi = chars.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      const candidate = `${chars.slice(0, mid).join('').trimEnd()}…`;
+      if (measureText(candidate, font) <= maxWidth) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo > 0 ? `${chars.slice(0, lo).join('').trimEnd()}…` : '…';
+  }
+
+  function titleScrimWidth(style, layout, title, sub) {
+    const k = layout.k;
+    const ts = clamp(Number(style.title.size) || 1, 0.5, 2);
+    const titleScale = clamp(Number(style.title.titleSize) || 1, 0.5, 2);
+    const subScale = clamp(Number(style.title.subSize) || 1, 0.5, 2);
+    const maxW = layout.width - 40 * k * 2 - 30 * k;
+    const measured = Math.max(
+      measureText(title, `700 ${32 * k * ts * titleScale}px ${FONT}`),
+      measureText(sub, `500 ${12.5 * k * ts * subScale}px ${FONT}`)
+    );
+    return Math.min(layout.width * 0.94, Math.max(780 * k * ts, Math.min(measured, maxW) + 34 * k));
+  }
+
+  function drawTitleScrim(ctx, track, route, style, layout, bg) {
     if (!style.title.show) return;
     const opacity = clamp(Number(style.title.bgOpacity) || 0, 0, 1);
     if (opacity <= 0) return;
@@ -432,7 +459,8 @@
     const ts = clamp(Number(style.title.size) || 1, 0.5, 2);
     const titleScale = clamp(Number(style.title.titleSize) || 1, 0.5, 2);
     const subScale = clamp(Number(style.title.subSize) || 1, 0.5, 2);
-    const scrimW = Math.min(layout.width * 0.78, 780 * k * ts);
+    const { title, sub } = titleContent(track, route, style);
+    const scrimW = titleScrimWidth(style, layout, title, sub);
     const scrimH = 150 * k * ts + Math.max(0, titleScale - 1) * 18 * k + Math.max(0, subScale - 1) * 8 * k;
     const g = ctx.createLinearGradient(0, 0, scrimW, 0);
     g.addColorStop(0, Style.withAlpha(color, opacity));
@@ -456,6 +484,9 @@
     let titleSize = 32 * k * ts * titleScale;
     const titleFont = (size) => `700 ${size}px ${FONT}`;
     while (titleSize > 16 * k && measureText(title, titleFont(titleSize)) > maxW) titleSize -= 1 * k;
+    const titleText = ellipsizeText(title, titleFont(titleSize), maxW);
+    const subFont = `500 ${12.5 * k * ts * subScale}px ${FONT}`;
+    const subText = ellipsizeText(sub, subFont, maxW);
 
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
@@ -474,11 +505,11 @@
 
     ctx.fillStyle = style.title.color;
     ctx.font = titleFont(titleSize);
-    ctx.fillText(title, x + 16 * k, y + 48 * k * ts + titleShift);
+    ctx.fillText(titleText, x + 16 * k, y + 48 * k * ts + titleShift);
 
     ctx.fillStyle = Style.withAlpha(style.title.color, 0.7);
-    ctx.font = `500 ${12.5 * k * ts * subScale}px ${FONT}`;
-    ctx.fillText(sub, x + 16 * k, y + 70 * k * ts + titleShift + subShift);
+    ctx.font = subFont;
+    ctx.fillText(subText, x + 16 * k, y + 70 * k * ts + titleShift + subShift);
   }
 
   function legendRows(track, style) {
@@ -583,7 +614,7 @@
     }
     if (opts.includeMap !== false) paintMapToContext(ctx, map, style, layout);
     drawGrid(ctx, map, style, layout);
-    drawTitleScrim(ctx, style, layout, bg);
+    drawTitleScrim(ctx, track, route, style, layout, bg);
     drawRoute(ctx, route, style, layout);
     drawArrows(ctx, route, track, style, layout);
     drawMarkers(ctx, track, style, layout);
@@ -618,8 +649,8 @@
     if (!rect) return null;
     const image = map.image;
     const src = mapSourceRect(map, rect, image);
-    const rw = clamp(Math.round(src.sw), 1, 2400);
-    const rh = clamp(Math.round(src.sh), 1, 2400);
+    const rw = clamp(Math.round(src.sw), 1, 4096);
+    const rh = clamp(Math.round(src.sh), 1, 4096);
     const tmp = makeCanvas(rw, rh);
     const tctx = tmp.getContext('2d');
     tctx.imageSmoothingEnabled = true;
@@ -782,8 +813,10 @@
     let titleSize = 32 * k * ts * titleScale;
     while (titleSize > 16 * k && measureText(title, `700 ${titleSize}px ${FONT}`) > maxW) titleSize -= 1 * k;
     const subSize = 12.5 * k * ts * subScale;
+    const titleText = ellipsizeText(title, `700 ${titleSize}px ${FONT}`, maxW);
+    const subText = ellipsizeText(sub, `500 ${subSize}px ${FONT}`, maxW);
     const accentH = 56 * k * ts + titleShift * 0.7;
-    const scrimW = Math.min(layout.width * 0.78, 780 * k * ts);
+    const scrimW = titleScrimWidth(style, layout, title, sub);
     const scrimH = 150 * k * ts + Math.max(0, titleScale - 1) * 18 * k + Math.max(0, subScale - 1) * 8 * k;
     const parts = [];
     let defs = '';
@@ -803,8 +836,8 @@
     if (eyebrow) {
       parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + 15 * k * ts)}" fill="${style.title.accent}" font-family="${FONT_SVG}" font-size="${r2(10.5 * k * ts)}" font-weight="700" letter-spacing="${r2(1.5 * k)}">${Style.escapeXml(eyebrow.toUpperCase())}</text>`);
     }
-    parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + 48 * k * ts + titleShift)}" fill="${style.title.color}" font-family="${FONT_SVG}" font-size="${r2(titleSize)}" font-weight="700">${Style.escapeXml(title)}</text>`);
-    parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + 70 * k * ts + titleShift + subShift)}" fill="${style.title.color}" fill-opacity="0.7" font-family="${FONT_SVG}" font-size="${r2(subSize)}" font-weight="500">${Style.escapeXml(sub)}</text>`);
+    parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + 48 * k * ts + titleShift)}" fill="${style.title.color}" font-family="${FONT_SVG}" font-size="${r2(titleSize)}" font-weight="700">${Style.escapeXml(titleText)}</text>`);
+    parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + 70 * k * ts + titleShift + subShift)}" fill="${style.title.color}" fill-opacity="0.7" font-family="${FONT_SVG}" font-size="${r2(subSize)}" font-weight="500">${Style.escapeXml(subText)}</text>`);
     return { defs, scrim, body: parts.join('') };
   }
 

@@ -7,6 +7,12 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const T = require('../js/track.js');
+require('../js/style.js');
+const S = globalThis.Style;
+globalThis.Track = T;
+require('../js/i18n.js');
+require('../js/export.js');
+const E = globalThis.Exporter;
 
 const ROOT = path.join(__dirname, '..');
 let passed = 0;
@@ -174,8 +180,27 @@ test('path length and z range', () => {
   assert.deepStrictEqual(T.zRange(pts), [-5, 10]);
 });
 
-console.log('road graph');
+console.log('export');
 
+test('export view keeps the requested aspect and clamps output size', () => {
+  const track = T.parseTrack(JSON.stringify({ checkpoints: [[0, 0], [100, 100]] }), 'x.json');
+  const route = T.computeRoute(track, null, { mode: 'straight' });
+  const view = E.computeView({ track, route, width: 1920, height: 1080 });
+  approx((view.maxX - view.minX) / (view.maxY - view.minY), 16 / 9, 1e-6);
+  const layout = E.computeLayout({ track, route, width: 5000, height: 100 });
+  assert.strictEqual(layout.width, 4096);
+  assert.strictEqual(layout.height, 100);
+});
+
+test('export title content falls back to track metadata', () => {
+  const track = T.parseTrack(JSON.stringify({ name: 'Export Test', checkpoints: [[0, 0], [100, 100]] }), 'x.json');
+  const route = T.computeRoute(track, null, { mode: 'straight' });
+  const content = E.titleContent(track, route, S.defaultVisual());
+  assert.strictEqual(content.title, 'Export Test');
+  assert.ok(content.sub.includes('2 CP'));
+});
+
+console.log('road graph');
 const raw = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/nodes.json'), 'utf8'));
 const graph = T.buildGraph(raw);
 
