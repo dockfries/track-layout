@@ -23,7 +23,7 @@
   <meta name="description" content="Import GTA San Andreas track JSON, route CPs along the road graph, style the map, and export PNG / SVG.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0e15'/%3E%3Cpath d='M6 23c5 0 5-14 10-14s5 12 10 12' stroke='%23f97316' stroke-width='3.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=24">
+  <link rel="stylesheet" href="style.css?v=25">
 </head>
 <body>
   <noscript><div style="padding:20px;font-family:sans-serif;color:#fff;background:#0b0e15">Track Layout requires JavaScript. / 需要启用 JavaScript。</div></noscript>
@@ -597,6 +597,7 @@
               <label class="color-field"><span>背景色</span><span class="color-input"><input type="color" data-export="bgColor"><em data-hex="export.bgColor">#050811</em></span></label>
             </div>
             <label class="toggle"><input type="checkbox" data-export="includeMap"> 包含底图</label>
+            <label class="toggle"><input type="checkbox" data-export="watermark" checked> 右下角水印</label>
           </div>
 
           <div class="group">
@@ -626,6 +627,9 @@
         <footer class="side-footer">
           <span class="dot-live"></span>
           <span id="side-status" role="status" aria-live="polite" data-no-i18n>准备就绪</span>
+          <a class="footer-github" href="https://github.com/dockfries/track-layout" target="_blank" rel="noopener noreferrer" title="GitHub 源码" aria-label="GitHub 源码">
+            <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-github"></use></svg>
+          </a>
           <button class="footer-cache" data-action="clear-cache" title="清除本地缓存" aria-label="清除本地缓存">清除缓存</button>
         </footer>
       </aside>
@@ -750,11 +754,11 @@
   <input id="map-input" type="file" accept="image/*" aria-label="选择自定义底图" hidden>
 
   <script src="vendor/leaflet/leaflet.js"></script>
-  <script src="js/track.js?v=24"></script>
-  <script src="js/style.js?v=24"></script>
-  <script src="js/i18n.js?v=24"></script>
-  <script src="js/mapview.js?v=24"></script>
-  <script src="js/export.js?v=24"></script>
-  <script src="js/app.js?v=24"></script>
+  <script src="js/track.js?v=25"></script>
+  <script src="js/style.js?v=25"></script>
+  <script src="js/i18n.js?v=25"></script>
+  <script src="js/mapview.js?v=25"></script>
+  <script src="js/export.js?v=25"></script>
+  <script src="js/app.js?v=25"></script>
 </body>
 </html>

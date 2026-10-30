@@ -31,6 +31,8 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **Route playback**: play a direction arrow from start to finish with a 0.1×–4× speed slider (click the `×` value to type an exact speed); a floating HUD shows playing/paused/finished status and stop controls. Optional map following keeps the arrow centered (dragging or zooming turns it off). The animation is map-preview only and never appears in exports.
 - **Collapsible route notes**: route warnings can be folded away and use the same virtualized list rendering for long runs.
 - **Clear local cache**: the sidebar footer has a cache reset action that removes this app's `localStorage` and Cache Storage data, then reloads.
+- **Export watermark**: the bottom-right `GTA: SAN ANDREAS · TRACK LAYOUT` credit can be enabled or disabled in the Export pane.
+- **Source link**: the sidebar footer GitHub icon opens the source repository.
 - **Internationalization**: first visit follows the browser locale (`zh*` → Simplified Chinese, everything else → English); the `EN / 中文` picker in the top bar overrides it. UI, map title/legend, CP list, notices, help and PNG/SVG export text all follow the active language.
 - **Dark / light UI**: choose **System / Dark / Light** in the top bar. **System** follows `prefers-color-scheme` live, and the choice is remembered in this browser. This only affects the app chrome, not the route-map artwork itself.
 

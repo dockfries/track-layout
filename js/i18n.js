@@ -613,6 +613,8 @@
     '赛道地图': 'Track map',
     '示例列表': 'Sample list',
     '在地图中心添加检查点': 'Add a checkpoint at the map center',
+    '右下角水印': 'Bottom-right watermark',
+    'GitHub 源码': 'GitHub source',
     'Theme / 主题': 'Theme',
     'Sections / 分区': 'Sections',
     '倍速只改变时间轴，帧率跟随浏览器刷新率；0.1× 时箭头位移很小是正常的。':

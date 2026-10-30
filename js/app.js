@@ -1463,6 +1463,8 @@ function syncExportInputs() {
   }
   const inc = qs('[data-export="includeMap"]');
   if (inc) inc.checked = state.exportOpts.includeMap !== false;
+  const watermark = qs('[data-export="watermark"]');
+  if (watermark) watermark.checked = state.exportOpts.watermark !== false;
   const bg = qs('[data-export="bgColor"]');
   if (bg) bg.value = colorValue(state.exportOpts.bgColor);
   const w = $('export-width');
@@ -2213,6 +2215,7 @@ function buildExportOptions(overrides = {}) {
     background: state.exportOpts.background,
     bgColor: state.exportOpts.bgColor,
     includeMap: state.exportOpts.includeMap !== false,
+    watermark: state.exportOpts.watermark !== false,
     currentBounds: MapView.getViewBounds(),
     ...overrides,
   };

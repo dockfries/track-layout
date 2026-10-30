@@ -89,6 +89,7 @@
     background: 'style',   // style | transparent | custom
     bgColor: '#050811',
     includeMap: true,
+    watermark: true,
   };
 
   const THEMES = [

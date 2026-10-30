@@ -565,6 +565,10 @@ html.i18n-pending #ui { visibility: hidden; }
 .playback-hud-btn:hover { color: var(--accent-2); border-color: var(--accent); }
 .playback-hud-btn .ico { width: 12px; height: 12px; }
 .route-warn-head { margin-top: 10px; margin-bottom: 6px; }
+.playback-group .row { margin-bottom: 10px; }
+.playback-group .field-block { margin-top: 3px; gap: 7px; }
+.playback-group .field-line { margin-bottom: 2px; }
+.playback-group .toggle { margin-top: 7px; }
 
 /* ── Empty state ─────────────────────────────────────── */
 .empty-state {
@@ -1202,6 +1206,19 @@ details.section[open] > summary .chev { transform: rotate(180deg); }
 }
 .footer-cache:hover { color: var(--accent-2); background: var(--surface3); }
 .footer-cache:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.footer-github {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.footer-github .ico { width: 12px; height: 12px; }
+.footer-github:hover { color: var(--accent-2); background: var(--surface3); }
+.footer-github:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .dot-live { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); flex-shrink: 0; }
 .dot-live.busy { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); animation: pulse 1s infinite; }
 .dot-live.error { background: var(--red); box-shadow: 0 0 8px var(--red); }

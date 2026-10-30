@@ -632,7 +632,7 @@
     drawMarkers(ctx, track, style, layout);
     drawTitle(ctx, track, route, style, layout);
     drawLegend(ctx, track, route, style, layout);
-    drawCredits(ctx, style, layout);
+    if (opts.watermark !== false) drawCredits(ctx, style, layout);
 
     return { canvas, layout };
   }
@@ -898,7 +898,7 @@
     body.push(markersSvg(track, style, layout));
     if (title) body.push(title.body);
     body.push(legendSvg(track, route, style, layout));
-    body.push(creditsSvg(style, layout));
+    if (opts.watermark !== false) body.push(creditsSvg(style, layout));
 
     return `<?xml version="1.0" encoding="UTF-8"?>\n` +
       `<svg xmlns="http://www.w3.org/2000/svg" width="${layout.width}" height="${layout.height}" viewBox="0 0 ${layout.width} ${layout.height}">` +
