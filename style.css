@@ -524,7 +524,22 @@ html.i18n-pending #ui { visibility: hidden; }
   box-shadow: 0 8px 28px rgba(0,0,0,.3);
 }
 .playback-hud-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 10px; }
-#playback-hud-state { color: var(--accent-2); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+#playback-hud-state { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-2); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+#playback-hud.is-playing #playback-hud-state::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  animation: playback-pulse 1.2s ease-in-out infinite;
+}
+@keyframes playback-pulse {
+  0%, 100% { opacity: .4; transform: scale(.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #playback-hud.is-playing #playback-hud-state::before { animation: none; opacity: 1; }
+}
 #playback-hud-pct { font-family: var(--mono); }
 .playback-hud-track { height: 3px; margin: 7px 0 6px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.16); }
 #playback-hud-fill { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .08s linear; }

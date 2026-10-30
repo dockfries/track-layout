@@ -601,6 +601,8 @@
     '停止动画': 'Stop animation',
     '地图跟随播放': 'Follow playback',
     '拖动或缩放地图会自动关闭跟随。': 'Dragging or zooming the map turns following off.',
+    '倍速只改变时间轴，帧率跟随浏览器刷新率；0.1× 时箭头位移很小是正常的。':
+      'Speed changes the timeline only; rendering stays at the browser refresh rate. At 0.1× the arrow moves very slowly by design.',
   };
 
   // Rich-text blocks (help dialog) keep inline <code>; keyed separately so the

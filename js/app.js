@@ -493,6 +493,7 @@ function syncPlaybackUI() {
   const hud = $('playback-hud');
   if (hud) {
     hud.classList.toggle('hidden', !hasRoute || (!pb.playing && pb.progress <= 0));
+    hud.classList.toggle('is-playing', pb.playing);
     const hudState = $('playback-hud-state');
     if (hudState) hudState.textContent = t(pb.playing ? 'playback.playing' : finished ? 'playback.finished' : 'playback.paused');
     const hudIcon = $('playback-hud-icon');
@@ -1477,6 +1478,7 @@ function updateHexLabels() {
 
 function formatOutput(path, v) {
   if (v === undefined || v === null || v === '') return '–';
+  if (path === 'playback.speed') return `${Number(v).toFixed(1)}×`;
   if (path.endsWith('opacity') || path.endsWith('Opacity')) return `${Math.round(Number(v) * 100)}%`;
   if (path.endsWith('angle') || path.endsWith('hue')) return `${Math.round(Number(v))}°`;
   if (path.endsWith('arrowGap') || path === 'routing.snapRadius') return `${Math.round(Number(v))} m`;
@@ -1509,6 +1511,7 @@ function updateOutputs() {
     if (path.startsWith('routing.')) v = getPath(state.routing, path.slice(8));
     else if (path.startsWith('style.')) v = getPath(state.style, path.slice(6));
     else if (path.startsWith('export.')) v = getPath(state.exportOpts, path.slice(7));
+    else if (path.startsWith('playback.')) v = getPath(state.playback, path.slice(9));
     else v = getPath(state.style, path);
     el.textContent = formatOutput(path, v);
   }
@@ -1516,11 +1519,13 @@ function updateOutputs() {
 
 function rangePath(range) {
   if (range.dataset.bind) return range.dataset.bind;
+  if (range.dataset.playback) return `playback.${range.dataset.playback}`;
   if (range.dataset.style) return `style.${range.dataset.style}`;
   return '';
 }
 
 function defaultRangeValue(path) {
+  if (path === 'playback.speed') return 1;
   if (path.startsWith('routing.')) return ROUTING_DEFAULTS[path.slice(8)];
   if (path.startsWith('style.')) {
     const defaults = Style.applyTheme(state.style.theme);
@@ -1545,7 +1550,7 @@ function findRangeForOutput(output) {
 function syncRangeHelperLabels() {
   for (const range of qsa('input[type="range"]')) {
     if (!rangePath(range)) continue;
-    range.title = t("hint.sliderDefault");
+    range.title = t(rangePath(range) === 'playback.speed' ? 'hint.playbackSpeedDefault' : 'hint.sliderDefault');
   }
   for (const output of qsa('[data-out]')) {
     if (!findRangeForOutput(output)) continue;
