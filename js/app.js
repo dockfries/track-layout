@@ -150,19 +150,83 @@ function modeLabel(mode) {
 }
 
 // ── Toast / status ──────────────────────────────────────────────────────
-let toastTimer = 0;
-let toastHideTimer = 0;
+const TOAST_MAX = 5;
+const TOAST_EXIT_MS = 180;
+const TOAST_STAGGER_MS = 240;
+const toastQueue = [];
+let toastDismissTimer = 0;
+let toastLastRemovedAt = 0;
+
+function toastDuration(kind) {
+  return kind === 'error' ? 4600 : 2800;
+}
+
+function scheduleToastDismiss() {
+  clearTimeout(toastDismissTimer);
+  const stack = $('toast-stack');
+  if (!stack) return;
+  const first = stack.firstElementChild;
+  if (!first) {
+    drainToastQueue();
+    return;
+  }
+  const elapsed = Date.now() - (first._createdAt || Date.now());
+  const remaining = (first._duration || 2800) - elapsed;
+  const afterPrevious = toastLastRemovedAt
+    ? toastLastRemovedAt + TOAST_STAGGER_MS - Date.now()
+    : 0;
+  const wait = Math.max(0, remaining, afterPrevious);
+  toastDismissTimer = setTimeout(() => {
+    if (first.isConnected) removeToast(first);
+  }, wait);
+}
+
+function spawnToast(item) {
+  const stack = $('toast-stack');
+  if (!stack) return;
+  const el = document.createElement('div');
+  el.className = `toast${item.kind ? ` ${item.kind}` : ''}`;
+  el.textContent = item.message;
+  el._createdAt = Date.now();
+  el._duration = toastDuration(item.kind);
+  stack.appendChild(el);
+  requestAnimationFrame(() => {
+    if (el.isConnected) el.classList.add('show');
+  });
+  scheduleToastDismiss();
+}
+
+function drainToastQueue() {
+  const stack = $('toast-stack');
+  if (!stack) return;
+  while (stack.children.length < TOAST_MAX && toastQueue.length) {
+    spawnToast(toastQueue.shift());
+  }
+}
+
+function removeToast(el) {
+  const stack = $('toast-stack');
+  if (!stack || el !== stack.firstElementChild || el._removing) return;
+  clearTimeout(toastDismissTimer);
+  el._removing = true;
+  el.classList.remove('show');
+  el.classList.add('leaving');
+  setTimeout(() => {
+    el.remove();
+    toastLastRemovedAt = Date.now();
+    drainToastQueue();
+    scheduleToastDismiss();
+  }, TOAST_EXIT_MS);
+}
+
 function toast(message, kind = '') {
-  const el = $('toast');
-  if (!el) return;
-  el.textContent = message;
-  el.className = `toast show${kind ? ` ${kind}` : ''}`;
-  clearTimeout(toastTimer);
-  clearTimeout(toastHideTimer);
-  toastTimer = setTimeout(() => {
-    el.classList.remove('show');
-    toastHideTimer = setTimeout(() => { el.className = 'toast hidden'; }, 180);
-  }, kind === 'error' ? 4600 : 2800);
+  const stack = $('toast-stack');
+  if (!stack) return;
+  if (stack.children.length >= TOAST_MAX) {
+    toastQueue.push({ message, kind });
+    return;
+  }
+  spawnToast({ message, kind });
 }
 
 function setSideStatus(kind, text) {
