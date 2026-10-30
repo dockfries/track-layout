@@ -1914,6 +1914,7 @@ function refreshNetStatus() {
 
 // ── Control binding ────────────────────────────────────────────────────
 function bindUi() {
+  let viewportResizeTimer = 0;
   document.addEventListener('input', (ev) => {
     if (ev.target instanceof HTMLInputElement && ev.target.type === 'range') updateRangeFill(ev.target);
   });
@@ -2188,10 +2189,19 @@ function bindUi() {
     });
   });
   window.addEventListener('resize', () => {
-    renderCpWindow(true);
-    renderWarnWindow($('track-warnings'), true);
-    renderWarnWindow($('route-warnings'), true);
-    renderSampleWindow(true);
+    clearTimeout(viewportResizeTimer);
+    viewportResizeTimer = setTimeout(() => {
+      renderCpWindow(true);
+      renderWarnWindow($('track-warnings'), true);
+      renderWarnWindow($('route-warnings'), true);
+      renderSampleWindow(true);
+      const map = MapView.map();
+      if (map) map.invalidateSize({ pan: false });
+      requestAnimationFrame(() => {
+        if (state.track) MapView.fitRoute();
+        else MapView.fitBase();
+      });
+    }, 180);
   });
 
   // CP list delegation
