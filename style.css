@@ -634,9 +634,37 @@ html.i18n-pending #ui { visibility: hidden; }
 .chip-btn .meta { color: var(--muted); font-size: 9.5px; font-family: var(--mono); }
 
 .cp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-.cp-head .group-title { margin-bottom: 0; }
-.cp-list { display: flex; flex-direction: column; gap: 6px; }
+.cp-head .group-title { flex: 1; margin-bottom: 0; }
+.cp-collapse {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+}
+.cp-collapse:hover { background: var(--surface3); color: var(--text); }
+.cp-collapse:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cp-collapse .ico { width: 12px; height: 12px; transition: transform .15s ease; }
+.cp-collapse.is-collapsed .ico { transform: rotate(-90deg); }
+.cp-body { min-width: 0; }
+.cp-list {
+  display: block;
+  position: relative;
+  max-height: min(420px, 52vh);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px;
+}
+.cp-list-spacer { position: relative; width: 100%; }
 .cp-row {
+  position: absolute;
+  left: 0;
+  right: 0;
   display: grid;
   grid-template-columns: 25px 1fr auto;
   gap: 9px;
@@ -863,6 +891,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .coverage-bar span { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, var(--green), #86efac); border-radius: 4px; transition: width .25s; }
 #coverage-text { color: var(--muted); font-family: var(--mono); font-size: 9.5px; white-space: nowrap; }
 #route-time { font-size: 10px; }
+#route-stats { margin-top: 10px; }
 
 /* ── Style pane ──────────────────────────────────────── */
 .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
@@ -1202,6 +1231,7 @@ details.section[open] > summary .chev { transform: rotate(180deg); }
   .map-legend { display: none; }
   .map-coords { display: none; }
   .map-btn { font-size: 13px; }
+  .cp-list { max-height: min(330px, 48vh); }
   .leaflet-control-zoom a { font-size: 15px !important; }
   .empty-state { padding: 12px; }
   .empty-card { padding: 22px 17px 18px; border-radius: 13px; }

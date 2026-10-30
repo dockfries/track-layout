@@ -59,6 +59,8 @@
     '检查点': 'Checkpoints',
     '＋ 地图添加': '＋ Add on map',
     '地图添加': 'Add on map',
+    '折叠检查点': 'Collapse checkpoints',
+    '展开检查点': 'Expand checkpoints',
     '还没有检查点。打开 JSON，或点「地图添加」。':
       'No checkpoints yet. Open a JSON file or use "Add on map".',
     '首点为起点，末点为终点。拖动地图上的编号可微调位置，↑↓ 调整顺序；点击侧栏中的检查点行可在地图上高亮。':

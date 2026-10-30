@@ -5,6 +5,9 @@ const APP_KEY = 'track-layout:v1';
 const THEME_KEY = 'track-layout:theme';
 const THEME_MODES = ['system', 'dark', 'light'];
 const SA_BOUNDS = { minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 };
+const CP_ROW_HEIGHT = 78;
+const CP_ROW_STEP = 84;
+const CP_ROW_OVERSCAN = 3;
 const t = (text, ...args) => I18n.t(text, ...args);
 let themeMode = 'system';
 let themeMedia = null;
@@ -48,6 +51,9 @@ const state = {
   metaTimer: 0,
   miniTimer: 0,
   activeTab: 'track',
+  cpListCollapsed: false,
+  cpWindow: null,
+  cpScrollRaf: 0,
 };
 
 // ── Utilities ───────────────────────────────────────────────────────────
@@ -237,6 +243,8 @@ function applyTrack(track, opts = {}) {
   $('track-author').value = track.author || '';
   $('closed-toggle').checked = state.routing.closed;
   $('empty-state').classList.add('hidden');
+  const cpList = $('cp-list');
+  if (cpList) cpList.scrollTop = 0;
   updateDocumentTitle();
   syncTrackMeta();
   syncRoutingInputs();
@@ -370,26 +378,19 @@ function cpSnapState(index) {
   return { text: t('未吸附'), className: 'cp-snap warn', offroad: true };
 }
 
-function renderCpList() {
-  const list = $('cp-list');
-  if (!list) return;
-  if (!state.track || !state.track.checkpoints.length) {
-    list.innerHTML = `<div class="cp-empty">${escapeHtml(t('还没有检查点。打开 JSON，或点「地图添加」。'))}</div>`;
-    return;
-  }
+function cpRowHtml(cp, i, total) {
   const style = state.style;
-  const rows = state.track.checkpoints.map((cp, i) => {
-    let badge = roleBadge(cp);
-    if (!badge) badge = String(i);
-    let roleColor;
-    if (cp.role === Track.ROLE.START || cp.role === Track.ROLE.LOOP) roleColor = style.cp.startColor;
-    else if (cp.role === Track.ROLE.FINISH) roleColor = style.cp.finishColor;
-    else roleColor = style.cp.fill;
-    const badgeText = (cp.role === Track.ROLE.CP) ? style.cp.textColor : Style.contrastText(roleColor, '#ffffff', '#08110b');
-    const snap = cpSnapState(i);
-    const snapHtml = snap.text ? `<span class="${snap.className}">${escapeHtml(snap.text)}</span>` : '';
-    const label = cp.label ? ` · ${escapeHtml(cp.label)}` : '';
-    return `<div class="cp-row${i === state.selected ? ' is-selected' : ''}${snap.offroad ? ' is-offroad' : ''}" data-i="${i}" role="group" tabindex="0" aria-label="${escapeHtml(cpRoleName(cp, i))}">
+  let badge = roleBadge(cp);
+  if (!badge) badge = String(i);
+  let roleColor;
+  if (cp.role === Track.ROLE.START || cp.role === Track.ROLE.LOOP) roleColor = style.cp.startColor;
+  else if (cp.role === Track.ROLE.FINISH) roleColor = style.cp.finishColor;
+  else roleColor = style.cp.fill;
+  const badgeText = (cp.role === Track.ROLE.CP) ? style.cp.textColor : Style.contrastText(roleColor, '#ffffff', '#08110b');
+  const snap = cpSnapState(i);
+  const snapHtml = snap.text ? `<span class="${snap.className}">${escapeHtml(snap.text)}</span>` : '';
+  const label = cp.label ? ` · ${escapeHtml(cp.label)}` : '';
+  return `<div class="cp-row${i === state.selected ? ' is-selected' : ''}${snap.offroad ? ' is-offroad' : ''}" data-i="${i}" style="top:${i * CP_ROW_STEP + 3}px;height:${CP_ROW_HEIGHT}px" role="group" tabindex="0" aria-label="${escapeHtml(cpRoleName(cp, i))}" aria-posinset="${i + 1}" aria-setsize="${total}">
       <div class="cp-role" style="background:${roleColor};color:${badgeText}">${escapeHtml(badge)}</div>
       <div class="cp-main">
         <div class="cp-line">
@@ -402,12 +403,95 @@ function renderCpList() {
       </div>
       <div class="cp-actions">
         <button class="cp-btn" data-move="-1" title="${escapeHtml(t('上移'))}" ${i === 0 ? 'disabled' : ''}><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-arrow-up"></use></svg></button>
-        <button class="cp-btn" data-move="1" title="${escapeHtml(t('下移'))}" ${i === state.track.checkpoints.length - 1 ? 'disabled' : ''}><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-arrow-down"></use></svg></button>
+        <button class="cp-btn" data-move="1" title="${escapeHtml(t('下移'))}" ${i === total - 1 ? 'disabled' : ''}><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-arrow-down"></use></svg></button>
         <button class="cp-btn danger" data-del title="${escapeHtml(t('删除'))}"><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-trash-2"></use></svg></button>
       </div>
     </div>`;
-  }).join('');
-  list.innerHTML = rows;
+}
+
+function renderCpWindow(force = false) {
+  const list = $('cp-list');
+  if (!list || state.cpListCollapsed) return;
+  const cps = state.track && state.track.checkpoints;
+  if (!cps || !cps.length) return;
+  const total = cps.length;
+  const viewport = list.clientHeight || Math.min(420, Math.max(160, window.innerHeight * 0.52));
+  const scrollTop = list.scrollTop;
+  const start = Math.max(0, Math.floor(scrollTop / CP_ROW_STEP) - CP_ROW_OVERSCAN);
+  const end = Math.min(total, Math.ceil((scrollTop + viewport) / CP_ROW_STEP) + CP_ROW_OVERSCAN);
+  if (!force && state.cpWindow &&
+      state.cpWindow.start === start && state.cpWindow.end === end && state.cpWindow.total === total) {
+    return;
+  }
+  const rows = [];
+  for (let i = start; i < end; i++) rows.push(cpRowHtml(cps[i], i, total));
+  list.innerHTML = `<div class="cp-list-spacer" style="height:${total * CP_ROW_STEP}px">${rows.join('')}</div>`;
+  list.scrollTop = scrollTop;
+  state.cpWindow = { start, end, total };
+}
+
+function renderCpList(opts = {}) {
+  const list = $('cp-list');
+  if (!list) return;
+  state.cpWindow = null;
+  if (!state.track || !state.track.checkpoints.length) {
+    list.innerHTML = `<div class="cp-empty">${escapeHtml(t('还没有检查点。打开 JSON，或点「地图添加」。'))}</div>`;
+    return;
+  }
+  if (state.cpListCollapsed) {
+    list.innerHTML = '';
+    return;
+  }
+  if (opts.resetScroll) list.scrollTop = 0;
+  renderCpWindow(true);
+}
+
+function ensureCpRowVisible(index) {
+  const list = $('cp-list');
+  if (!list || state.cpListCollapsed) return null;
+  const top = index * CP_ROW_STEP;
+  const viewTop = list.scrollTop;
+  const viewHeight = list.clientHeight || Math.min(420, Math.max(160, window.innerHeight * 0.52));
+  let changed = false;
+  if (top < viewTop) {
+    list.scrollTop = Math.max(0, top - 3);
+    changed = true;
+  } else if (top + CP_ROW_STEP > viewTop + viewHeight) {
+    list.scrollTop = Math.max(0, top + CP_ROW_STEP - viewHeight + 3);
+    changed = true;
+  }
+  if (changed || !state.cpWindow || index < state.cpWindow.start || index >= state.cpWindow.end) {
+    renderCpWindow(true);
+  }
+  return qs(`.cp-row[data-i="${index}"]`, list);
+}
+
+function syncCpCollapseButton() {
+  const btn = $('cp-collapse');
+  if (!btn) return;
+  const label = t(state.cpListCollapsed ? '展开检查点' : '折叠检查点');
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+  btn.setAttribute('aria-expanded', String(!state.cpListCollapsed));
+  btn.classList.toggle('is-collapsed', state.cpListCollapsed);
+}
+
+function setCpListCollapsed(collapsed) {
+  state.cpListCollapsed = !!collapsed;
+  const body = $('cp-body');
+  if (body) body.classList.toggle('hidden', state.cpListCollapsed);
+  syncCpCollapseButton();
+  if (state.cpListCollapsed) {
+    const list = $('cp-list');
+    if (list) list.innerHTML = '';
+    state.cpWindow = null;
+  } else {
+    renderCpList();
+  }
+}
+
+function toggleCpList() {
+  setCpListCollapsed(!state.cpListCollapsed);
 }
 
 function refreshCpSnapBadges() {
@@ -458,7 +542,7 @@ function selectCp(index, opts = {}) {
   MapView.setSelected(index);
   if (opts.focus !== false) MapView.focusCp(state.track.checkpoints[index]);
   if (opts.scroll !== false) {
-    const row = qs(`.cp-row[data-i="${index}"]`, $('cp-list'));
+    const row = ensureCpRowVisible(index);
     if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 }
@@ -472,6 +556,7 @@ function moveCp(index, dir) {
   state.selected = j;
   Track.assignRoles(state.track);
   recomputeRoute({ fit: false, markers: true });
+  ensureCpRowVisible(j);
   saveSessionSoon();
 }
 
@@ -485,6 +570,7 @@ function deleteCp(index) {
   state.selected = Math.min(index, state.track.checkpoints.length - 1);
   Track.assignRoles(state.track);
   recomputeRoute({ fit: false, markers: true });
+  ensureCpRowVisible(state.selected);
   saveSessionSoon();
 }
 
@@ -559,6 +645,8 @@ function newTrack() {
   $('closed-toggle').checked = false;
   $('empty-state').classList.remove('hidden');
   updateDocumentTitle();
+  const cpList = $('cp-list');
+  if (cpList) cpList.scrollTop = 0;
   MapView.setData({ track: null, route: null, style: state.style, selected: -1 });
   MapView.fitBase();
   syncAll();
@@ -854,6 +942,7 @@ function updateConditional() {
 
 function syncAll() {
   renderThemes();
+  syncCpCollapseButton();
   syncTrackMeta();
   syncStyleInputs();
   syncRoutingInputs();
@@ -1521,6 +1610,17 @@ function bindUi() {
     });
   }
 
+  // CP list virtualization
+  const cpListEl = $('cp-list');
+  cpListEl.addEventListener('scroll', () => {
+    if (state.cpScrollRaf) return;
+    state.cpScrollRaf = requestAnimationFrame(() => {
+      state.cpScrollRaf = 0;
+      renderCpWindow();
+    });
+  });
+  window.addEventListener('resize', () => renderCpWindow(true));
+
   // CP list delegation
   $('cp-list').addEventListener('click', (ev) => {
     if (ev.target.closest('input')) return;
@@ -1766,6 +1866,7 @@ function runAction(action) {
     }
     case 'fit': MapView.fitRoute(); break;
     case 'add-cp': toggleAddMode(); break;
+    case 'toggle-cp-list': toggleCpList(); break;
     case 'toggle-cp': toggleCpVisible(); break;
     case 'toggle-map': toggleMapVisible(); break;
     case 'toggle-grid': toggleGrid(); break;
@@ -1932,6 +2033,7 @@ function refreshLanguage() {
   updateDocumentTitle();
   refreshNetStatus();
   updatePreviewLabels();
+  syncCpCollapseButton();
   renderThemes();
   renderSampleMenu();
   renderSampleChips();
