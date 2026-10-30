@@ -805,6 +805,19 @@ function formatOutput(path, v) {
   return String(v);
 }
 
+function updateRangeFill(el) {
+  if (!el) return;
+  const min = Number(el.min) || 0;
+  const max = Number(el.max);
+  const value = Number(el.value);
+  const pct = Number.isFinite(max) && max > min ? ((value - min) / (max - min)) * 100 : 0;
+  el.style.setProperty('--range-progress', `${Math.max(0, Math.min(100, pct))}%`);
+}
+
+function updateRangeFills() {
+  for (const el of qsa('input[type="range"]')) updateRangeFill(el);
+}
+
 function updateOutputs() {
   for (const el of qsa('[data-out]')) {
     const path = el.dataset.out;
@@ -849,6 +862,7 @@ function syncAll() {
   syncThemeCards();
   updateConditional();
   updateOutputs();
+  updateRangeFills();
   refreshCpBadges();
   renderTrackSummary();
   renderRouteStats();
@@ -1317,6 +1331,10 @@ function refreshNetStatus() {
 
 // ── Control binding ────────────────────────────────────────────────────
 function bindUi() {
+  document.addEventListener('input', (ev) => {
+    if (ev.target instanceof HTMLInputElement && ev.target.type === 'range') updateRangeFill(ev.target);
+  });
+
   // Tabs
   for (const tab of qsa('.tab')) {
     tab.addEventListener('click', () => {
