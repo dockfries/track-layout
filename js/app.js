@@ -18,6 +18,7 @@ const SAMPLE_ROW_OVERSCAN = 3;
 const SAMPLE_CHIP_LIMIT = 8;
 const ROUTING_DEFAULTS = { snapRadius: 80, smooth: 45 };
 const HISTORY_LIMIT = 50;
+const PLAYBACK_BASE_MS = 14000;
 const t = (text, ...args) => I18n.t(text, ...args);
 let themeMode = 'system';
 let themeMedia = null;
@@ -52,6 +53,7 @@ const state = {
   cpLocked: false,
   undoStack: [],
   redoStack: [],
+  playback: { playing: false, progress: 0, speed: 1, raf: 0, lastTs: 0, path: null },
   graph: null,
   netState: 'loading',
   samples: [],
@@ -119,6 +121,12 @@ function nextFrame() {
   return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 }
 
+function visibleRange(scrollTop, viewport, step, total, overscan = 3) {
+  const start = Math.max(0, Math.floor(scrollTop / step) - overscan);
+  const end = Math.min(total, Math.ceil((scrollTop + viewport) / step) + overscan);
+  return { start, end };
+}
+
 function closeDialog(dlg) {
   if (!dlg || !dlg.open || dlg.classList.contains('is-closing')) return;
   clearTimeout(dlg._closeTimer);
@@ -156,6 +164,7 @@ function modeLabel(mode) {
 
 // ── Toast / status ──────────────────────────────────────────────────────
 const TOAST_MAX = 5;
+const TOAST_QUEUE_MAX = 30;
 const TOAST_EXIT_MS = 180;
 const TOAST_STAGGER_MS = 240;
 const toastQueue = [];
@@ -228,6 +237,7 @@ function toast(message, kind = '') {
   const stack = $('toast-stack');
   if (!stack) return;
   if (stack.children.length >= TOAST_MAX) {
+    if (toastQueue.length >= TOAST_QUEUE_MAX) toastQueue.shift();
     toastQueue.push({ message, kind });
     return;
   }
@@ -342,6 +352,7 @@ function applyTrack(track, opts = {}) {
 }
 
 function recomputeRoute(opts = {}) {
+  if (state.playback) resetPlayback();
   const markers = opts.markers !== false;
   const renderList = opts.list !== false;
   if (!state.track) {
@@ -352,6 +363,7 @@ function recomputeRoute(opts = {}) {
     renderRouteStats();
     renderCpList();
     renderWarnings();
+    syncPlaybackUI();
     setSideStatus('ready', t('准备就绪'));
     return;
   }
@@ -392,6 +404,7 @@ function recomputeRoute(opts = {}) {
   const km = route.length >= 1000 ? `${(route.length / 1000).toFixed(2)} km` : `${Math.round(route.length)} m`;
   setSideStatus('ready', route.partial ? t('路线就绪 · {0} · 部分路网', km) : route.modeUsed === 'road' ? t('路线就绪 · {0}', km) : t('路线就绪 · {0}', modeLabel(route.modeUsed)));
   if (opts.fit) requestAnimationFrame(() => MapView.fitRoute());
+  syncPlaybackUI();
   saveSessionSoon();
   if (state.activeTab === 'export') scheduleMiniPreview();
 }
@@ -401,6 +414,164 @@ function scheduleRoute(delay = 120, opts = {}) {
   state.routeTimer = setTimeout(() => {
     recomputeRoute({ fit: !!opts.fit, markers: opts.markers !== false });
   }, delay);
+}
+
+// ── Route playback animation ───────────────────────────────────────────
+function buildPlaybackPath() {
+  const pts = state.route && state.route.points;
+  if (!Array.isArray(pts) || pts.length < 2) return null;
+  const xs = [pts[0].x];
+  const ys = [pts[0].y];
+  const cum = [0];
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const p = pts[i];
+    const d = Math.hypot(p.x - xs[xs.length - 1], p.y - ys[ys.length - 1]);
+    if (d < 0.05) continue;
+    total += d;
+    xs.push(p.x);
+    ys.push(p.y);
+    cum.push(total);
+  }
+  return xs.length >= 2 ? { xs, ys, cum, total } : null;
+}
+
+function playbackPoint(progress) {
+  const pb = state.playback;
+  const path = pb.path;
+  if (!path) return null;
+  const target = Math.max(0, Math.min(1, progress)) * path.total;
+  let lo = 0, hi = path.cum.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (path.cum[mid] < target) lo = mid + 1;
+    else hi = mid;
+  }
+  const i = Math.max(0, Math.min(lo - 1, path.cum.length - 2));
+  const span = path.cum[i + 1] - path.cum[i];
+  const t = span > 0 ? (target - path.cum[i]) / span : 0;
+  const x = path.xs[i] + (path.xs[i + 1] - path.xs[i]) * t;
+  const y = path.ys[i] + (path.ys[i + 1] - path.ys[i]) * t;
+  const angle = Math.atan2(-(path.ys[i + 1] - path.ys[i]), path.xs[i + 1] - path.xs[i]) * 180 / Math.PI;
+  return { x, y, angle };
+}
+
+function updatePlaybackStatus() {
+  const el = $('playback-status');
+  if (!el) return;
+  const pb = state.playback;
+  el.textContent = state.route ? `${Math.round(pb.progress * 100)}%` : '—';
+}
+
+function syncPlaybackUI() {
+  const pb = state.playback;
+  const hasRoute = !!(state.route && state.route.points && state.route.points.length > 1);
+  const toggle = $('playback-toggle');
+  const reset = $('playback-reset');
+  if (toggle) {
+    toggle.disabled = !hasRoute;
+    toggle.title = t(pb.playing ? '暂停动画' : '播放路线动画');
+    toggle.setAttribute('aria-label', t(pb.playing ? '暂停动画' : '播放路线动画'));
+  }
+  if (reset) reset.disabled = !hasRoute;
+  const label = $('playback-label');
+  if (label) label.textContent = t(pb.playing ? '暂停' : '播放');
+  const icon = $('playback-icon');
+  if (icon) icon.setAttribute('href', `assets/icons/sprite.svg#i-${pb.playing ? 'pause' : 'play'}`);
+  const speed = $('playback-speed');
+  if (speed) {
+    speed.title = t('双击恢复 1.0×');
+    if (document.activeElement !== speed) speed.value = String(pb.speed);
+    updateRangeFill(speed);
+  }
+  const out = $('playback-speed-out');
+  if (out) out.textContent = `${Number(pb.speed).toFixed(1)}×`;
+  updatePlaybackStatus();
+}
+
+function drawPlayback() {
+  const point = playbackPoint(state.playback.progress);
+  if (point) MapView.setPlaybackMarker(point);
+}
+
+function playbackTick(ts) {
+  const pb = state.playback;
+  if (!pb.playing) return;
+  if (!pb.lastTs) pb.lastTs = ts;
+  const delta = Math.min(120, Math.max(0, ts - pb.lastTs));
+  pb.lastTs = ts;
+  pb.progress = Math.min(1, pb.progress + (delta / PLAYBACK_BASE_MS) * pb.speed);
+  drawPlayback();
+  updatePlaybackStatus();
+  if (pb.progress >= 1) {
+    pb.playing = false;
+    pb.raf = 0;
+    syncPlaybackUI();
+    return;
+  }
+  pb.raf = requestAnimationFrame(playbackTick);
+}
+
+function startPlayback() {
+  const pb = state.playback;
+  if (pb.playing) return;
+  if (!state.route || !state.route.points || state.route.points.length < 2) {
+    toast(t('先载入至少两个检查点'), 'error');
+    return;
+  }
+  pb.path = buildPlaybackPath();
+  if (!pb.path) return;
+  if (pb.progress >= 1) pb.progress = 0;
+  pb.playing = true;
+  pb.lastTs = 0;
+  drawPlayback();
+  syncPlaybackUI();
+  cancelAnimationFrame(pb.raf);
+  pb.raf = requestAnimationFrame(playbackTick);
+}
+
+function pausePlayback() {
+  const pb = state.playback;
+  pb.playing = false;
+  cancelAnimationFrame(pb.raf);
+  pb.raf = 0;
+  syncPlaybackUI();
+}
+
+function resetPlayback() {
+  const pb = state.playback;
+  pb.playing = false;
+  pb.progress = 0;
+  pb.lastTs = 0;
+  pb.path = null;
+  cancelAnimationFrame(pb.raf);
+  pb.raf = 0;
+  MapView.clearPlaybackMarker();
+  syncPlaybackUI();
+}
+
+function togglePlayback() {
+  if (state.playback.playing) pausePlayback();
+  else startPlayback();
+}
+
+function bindPlayback() {
+  const speed = $('playback-speed');
+  if (!speed) return;
+  speed.title = t('双击恢复 1.0×');
+  speed.addEventListener('input', () => {
+    const value = Number(speed.value);
+    if (!Number.isFinite(value)) return;
+    state.playback.speed = Math.max(0.5, Math.min(4, value));
+    syncPlaybackUI();
+  });
+  speed.addEventListener('dblclick', (ev) => {
+    ev.preventDefault();
+    state.playback.speed = 1;
+    speed.value = '1';
+    syncPlaybackUI();
+  });
+  syncPlaybackUI();
 }
 
 // ── Rendering: track pane ──────────────────────────────────────────────
@@ -503,8 +674,7 @@ function renderCpWindow(force = false) {
   const total = cps.length;
   const viewport = list.clientHeight || Math.min(420, Math.max(160, window.innerHeight * 0.52));
   const scrollTop = list.scrollTop;
-  const start = Math.max(0, Math.floor(scrollTop / CP_ROW_STEP) - CP_ROW_OVERSCAN);
-  const end = Math.min(total, Math.ceil((scrollTop + viewport) / CP_ROW_STEP) + CP_ROW_OVERSCAN);
+  const { start, end } = visibleRange(scrollTop, viewport, CP_ROW_STEP, total, CP_ROW_OVERSCAN);
   if (!force && state.cpWindow &&
       state.cpWindow.start === start && state.cpWindow.end === end && state.cpWindow.total === total) {
     return;
@@ -663,6 +833,7 @@ function pushUndoSnapshot() {
 
 function restoreEmptyTrackState() {
   clearTimeout(state.routeTimer);
+  resetPlayback();
   state.track = null;
   state.route = null;
   state.selected = -1;
@@ -708,7 +879,7 @@ function undo() {
   state.redoStack.push(current);
   restoreTrackSnapshot(previous);
   syncHistoryButtons();
-  toast(t('已撤销上一步'), 'ok');
+  toast(t('已撤销检查点编辑'), 'ok');
 }
 
 function redo() {
@@ -718,7 +889,7 @@ function redo() {
   state.undoStack.push(current);
   restoreTrackSnapshot(next);
   syncHistoryButtons();
-  toast(t('已重做'), 'ok');
+  toast(t('已重做检查点编辑'), 'ok');
 }
 
 function syncCpLockButton() {
@@ -832,6 +1003,7 @@ function toggleAddMode() {
 function newTrack() {
   if (state.track && !confirm(t('新建会清空当前赛道（样式与导出设置会保留），继续？'))) return;
   clearHistory();
+  resetPlayback();
   state.track = null;
   state.route = null;
   state.selected = -1;
@@ -853,6 +1025,22 @@ function newTrack() {
   setSideStatus('ready', t('准备就绪'));
   saveSessionSoon();
   toast(t('已新建空白赛道'));
+}
+
+async function clearLocalCache() {
+  if (!confirm(t('清除本地缓存会删除赛道、样式、主题和语言设置，并刷新页面。继续？'))) return;
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('track-layout:')) localStorage.removeItem(key);
+    }
+  } catch { /* private mode / disabled storage */ }
+  if ('caches' in window) {
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+    } catch { /* cache storage may be unavailable */ }
+  }
+  location.reload();
 }
 
 // ── Rendering: route pane ──────────────────────────────────────────────
@@ -919,8 +1107,7 @@ function renderWarnWindow(el, force = false) {
   const total = items.length;
   const viewport = el.clientHeight || Math.min(280, Math.max(160, window.innerHeight * 0.38));
   const scrollTop = el.scrollTop;
-  const start = Math.max(0, Math.floor(scrollTop / WARN_ROW_STEP) - WARN_ROW_OVERSCAN);
-  const end = Math.min(total, Math.ceil((scrollTop + viewport) / WARN_ROW_STEP) + WARN_ROW_OVERSCAN);
+  const { start, end } = visibleRange(scrollTop, viewport, WARN_ROW_STEP, total, WARN_ROW_OVERSCAN);
   if (!force && el._warnWindow &&
       el._warnWindow.start === start && el._warnWindow.end === end && el._warnWindow.total === total) {
     return;
@@ -1245,6 +1432,7 @@ function findRangeForOutput(output) {
 
 function syncRangeHelperLabels() {
   for (const range of qsa('input[type="range"]')) {
+    if (!rangePath(range)) continue;
     range.title = t('双击恢复默认值');
   }
   for (const output of qsa('[data-out]')) {
@@ -1335,6 +1523,7 @@ function startOutputEdit(output) {
 
 function bindRangeInteractions() {
   for (const range of qsa('input[type="range"]')) {
+    if (!rangePath(range)) continue;
     range.addEventListener('dblclick', (ev) => {
       ev.preventDefault();
       resetRangeToDefault(range);
@@ -1384,6 +1573,7 @@ function syncAll() {
   syncWarnCollapseButton();
   syncCpLockButton();
   syncHistoryButtons();
+  syncPlaybackUI();
   syncTrackMeta();
   syncStyleInputs();
   syncRoutingInputs();
@@ -1721,8 +1911,7 @@ function renderSampleWindow(force = false) {
     Math.min(420, Math.max(160, window.innerHeight * 0.55))
   );
   const scrollTop = list.scrollTop;
-  const start = Math.max(0, Math.floor(scrollTop / SAMPLE_ROW_STEP) - SAMPLE_ROW_OVERSCAN);
-  const end = Math.min(total, Math.ceil((scrollTop + viewport) / SAMPLE_ROW_STEP) + SAMPLE_ROW_OVERSCAN);
+  const { start, end } = visibleRange(scrollTop, viewport, SAMPLE_ROW_STEP, total, SAMPLE_ROW_OVERSCAN);
   if (!force && state.sampleWindow &&
       state.sampleWindow.start === start && state.sampleWindow.end === end && state.sampleWindow.total === total) {
     return;
@@ -2445,6 +2634,7 @@ function bindUi() {
 
   // Keyboard shortcuts
   bindRangeInteractions();
+  bindPlayback();
 
   document.addEventListener('keydown', (ev) => {
     const typing = ev.target instanceof Element && ev.target.matches('input, select, textarea, [contenteditable="true"]');
@@ -2593,6 +2783,7 @@ function runAction(action) {
     case 'open-json': openFilePicker(); break;
     case 'save-json': saveTrackJSON(); break;
     case 'new-track': newTrack(); break;
+    case 'clear-cache': clearLocalCache(); break;
     case 'help': {
       openDialog($('help-dialog'));
       break;
@@ -2604,6 +2795,8 @@ function runAction(action) {
     case 'fit': MapView.fitRoute(); break;
     case 'undo': undo(); break;
     case 'redo': redo(); break;
+    case 'toggle-playback': togglePlayback(); break;
+    case 'reset-playback': resetPlayback(); break;
     case 'toggle-cp-lock': toggleCpLock(); break;
     case 'add-cp': toggleAddMode(); break;
     case 'toggle-cp-list': toggleCpList(); break;
@@ -2781,6 +2974,7 @@ function refreshLanguage() {
   syncCpCollapseButton();
   syncWarnCollapseButton();
   syncRangeHelperLabels();
+  syncPlaybackUI();
   renderThemes();
   renderSampleMenu();
   renderSampleChips();

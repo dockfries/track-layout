@@ -25,6 +25,7 @@
   let cpGroup = null;
   let handlers = {};
   let coordsTimer = 0;
+  let playbackMarker = null;
 
   const state = {
     track: null,
@@ -40,9 +41,14 @@
 
   function formatScaleDistance(meters) {
     if (!Number.isFinite(meters) || meters <= 0) return '';
-    if (meters >= 10000) return `${Math.round(meters / 1000)} km`;
-    if (meters >= 1000) return `${(meters / 1000).toFixed(1)} km`;
-    if (meters >= 100) return `${Math.round(meters / 10) * 10} m`;
+    if (meters >= 1000) {
+      const km = meters / 1000;
+      return `${km >= 10 ? Math.round(km) : km.toFixed(1)} km`;
+    }
+    if (meters >= 100) {
+      const rounded = Math.round(meters / 10) * 10;
+      return rounded >= 1000 ? '1.0 km' : `${rounded} m`;
+    }
     if (meters >= 10) return `${Math.round(meters)} m`;
     return `${Math.max(1, Math.round(meters))} m`;
   }
@@ -358,7 +364,7 @@
       });
       const marker = L.marker([cp.y, cp.x], {
         icon,
-        draggable: !state.cpLocked,
+        draggable: true,
         keyboard: false,
         riseOnHover: true,
         autoPan: true,
@@ -401,6 +407,7 @@
         { direction: 'top', offset: [0, -total / 2], opacity: 1, className: 'tl-tooltip', sticky: false }
       );
       marker.addTo(cpGroup);
+      if (state.cpLocked && marker.dragging) marker.dragging.disable();
     });
   }
 
@@ -559,6 +566,32 @@
     });
   }
 
+  function setPlaybackMarker(point) {
+    if (!map || !point) return;
+    if (!playbackMarker) {
+      const icon = L.divIcon({
+        className: 'tl-playback-marker',
+        html: '<div class="tl-playback-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14M13 5l7 7-7 7"/></svg></div>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+      });
+      playbackMarker = L.marker([point.y, point.x], {
+        icon,
+        interactive: false,
+        keyboard: false,
+        zIndexOffset: 3000,
+      }).addTo(map);
+    }
+    playbackMarker.setLatLng([point.y, point.x]);
+    const arrow = playbackMarker.getElement()?.querySelector('.tl-playback-arrow');
+    if (arrow) arrow.style.transform = `rotate(${point.angle}deg)`;
+  }
+
+  function clearPlaybackMarker() {
+    if (playbackMarker && map) map.removeLayer(playbackMarker);
+    playbackMarker = null;
+  }
+
   function getExportMap() {
     return { image: baseImage, bounds: { ...baseBounds } };
   }
@@ -574,6 +607,7 @@
   root.MapView = {
     init, setBaseMap, setData, setRouteOnly, setStyleOnly, setSelected,
     fitRoute, fitBase, focusCp, setAddMode, setCpLocked, getExportMap, getViewBounds,
+    setPlaybackMarker, clearPlaybackMarker,
     refreshOverlays: updateOverlays, getZoom, map: () => map,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

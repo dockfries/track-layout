@@ -28,6 +28,8 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **Slider helpers**: double-click a range input to restore its current theme/default value; click the numeric readout to type an exact value with min/max validation.
 - **Safe CP editing**: lock map marker dragging to avoid accidental moves, and undo/redo checkpoint edits (drag, coordinate input, add/delete/reorder).
 - **Responsive map**: window resizing is debounced (180 ms), then the map re-fits the current track; virtual lists and the scale bar refresh at the same time.
+- **Route playback**: play a direction arrow from start to finish with a 0.5×–4× speed slider; the animation is map-preview only and never appears in exports.
+- **Clear local cache**: the sidebar footer has a cache reset action that removes this app's `localStorage` and Cache Storage data, then reloads.
 - **Internationalization**: first visit follows the browser locale (`zh*` → Simplified Chinese, everything else → English); the `EN / 中文` picker in the top bar overrides it. UI, map title/legend, CP list, notices, help and PNG/SVG export text all follow the active language.
 - **Dark / light UI**: choose **System / Dark / Light** in the top bar. **System** follows `prefers-color-scheme` live, and the choice is remembered in this browser. This only affects the app chrome, not the route-map artwork itself.
 

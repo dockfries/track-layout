@@ -67,7 +67,6 @@
   --cp-role-ring: rgba(255,255,255,.035);
   --cp-label-bg: rgba(6,9,15,.66);
   --cp-label-shadow: rgba(0,0,0,.65);
-  --add-hint-kbd: rgba(0,0,0,.16);
   --shadow-menu: 0 18px 50px rgba(0,0,0,.55);
   --shadow-card: 0 30px 90px rgba(0,0,0,.55);
   --shadow-dialog: 0 30px 100px rgba(0,0,0,.7);
@@ -137,7 +136,6 @@
   --cp-role-ring: rgba(15,23,42,.04);
   --cp-label-bg: rgba(6,9,15,.66);
   --cp-label-shadow: rgba(0,0,0,.65);
-  --add-hint-kbd: rgba(15,23,42,.08);
   --shadow-menu: 0 18px 50px rgba(15,23,42,.16);
   --shadow-card: 0 30px 90px rgba(15,23,42,.16);
   --shadow-dialog: 0 30px 100px rgba(15,23,42,.2);
@@ -1133,6 +1131,18 @@ details.section[open] > summary .chev { transform: rotate(180deg); }
   white-space: nowrap;
   overflow: hidden;
 }
+.footer-cache {
+  margin-left: auto;
+  padding: 1px 4px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.footer-cache:hover { color: var(--accent-2); background: var(--surface3); }
+.footer-cache:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .dot-live { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); flex-shrink: 0; }
 .dot-live.busy { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); animation: pulse 1s infinite; }
 .dot-live.error { background: var(--red); box-shadow: 0 0 8px var(--red); }
@@ -1374,6 +1384,30 @@ details.section[open] > summary .chev { transform: rotate(180deg); }
 .tl-cp:hover { transform: scale(1.12); filter: drop-shadow(0 5px 12px rgba(0,0,0,.55)); }
 .tl-cp.is-locked { cursor: default; }
 .tl-cp.is-locked:hover { transform: none; }
+.tl-playback-marker { background: none; border: none; }
+.tl-playback-arrow {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(249,115,22,.28), 0 5px 18px rgba(0,0,0,.55);
+  transform-origin: 50% 50%;
+  transition: transform .08s linear;
+}
+.tl-playback-arrow svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .tl-cp.is-selected { transform: scale(1.18); filter: drop-shadow(0 0 12px rgba(249,115,22,.85)) drop-shadow(0 4px 10px rgba(0,0,0,.5)); }
 .tl-cp:active { cursor: grabbing; }
 .tl-arrow { background: none; border: none; pointer-events: none; }
