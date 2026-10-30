@@ -173,6 +173,7 @@
     }
     const out = Array.isArray(base) ? base.slice() : { ...base };
     for (const key of Object.keys(patch)) {
+      if (key === '__proto__' || key === 'prototype' || key === 'constructor') continue;
       out[key] = deepMerge(base[key], patch[key]);
     }
     return out;
@@ -258,7 +259,8 @@
   // Split the route into contiguous colour runs. Used by both the Leaflet map
   // and the exporter so every paint mode matches in the final image.
   function routeRuns(points, zRange, style) {
-    const mode = style.route.paint;
+    const requested = style.route.paint;
+    const mode = ['solid', 'along', 'linear', 'elevation'].includes(requested) ? requested : 'solid';
     if (!points || points.length < 2) return [];
     if (mode === 'solid') return [{ color: style.route.color, points: points.slice() }];
 
@@ -319,6 +321,16 @@
     if (mapStyle.hue) parts.push(`hue-rotate(${mapStyle.hue}deg)`);
     if (mapStyle.blur > 0) parts.push(`blur(${mapStyle.blur}px)`);
     return parts.length ? parts.join(' ') : 'none';
+  }
+
+  // Keep the grid readable and bounded for very large custom base-map bounds.
+  function gridStep(view) {
+    const spanX = Math.max(0, Number(view && view.maxX) - Number(view && view.minX));
+    const spanY = Math.max(0, Number(view && view.maxY) - Number(view && view.minY));
+    let step = 500;
+    let guard = 0;
+    while (spanX / step + spanY / step > 2400 && guard++ < 32) step *= 2;
+    return step;
   }
 
   function markerLabel(cp, index) {
@@ -392,6 +404,7 @@
     DEFAULT_VISUAL, DEFAULT_EXPORT, THEMES, EXPORT_PRESETS,
     clone, deepMerge, defaultVisual, defaultExport, applyTheme, themeStyle,
     parseColor, toHex, mixColor, withAlpha, contrastText, routeColor, routeRuns, cssFilter,
+    gridStep,
     markerLabel, markerFill, markerTextColor, markerSvg, markerTotalSize, escapeXml,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

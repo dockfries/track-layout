@@ -33,6 +33,7 @@
     "cp.untitled": { en: "Untitled track", zh: "未命名赛道" },
     "dialog.clearCache": { en: "Clearing local cache will remove the track, styles, theme, and language settings, then reload. Continue?", zh: "清除本地缓存会删除赛道、样式、主题和语言设置，并刷新页面。继续？" },
     "error.boundsInvalid": { en: "Invalid bounds: max must be greater than min", zh: "范围无效：max 必须大于 min" },
+    "error.coordRange": { en: "Coordinates must be between -100000 and 100000", zh: "坐标必须在 -100000 到 100000 之间" },
     "error.checkpointsEmpty": { en: "Checkpoint array is empty", zh: "检查点数组是空的" },
     "error.copyFailed": { en: "Copy failed; select the text manually", zh: "复制失败，请手动选择文本" },
     "error.customMapFirst": { en: "Choose a custom base map first", zh: "请先选择一张自定义底图" },
@@ -99,10 +100,13 @@
     "sample.countFiltered": { en: "{0} / {1} samples", zh: "{0} / {1} 个示例" },
     "sample.loaded": { en: "Loaded sample: {0}", zh: "已载入示例：{0}" },
     "sample.noMatch": { en: "No matching samples", zh: "没有匹配的示例" },
+    "sample.listLabel": { en: "Sample list", zh: "示例列表" },
+    "ui.mapLabel": { en: "Track map", zh: "赛道地图" },
     "sample.none": { en: "No samples available", zh: "没有可用示例" },
     "status.calculating": { en: "Calculating route…", zh: "计算路线…" },
     "status.calculatingGraph": { en: "Calculating route (loading road graph)…", zh: "计算路线（路网载入中）…" },
     "status.exportFailed": { en: "Export failed", zh: "导出失败" },
+    "status.routeFailed": { en: "Route calculation failed", zh: "路线计算失败" },
     "status.loadingRoadGraph": { en: "Loading road graph…", zh: "路网载入中…" },
     "status.loadingRoadGraphData": { en: "Loading road graph data…", zh: "载入路网数据…" },
     "status.noTrack": { en: "No track loaded", zh: "还没有赛道" },
@@ -134,11 +138,13 @@
     "warning.allSegmentsRoad": { en: "All segments use the road graph.", zh: "所有路段都已使用路网。" },
     "warning.autoSpline": { en: "Could not snap the whole track to the road graph; using a smooth spline", zh: "未能全程吸附到路网，已自动改用平滑曲线" },
     "warning.duplicate": { en: "{0} is at the same position as the previous one", zh: "{0} 与上一个位置重复" },
+    "warning.duplicateStart": { en: "{0} is at the same position as the start", zh: "{0} 与起点位置重复" },
     "warning.emptyRoute": { en: "Load a track to see segments that could not be routed.", zh: "载入赛道后，这里会列出无法寻路的路段。" },
     "warning.emptyTrack": { en: "Load a track to see checkpoint and snapping notes.", zh: "载入赛道后，这里会列出检查点与路网吸附的提示。" },
     "warning.noIssues": { en: "No obvious issues.", zh: "没有发现明显问题。" },
     "warning.noRoadAtAll": { en: "No segment could use the road graph; connected with straight lines", zh: "没有任何路段能使用路网，已用直线连接" },
     "warning.noSnap": { en: "{0}: no drivable road node within {1}m", zh: "{0}：{1}m 内没有可驾驶道路节点" },
+    "warning.baseMapMissing": { en: "The base map is unavailable; exporting without it.", zh: "底图不可用，将不包含底图导出。" },
     "warning.outsideMap": { en: "{0} ({1}, {2}) is outside the San Andreas map", zh: "{0} ({1}, {2}) 在 San Andreas 地图边界之外" },
     "warning.partialRoad": { en: "Could not snap the whole track to the road graph; kept as much road as possible and filled the gaps with straight lines", zh: "未能全程吸附到路网，已尽量沿路网连接，缺口用直线补齐" },
     "warning.roadGraphNotLoadedLine": { en: "Road graph is not loaded; connected with straight lines", zh: "路网数据尚未载入，已用直线连接" },
@@ -601,6 +607,14 @@
     '停止动画': 'Stop animation',
     '地图跟随播放': 'Follow playback',
     '拖动或缩放地图会自动关闭跟随。': 'Dragging or zooming the map turns following off.',
+    '画布尺寸预设': 'Canvas size preset',
+    '选择赛道 JSON': 'Choose a track JSON file',
+    '选择自定义底图': 'Choose a custom base map',
+    '赛道地图': 'Track map',
+    '示例列表': 'Sample list',
+    '在地图中心添加检查点': 'Add a checkpoint at the map center',
+    'Theme / 主题': 'Theme',
+    'Sections / 分区': 'Sections',
     '倍速只改变时间轴，帧率跟随浏览器刷新率；0.1× 时箭头位移很小是正常的。':
       'Speed changes the timeline only; rendering stays at the browser refresh rate. At 0.1× the arrow moves very slowly by design.',
   };
@@ -794,6 +808,8 @@
     switch (w.code) {
       case 'duplicate':
         return t("warning.duplicate", cpLabel(w.index || 0));
+      case 'duplicate-start':
+        return t("warning.duplicateStart", cpLabel(w.index || 0));
       case 'bounds': {
         const cp = track && track.checkpoints && track.checkpoints[w.index];
         const x = w.x !== undefined ? w.x : (cp ? cp.x : 0);

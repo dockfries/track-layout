@@ -19,6 +19,7 @@ const SAMPLE_CHIP_LIMIT = 8;
 const ROUTING_DEFAULTS = { snapRadius: 80, smooth: 45 };
 const HISTORY_LIMIT = 50;
 const PLAYBACK_BASE_MS = 14000;
+const MAX_COORD = 100000;
 const t = (text, ...args) => I18n.t(text, ...args);
 let themeMode = 'system';
 let themeMedia = null;
@@ -308,6 +309,7 @@ function saveSession() {
     const payload = {
       v: 1,
       track: state.track ? Track.toJSON(state.track) : null,
+      sampleFile: state.track && state.track.sampleFile ? state.track.sampleFile : null,
       empty: !state.track || !state.track.checkpoints.length,
       cpLocked: state.cpLocked,
       playbackFollow: state.playback.follow,
@@ -325,6 +327,7 @@ function loadSessionTrack(saved) {
   try {
     const track = Track.parseTrack(JSON.stringify(saved.track), '上次会话.json');
     if (!track.checkpoints.length) return null;
+    if (saved.sampleFile) track.sampleFile = saved.sampleFile;
     return track;
   } catch { return null; }
 }
@@ -384,12 +387,28 @@ function recomputeRoute(opts = {}) {
   } catch (err) {
     console.error(err);
     toast(t("error.routeFailed", I18n.errorText(err)), 'error');
-    route = Track.computeRoute(state.track, null, {
-      mode: state.routing.mode === 'road' ? 'spline' : state.routing.mode,
-      snapRadius: state.routing.snapRadius,
-      smooth: state.routing.smooth,
-      closed: state.routing.closed,
-    });
+    try {
+      route = Track.computeRoute(state.track, null, {
+        mode: state.routing.mode === 'road' ? 'spline' : state.routing.mode,
+        snapRadius: state.routing.snapRadius,
+        smooth: state.routing.smooth,
+        closed: state.routing.closed,
+      });
+    } catch (fallbackErr) {
+      console.error(fallbackErr);
+      toast(t("error.routeFailed", I18n.errorText(fallbackErr)), 'error');
+      route = null;
+    }
+  }
+  if (!route) {
+    state.route = null;
+    MapView.setData({ track: state.track, route: null, style: state.style, selected: state.selected });
+    renderTrackSummary();
+    renderRouteStats();
+    renderWarnings();
+    syncPlaybackUI();
+    setSideStatus('error', t("status.routeFailed"));
+    return;
   }
   state.route = route;
   if (markers) {
@@ -710,7 +729,7 @@ function cpRowHtml(cp, i, total) {
   const snap = cpSnapState(i);
   const snapHtml = snap.text ? `<span class="${snap.className}">${escapeHtml(snap.text)}</span>` : '';
   const label = cp.label ? ` · ${escapeHtml(cp.label)}` : '';
-  return `<div class="cp-row${i === state.selected ? ' is-selected' : ''}${snap.offroad ? ' is-offroad' : ''}" data-i="${i}" style="top:${i * CP_ROW_STEP + 3}px;height:${CP_ROW_HEIGHT}px" role="group" tabindex="0" aria-label="${escapeHtml(cpRoleName(cp, i))}" aria-posinset="${i + 1}" aria-setsize="${total}">
+  return `<div class="cp-row${i === state.selected ? ' is-selected' : ''}${snap.offroad ? ' is-offroad' : ''}" data-i="${i}" style="top:${i * CP_ROW_STEP + 3}px;height:${CP_ROW_HEIGHT}px" role="group" tabindex="0" aria-label="${escapeHtml(cpRoleName(cp, i))}">
       <div class="cp-role" style="background:${roleColor};color:${badgeText}">${escapeHtml(badge)}</div>
       <div class="cp-main">
         <div class="cp-line">
@@ -718,7 +737,7 @@ function cpRowHtml(cp, i, total) {
           ${snapHtml}
         </div>
         <div class="cp-coords">
-          ${['x', 'y', 'z'].map((axis) => `<label class="cp-coord"><span class="axis">${axis.toUpperCase()}</span><input class="cp-input" type="number" step="0.1" data-axis="${axis}" value="${fmtCoord(cp[axis], 2)}"></label>`).join('')}
+          ${['x', 'y', 'z'].map((axis) => `<label class="cp-coord"><span class="axis">${axis.toUpperCase()}</span><input class="cp-input" type="number" step="0.1" data-axis="${axis}"${axis === 'z' ? '' : ` min="${-MAX_COORD}" max="${MAX_COORD}"`} value="${fmtCoord(cp[axis], 2)}"></label>`).join('')}
         </div>
       </div>
       <div class="cp-actions">
@@ -862,7 +881,10 @@ function selectCp(index, opts = {}) {
   if (opts.focus !== false) MapView.focusCp(state.track.checkpoints[index]);
   if (opts.scroll !== false) {
     const row = ensureCpRowVisible(index);
-    if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (row) row.scrollIntoView({
+      block: 'nearest',
+      behavior: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    });
   }
 }
 
@@ -1032,7 +1054,8 @@ function addCpAt(x, y) {
   let z = 0;
   let hasZ = false;
   if (state.graph) {
-    const snap = state.graph.nearest(x, y, 0, 80, false);
+    const snapRadius = clamp(Number(state.routing.snapRadius) || ROUTING_DEFAULTS.snapRadius, 20, 200);
+    const snap = state.graph.nearest(x, y, 0, snapRadius, false);
     if (snap) { z = snap.z; hasZ = true; }
   }
   track.checkpoints.push({ x, y, z, hasZ, radius: 0, label: '', declaredType: '', role: Track.ROLE.CP });
@@ -1159,8 +1182,7 @@ function warningItemHtml(w, index, total, virtual) {
   const focus = Number.isInteger(w.index) ? ` data-focus="${w.index}"` : '';
   const interactive = focus ? ' role="button" tabindex="0"' : '';
   const style = virtual ? ` style="top:${index * WARN_ROW_STEP + 3}px;height:${WARN_ROW_HEIGHT}px"` : '';
-  const position = virtual ? ` aria-posinset="${index + 1}" aria-setsize="${total}"` : '';
-  return `<div class="warn-item ${w.level || 'warn'}"${style}${focus}${interactive}${position} title="${escapeHtml(text)}" aria-label="${escapeHtml(text)}"><span class="wi-ico">${w.level === 'info' ? 'i' : '!'}</span><span>${escapeHtml(text)}</span></div>`;
+  return `<div class="warn-item ${w.level || 'warn'}"${style}${focus}${interactive} title="${escapeHtml(text)}" aria-label="${escapeHtml(text)}"><span class="wi-ico">${w.level === 'info' ? 'i' : '!'}</span><span>${escapeHtml(text)}</span></div>`;
 }
 
 function renderWarnWindow(el, force = false) {
@@ -1347,7 +1369,7 @@ function renderThemes() {
   if (!grid) return;
   grid.innerHTML = Style.THEMES.map((theme) => {
     const active = state.style.theme === theme.key ? ' active' : '';
-    return `<button class="theme-card${active}" data-theme="${theme.key}" type="button">
+    return `<button class="theme-card${active}" data-theme="${theme.key}" type="button" aria-pressed="${active ? 'true' : 'false'}">
       <span class="theme-swatches">${theme.swatch.map((c) => `<i style="background:${c}"></i>`).join('')}</span>
       <span class="theme-name">${escapeHtml(I18n.themeName(theme))}</span>
       <span class="theme-note">${escapeHtml(I18n.themeNote(theme))}</span>
@@ -1367,7 +1389,9 @@ function syncStyleInputs() {
     const path = seg.dataset.bind.slice(6);
     const v = getPath(state.style, path);
     for (const btn of seg.querySelectorAll('button[data-value]')) {
-      btn.classList.toggle('active', String(v) === btn.dataset.value);
+      const active = String(v) === btn.dataset.value;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', String(active));
     }
   }
   syncCpToggleButton();
@@ -1405,7 +1429,9 @@ function syncRoutingInputs() {
   const closed = $('closed-toggle');
   if (closed) closed.checked = !!state.routing.closed;
   for (const btn of qsa('.seg[data-bind="routing.mode"] button')) {
-    btn.classList.toggle('active', btn.dataset.value === state.routing.mode);
+    const active = btn.dataset.value === state.routing.mode;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
   }
   const hint = $('mode-hint');
   if (hint) {
@@ -1420,9 +1446,21 @@ function syncRoutingInputs() {
 }
 
 function syncExportInputs() {
-  for (const btn of qsa('.seg[data-bind="export.format"] button')) btn.classList.toggle('active', btn.dataset.value === state.exportOpts.format);
-  for (const btn of qsa('.seg[data-bind="export.scope"] button')) btn.classList.toggle('active', btn.dataset.value === state.exportOpts.scope);
-  for (const btn of qsa('.seg[data-bind="export.background"] button')) btn.classList.toggle('active', btn.dataset.value === state.exportOpts.background);
+  for (const btn of qsa('.seg[data-bind="export.format"] button')) {
+    const active = btn.dataset.value === state.exportOpts.format;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
+  }
+  for (const btn of qsa('.seg[data-bind="export.scope"] button')) {
+    const active = btn.dataset.value === state.exportOpts.scope;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
+  }
+  for (const btn of qsa('.seg[data-bind="export.background"] button')) {
+    const active = btn.dataset.value === state.exportOpts.background;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
+  }
   const inc = qs('[data-export="includeMap"]');
   if (inc) inc.checked = state.exportOpts.includeMap !== false;
   const bg = qs('[data-export="bgColor"]');
@@ -1465,7 +1503,11 @@ function syncBoundsInputs() {
 }
 
 function syncThemeCards() {
-  for (const card of qsa('.theme-card')) card.classList.toggle('active', card.dataset.theme === state.style.theme);
+  for (const card of qsa('.theme-card')) {
+    const active = card.dataset.theme === state.style.theme;
+    card.classList.toggle('active', active);
+    card.setAttribute('aria-pressed', String(active));
+  }
 }
 
 function updateHexLabels() {
@@ -1551,6 +1593,8 @@ function syncRangeHelperLabels() {
   for (const range of qsa('input[type="range"]')) {
     if (!rangePath(range)) continue;
     range.title = t(rangePath(range) === 'playback.speed' ? 'hint.playbackSpeedDefault' : 'hint.sliderDefault');
+    const label = range.closest('.field-block')?.querySelector('.field-line label')?.textContent.trim();
+    if (label) range.setAttribute('aria-label', label);
   }
   for (const output of qsa('[data-out]')) {
     if (!findRangeForOutput(output)) continue;
@@ -1686,6 +1730,8 @@ function updateConditional() {
 
 function syncAll() {
   renderThemes();
+  const mapEl = $('map');
+  if (mapEl) mapEl.setAttribute('aria-label', t("ui.mapLabel"));
   syncCpCollapseButton();
   syncWarnCollapseButton();
   syncRouteWarnCollapseButton();
@@ -1819,6 +1865,7 @@ async function setBuiltinBase(fit = true) {
   syncAll();
   await MapView.setBaseMap('assets/samap.png', SA_BOUNDS, fit);
   MapView.setStyleOnly(state.style);
+  saveSessionSoon();
 }
 
 async function loadCustomMap(file) {
@@ -2036,7 +2083,7 @@ function renderSampleWindow(force = false) {
   }
   const rows = [];
   for (let i = start; i < end; i++) rows.push(sampleRowHtml(items[i], i, total));
-  list.innerHTML = `<div class="sample-list-spacer" style="height:${total * SAMPLE_ROW_STEP}px">${rows.join('')}</div>`;
+  list.innerHTML = `<div class="sample-list-spacer" role="presentation" style="height:${total * SAMPLE_ROW_STEP}px">${rows.join('')}</div>`;
   list.scrollTop = scrollTop;
   state.sampleWindow = { start, end, total };
 }
@@ -2061,18 +2108,19 @@ function updateSampleClearButton() {
 function renderSampleMenu(opts = {}) {
   const list = $('sample-menu');
   if (!list) return;
+  list.setAttribute('aria-label', t("sample.listLabel"));
   state.sampleFiltered = filterSampleList(state.sampleQuery);
   state.sampleWindow = null;
   if (opts.resetScroll) list.scrollTop = 0;
   updateSampleClearButton();
   if (!state.samples.length) {
-    list.innerHTML = `<div class="menu-loading">${escapeHtml(state.samplesLoading ? t("common.loading") : t("sample.none"))}</div>`;
+    list.innerHTML = `<div class="menu-loading" role="presentation">${escapeHtml(state.samplesLoading ? t("common.loading") : t("sample.none"))}</div>`;
     state.sampleFiltered = [];
     updateSampleFooter();
     return;
   }
   if (!state.sampleFiltered.length) {
-    list.innerHTML = `<div class="sample-empty">${escapeHtml(t("sample.noMatch"))}</div>`;
+    list.innerHTML = `<div class="sample-empty" role="presentation">${escapeHtml(t("sample.noMatch"))}</div>`;
     updateSampleFooter();
     return;
   }
@@ -2175,6 +2223,12 @@ function ensureExportReady() {
     toast(t("error.loadTrackFirst"), 'error');
     return false;
   }
+  if (state.exportOpts.includeMap !== false && state.style.map.visible !== false) {
+    const map = MapView.getExportMap();
+    if (!map.image || !(map.image.naturalWidth || map.image.width)) {
+      toast(t("warning.baseMapMissing"), 'error');
+    }
+  }
   if (!state.route) {
     recomputeRoute({ fit: false, markers: false });
   }
@@ -2223,8 +2277,10 @@ function updateMiniPreview(canvas) {
   mini.width = tw;
   mini.height = th;
   const ctx = mini.getContext('2d');
-  ctx.fillStyle = '#0b0e15';
-  ctx.fillRect(0, 0, tw, th);
+  if (state.exportOpts.background !== 'transparent') {
+    ctx.fillStyle = '#0b0e15';
+    ctx.fillRect(0, 0, tw, th);
+  }
   ctx.drawImage(canvas, 0, 0, tw, th);
   const el = $('export-mini');
   if (el) {
@@ -2275,7 +2331,9 @@ async function downloadSVG() {
   await nextFrame();
   try {
     const svg = Exporter.renderSVG(buildExportOptions());
-    const name = `${safeFileName(state.track.name)}-${state.exportOpts.width}x${state.exportOpts.height}.svg`;
+    const w = clamp(Math.round(Number(state.exportOpts.width) || 1920), 320, 4096);
+    const h = clamp(Math.round(Number(state.exportOpts.height) || 1080), 320, 4096);
+    const name = `${safeFileName(state.track.name)}-${w}x${h}.svg`;
     downloadText(name, svg, 'image/svg+xml');
     setSideStatus('ready', t("status.svgExported"));
     toast(t("toast.exported", name), 'ok');
@@ -2555,6 +2613,7 @@ function bindUi() {
     state.track.author = $('track-author').value.trim();
     updateDocumentTitle();
     MapView.refreshOverlays();
+    if (state.activeTab === 'export') scheduleMiniPreview(120);
     saveSessionSoon();
   };
   for (const id of ['track-name', 'track-author']) {
@@ -2658,6 +2717,11 @@ function bindUi() {
     }
     const value = Number(input.value);
     if (!Number.isFinite(value)) return;
+    if (axis !== 'z' && Math.abs(value) > MAX_COORD) {
+      input.value = fmtCoord(cp[axis], 2);
+      toast(t("error.coordRange"), 'error');
+      return;
+    }
     if (Number(cp[axis]) !== value) pushUndoSnapshot();
     cp[axis] = value;
     if (axis === 'z') cp.hasZ = true;
@@ -2806,6 +2870,11 @@ function bindUi() {
     else if (k === 'm') { ev.preventDefault(); toggleMapVisible(); }
     else if (k === 'c') { ev.preventDefault(); toggleCpVisible(); }
     else if (k === 'l') { ev.preventDefault(); toggleCpLock(); }
+    else if (k === 'a') {
+      ev.preventDefault();
+      const center = MapView.map() && MapView.map().getCenter();
+      if (center) addCpAt(center.lng, center.lat);
+    }
     else if ((k === '+' || k === '=') && !(ev.target instanceof Element && ev.target.closest('#map'))) {
       ev.preventDefault();
       toggleAddMode();
@@ -2938,7 +3007,7 @@ function runAction(action) {
 }
 
 function closeMenus() {
-  for (const d of qsa('details[open]')) d.removeAttribute('open');
+  for (const d of qsa('details.menu[open]')) d.removeAttribute('open');
   resetSampleSearch();
 }
 

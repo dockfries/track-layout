@@ -100,6 +100,21 @@ test('invalid inputs throw', () => {
   throws(() => T.parseTrack('{"foo":1}', 'x.json'), /找不到检查点数组/);
 });
 
+test('array coordinates reject null/boolean/nested/string coercion', () => {
+  throws(() => T.parseTrack('[[null,null]]', 'x.json'), /不是有效数字/);
+  throws(() => T.parseTrack('[[true,false]]', 'x.json'), /不是有效数字/);
+  throws(() => T.parseTrack('[[[1],[2]]]', 'x.json'), /不是有效数字/);
+  throws(() => T.parseTrack('[["12","34"]]', 'x.json'), /不是有效数字/);
+});
+
+test('z coordinates reject strings and nulls instead of coercing', () => {
+  throws(() => T.parseTrack('[[1,2,"3"]]', 'x.json'), /z 不是有效数字/);
+  throws(() => T.parseTrack('[[1,2,null]]', 'x.json'), /z 不是有效数字/);
+  throws(() => T.parseTrack('{"checkpoints":[{"x":1,"y":2,"z":"3"}]}', 'x.json'), /z 不是有效数字/);
+  throws(() => T.parseTrack('{"checkpoints":[{"x":1,"y":2,"z":null}]}', 'x.json'), /z 不是有效数字/);
+  throws(() => T.parseTrack('[[1,2,1000000000]]', 'x.json'), /z 超出有效范围/);
+});
+
 test('parser errors carry i18n codes', () => {
   try {
     T.parseTrack('{"checkpoints":[]}', 'x.json');
@@ -120,6 +135,14 @@ test('parser errors carry i18n codes', () => {
 test('out-of-bounds warning', () => {
   const track = T.parseTrack(JSON.stringify({ checkpoints: [[9999, 0], [10, 10]] }), 'x.json');
   assert.ok(track.warnings.some((w) => w.code === 'bounds'));
+});
+
+test('closed track warns when the last CP duplicates the start', () => {
+  const track = T.parseTrack(JSON.stringify({
+    closed: true,
+    checkpoints: [[0, 0], [100, 0], [100, 100], [0, 0]],
+  }), 'closed-dup.json');
+  assert.ok(track.warnings.some((w) => w.code === 'duplicate-start'));
 });
 
 test('toJSON roundtrip', () => {
@@ -180,6 +203,27 @@ test('path length and z range', () => {
   assert.deepStrictEqual(T.zRange(pts), [-5, 10]);
 });
 
+test('invalid route paint falls back to solid instead of throwing', () => {
+  const style = S.defaultVisual();
+  style.route.paint = 'not-a-paint-mode';
+  const runs = S.routeRuns([{ x: 0, y: 0 }, { x: 10, y: 10 }], [0, 0], style);
+  assert.strictEqual(runs.length, 1);
+  assert.strictEqual(runs[0].color, style.route.color);
+});
+
+test('grid step grows for very large custom bounds', () => {
+  assert.strictEqual(S.gridStep({ minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 }), 500);
+  assert.ok(S.gridStep({ minX: -10000000, maxX: 10000000, minY: -10000000, maxY: 10000000 }) > 500);
+});
+
+test('deepMerge ignores prototype-pollution keys', () => {
+  const patch = JSON.parse('{"__proto__":{"polluted":"yes"},"constructor":{"x":1},"safe":2}');
+  const out = S.deepMerge({ a: 1 }, patch);
+  assert.strictEqual(out.safe, 2);
+  assert.ok(!('polluted' in out));
+  assert.strictEqual({}.polluted, undefined);
+});
+
 console.log('export');
 
 test('export view keeps the requested aspect and clamps output size', () => {
@@ -200,6 +244,24 @@ test('export title content falls back to track metadata', () => {
   assert.ok(content.sub.includes('2 CP'));
 });
 
+test('short wide exports scale overlay chrome down to fit', () => {
+  const track = T.parseTrack(JSON.stringify({ checkpoints: [[0, 0], [100, 100]] }), 'x.json');
+  const route = T.computeRoute(track, null, { mode: 'straight' });
+  const layout = E.computeLayout({ track, route, width: 4096, height: 320 });
+  assert.ok(layout.overlayK < layout.k, `overlay ${layout.overlayK} k ${layout.k}`);
+  assert.ok(layout.overlayK * 150 < 320, 'title scrim should fit');
+});
+
+test('excluded map does not clamp the export view to map bounds', () => {
+  const track = T.parseTrack(JSON.stringify({ checkpoints: [[2900, -2900], [2950, -2850]] }), 'x.json');
+  const route = T.computeRoute(track, null, { mode: 'straight' });
+  const base = { width: 1920, height: 1080, track, route };
+  const map = { image: { naturalWidth: 1 }, bounds: { minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 } };
+  const withMap = E.computeView({ ...base, map, includeMap: true });
+  const withoutMap = E.computeView({ ...base, map, includeMap: false });
+  assert.ok(Math.abs(withMap.maxX - withoutMap.maxX) > 1, 'framing should differ when map is excluded');
+});
+
 console.log('road graph');
 const raw = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/nodes.json'), 'utf8'));
 const graph = T.buildGraph(raw);
@@ -208,6 +270,27 @@ test('graph stats', () => {
   assert.strictEqual(graph.stats.nodes, 30587);
   assert.ok(graph.stats.edges > 60000, `edges ${graph.stats.edges}`);
   assert.ok(graph.stats.highway > 1000);
+  assert.ok(graph.stats.components > 1);
+  assert.ok(graph.stats.mainComponentSize > 20000);
+});
+
+test('malformed adjacency entries are rejected', () => {
+  throws(() => T.buildGraph({ v: [[0, 0, 0, 0, 0, [1.5]]] }), /邻接|无效/);
+  throws(() => T.buildGraph({ v: [[0, 0, 0, 0, 0, [99]]] }), /邻接|无效/);
+  assert.strictEqual(T.astar(graph, 99999, 99999), null);
+});
+
+test('component labels use weak connectivity for directed custom graphs', () => {
+  const g = T.buildGraph({
+    v: [
+      [0, 0, 0, 0, 0, [1]],
+      [10, 0, 0, 0, 0, []],
+      [20, 0, 0, 0, 0, [1]],
+    ],
+  });
+  assert.strictEqual(g.stats.components, 1);
+  assert.strictEqual(g.components[0], g.components[1]);
+  assert.strictEqual(g.components[1], g.components[2]);
 });
 
 test('nearest node and A*', () => {
@@ -222,6 +305,58 @@ test('nearest node and A*', () => {
   assert.ok(route.nodes.length > 2);
   const cached = graph.routeNodes(a.index, b.index);
   assert.strictEqual(cached.cached, true);
+});
+
+test('snapping prefers the main road component over a nearby island', () => {
+  const track = T.parseTrack(JSON.stringify({
+    checkpoints: [
+      [1944.2, 193.2, 32.5],
+      [2287.4, -1605.9, 0],
+    ],
+  }), 'island-adjacent.json');
+  const route = T.computeRoute(track, graph, { mode: 'auto', snapRadius: 80, smooth: 45, closed: false });
+  assert.strictEqual(route.modeUsed, 'road');
+  assert.ok(route.segments.every((segment) => segment.routed));
+});
+
+test('A* rejects different components and caches the failure', () => {
+  assert.strictEqual(graph.routeNodes(19676, 19522), null);
+  assert.strictEqual(graph.routeNodes(19676, 19522), null);
+});
+
+test('A* caches a same-component directed failure', () => {
+  const g = T.buildGraph({
+    v: [
+      [0, 0, 0, 0, 0, [1]],
+      [10, 0, 0, 0, 0, []],
+      [20, 0, 0, 0, 0, [0]],
+    ],
+  });
+  assert.strictEqual(g.routeNodes(1, 2), null);
+  assert.strictEqual(g.routeNodes(1, 2), null);
+  assert.ok(g.cache.has('1|2'));
+});
+
+test('island-local tracks do not mix main and island snaps per CP', () => {
+  const a = raw.v[1228];
+  const b = raw.v[958];
+  const track = T.parseTrack(JSON.stringify({
+    checkpoints: [[a[0], a[1], a[2]], [b[0], b[1], b[2]]],
+  }), 'island-local.json');
+  const route = T.computeRoute(track, graph, { mode: 'auto', snapRadius: 80, smooth: 45, closed: false });
+  assert.strictEqual(route.modeUsed, 'road');
+  assert.ok(route.segments.every((segment) => segment.routed));
+});
+
+test('a short island route is not detoured onto the mainland', () => {
+  const a = raw.v[11065];
+  const b = raw.v[11066];
+  const track = T.parseTrack(JSON.stringify({
+    checkpoints: [[a[0], a[1], a[2]], [b[0], b[1], b[2]]],
+  }), 'island-short.json');
+  const route = T.computeRoute(track, graph, { mode: 'auto', snapRadius: 80, smooth: 0, closed: false });
+  assert.strictEqual(route.modeUsed, 'road');
+  assert.ok(route.length < 100, `expected local route, got ${route.length}`);
 });
 
 test('sample loop routes on the road graph', () => {
@@ -272,6 +407,30 @@ test('road mode without a graph falls back to straight with a warning', () => {
   const route = T.computeRoute(track, null, { mode: 'road', snapRadius: 80, smooth: 45, closed: false });
   assert.strictEqual(route.modeUsed, 'straight');
   assert.ok(route.warnings.some((w) => w.code === 'fallback'));
+});
+
+test('failed first leg does not leave a dead-end spur from CP0', () => {
+  const a = { x: graph.xs[0], y: graph.ys[0] };
+  const b = { x: graph.xs[959], y: graph.ys[959] };
+  const track = T.parseTrack(JSON.stringify({
+    checkpoints: [[a.x + 40, a.y], [5, -2346], [b.x, b.y]],
+  }), 'spur.json');
+  const route = T.computeRoute(track, graph, { mode: 'auto', snapRadius: 80, smooth: 0, closed: false });
+  assert.strictEqual(route.modeUsed, 'road');
+  assert.strictEqual(route.segments[0].routed, false);
+  approx(route.points[1].x, 5, 0.01);
+  approx(route.points[1].y, -2346, 0.01);
+  assert.ok(Math.hypot(route.points[1].x - a.x, route.points[1].y - a.y) > 20);
+});
+
+test('closed tracks with coincident points keep a renderable route', () => {
+  const track = T.parseTrack(JSON.stringify({
+    closed: true,
+    checkpoints: [[0, 0], [0.05, 0], [0.1, 0]],
+  }), 'tiny.json');
+  const route = T.computeRoute(track, null, { mode: 'spline', closed: true });
+  assert.ok(route.points.length >= 2, `points ${route.points.length}`);
+  assert.ok(Number.isFinite(route.length));
 });
 
 test('spline, straight and single-point modes', () => {

@@ -9,7 +9,6 @@
   const I18n = root.I18n;
 
   const SA_BOUNDS = { minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 };
-  const GRID_STEP = 500;
 
   let map = null;
   let baseOverlay = null;
@@ -26,6 +25,7 @@
   let handlers = {};
   let coordsTimer = 0;
   let playbackMarker = null;
+  let baseLoadToken = 0;
 
   const state = {
     track: null,
@@ -141,8 +141,9 @@
     map.on('dragstart', hideCoords);
     map.getContainer().addEventListener('pointerleave', hideCoords);
     map.on('zoomend', () => {
-      // Arrow size is fixed in screen pixels; nothing to redraw, but keep the
-      // coordinate readout meaningful after a zoom.
+      // Arrow suppression is measured in screen pixels, so refresh it when
+      // the zoom level changes.
+      rebuildRoute();
     });
 
     const wrap = document.getElementById('map');
@@ -153,6 +154,7 @@
   }
 
   function setBaseMap(url, bounds, fit = true) {
+    const token = ++baseLoadToken;
     baseBounds = normalizeBounds(bounds || SA_BOUNDS);
     if (baseOverlay) {
       map.removeLayer(baseOverlay);
@@ -168,6 +170,10 @@
       const finish = () => {
         if (done) return;
         done = true;
+        if (token !== baseLoadToken) {
+          resolve(null);
+          return;
+        }
         baseImage = baseOverlay ? baseOverlay.getElement() : null;
         applyBaseStyle();
         rebuildGrid();
@@ -226,12 +232,13 @@
     const color = ms.gridColor;
     const opacity = ms.gridOpacity;
     const lines = [];
-    const startX = Math.ceil(b.minX / GRID_STEP) * GRID_STEP;
-    const startY = Math.ceil(b.minY / GRID_STEP) * GRID_STEP;
-    for (let x = startX; x <= b.maxX; x += GRID_STEP) {
+    const step = Style.gridStep(b);
+    const startX = Math.ceil(b.minX / step) * step;
+    const startY = Math.ceil(b.minY / step) * step;
+    for (let x = startX; x <= b.maxX; x += step) {
       lines.push([[b.minY, x], [b.maxY, x]]);
     }
-    for (let y = startY; y <= b.maxY; y += GRID_STEP) {
+    for (let y = startY; y <= b.maxY; y += step) {
       lines.push([[y, b.minX], [y, b.maxX]]);
     }
     for (const latlngs of lines) {
@@ -309,26 +316,32 @@
     if (r.arrows) {
       const arrows = Track.sampleArrows(route.points, Math.max(20, r.arrowGap), false);
       const size = clamp(r.width * 2.3, 7, 22) * r.arrowSize;
-      const cps = (style.cp.visible === false ? [] : (state.track ? state.track.checkpoints : [])).map((cp) => [cp.x, cp.y]);
+      const cps = (style.cp.visible === false ? [] : (state.track ? state.track.checkpoints : []))
+        .map((cp) => map.latLngToContainerPoint([cp.y, cp.x]));
       const safe = Math.max(12, style.cp.size * 1.15);
       for (const arrow of arrows) {
+        const arrowPt = map.latLngToContainerPoint([arrow.y, arrow.x]);
         let near = false;
         for (const cp of cps) {
-          if ((cp[0] - arrow.x) ** 2 + (cp[1] - arrow.y) ** 2 < safe * safe) { near = true; break; }
+          if ((cp.x - arrowPt.x) ** 2 + (cp.y - arrowPt.y) ** 2 < safe * safe) { near = true; break; }
         }
         if (near) continue;
         const deg = -arrow.angle * 180 / Math.PI;
-        const half = size / 2;
+        // The icon box must be larger than the arrow path: the path extends
+        // 0.7×size forward and 0.62×size sideways from its centre. A tight
+        // viewBox clipped the tip and rear corners, especially when rotated.
+        const box = Math.ceil(size * 1.9);
+        const center = box / 2;
         const shape = `M ${(size * 0.7).toFixed(2)} 0 L ${(-size * 0.55).toFixed(2)} ${(size * 0.62).toFixed(2)} L ${(-size * 0.18).toFixed(2)} 0 L ${(-size * 0.55).toFixed(2)} ${(-size * 0.62).toFixed(2)} Z`;
         const stroke = r.arrowOutline && r.arrowOutline !== 'transparent'
           ? ` stroke="${r.arrowOutline}" stroke-width="0.9"` : '';
-        const html = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">` +
-          `<g transform="translate(${half} ${half}) rotate(${deg.toFixed(1)})"><path d="${shape}" fill="${r.arrowColor}"${stroke}/></g></svg>`;
+        const html = `<svg width="${box}" height="${box}" viewBox="0 0 ${box} ${box}" xmlns="http://www.w3.org/2000/svg">` +
+          `<g transform="translate(${center} ${center}) rotate(${deg.toFixed(1)})"><path d="${shape}" fill="${r.arrowColor}"${stroke}/></g></svg>`;
         const icon = L.divIcon({
           className: 'tl-arrow',
           html,
-          iconSize: [size, size],
-          iconAnchor: [half, half],
+          iconSize: [box, box],
+          iconAnchor: [center, center],
         });
         arrowGroup.addLayer(L.marker([arrow.y, arrow.x], {
           icon,
@@ -586,9 +599,10 @@
         keyboard: false,
         zIndexOffset: 3000,
       }).addTo(map);
+      playbackMarker._arrowEl = playbackMarker.getElement()?.querySelector('.tl-playback-arrow') || null;
     }
     playbackMarker.setLatLng([point.y, point.x]);
-    const arrow = playbackMarker.getElement()?.querySelector('.tl-playback-arrow');
+    const arrow = playbackMarker._arrowEl;
     if (arrow) arrow.style.transform = `rotate(${point.angle}deg)`;
   }
 

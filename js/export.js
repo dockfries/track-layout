@@ -9,11 +9,14 @@
   const I18n = root.I18n;
   const FONT = 'Inter, "Segoe UI", "Microsoft YaHei", sans-serif';
   const FONT_SVG = "Inter, 'Segoe UI', 'Microsoft YaHei', sans-serif";
-  const GRID_STEP = 500;
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
   function num(v, fallback) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
   function r2(v) { return Math.round(v * 100) / 100; }
+
+  function mapImageReady(image) {
+    return !!(image && (image.naturalWidth || image.width));
+  }
 
   // ── View / layout ──────────────────────────────────────────────────────
   function computeView(opts) {
@@ -49,7 +52,9 @@
       h += pad * 2;
       bb = { minX: cx - w / 2, maxX: cx + w / 2, minY: cy - h / 2, maxY: cy + h / 2 };
     }
-    const aspect = Math.max(0.05, width / height);
+    const aspect = Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0
+      ? Math.max(0.05, width / height)
+      : 16 / 9;
     let w = Math.max(20, bb.maxX - bb.minX);
     let h = Math.max(20, bb.maxY - bb.minY);
     const cx = (bb.minX + bb.maxX) / 2;
@@ -59,8 +64,11 @@
     let view = { minX: cx - w / 2, maxX: cx + w / 2, minY: cy - h / 2, maxY: cy + h / 2 };
 
     // Keep a full-track crop inside the base map when there is room for it, so
-    // the export does not end with a dead strip along the map edge.
-    const mb = opts.map && opts.map.bounds;
+    // the export does not end with a dead strip along the map edge. Only do
+    // this when a map will actually be drawn; otherwise center on the route.
+    const mapVisible = opts.includeMap !== false && (!opts.style || opts.style.map.visible !== false) &&
+      (!opts.style || Number(opts.style.map.opacity) > 0);
+    const mb = opts.map && opts.map.bounds && mapImageReady(opts.map.image) && mapVisible ? opts.map.bounds : null;
     if (mb && scope !== 'view') {
       const vw = view.maxX - view.minX;
       const vh = view.maxY - view.minY;
@@ -94,7 +102,10 @@
     const xToPx = (x) => (x - view.minX) * scale;
     const yToPx = (y) => (view.maxY - y) * scale;
     const k = clamp(Math.max(width, height) / 1600, 0.62, 2.9);
-    return { width, height, view, scale, xToPx, yToPx, k };
+    // Title/legend geometry is vertical; on very wide, short canvases the
+    // normal k would push the legend off-canvas and over the title.
+    const overlayK = Math.min(k, Math.max(0.2, height / 380));
+    return { width, height, view, scale, xToPx, yToPx, k, overlayK };
   }
 
   function resolveBackground(opts, style) {
@@ -129,9 +140,8 @@
   // Draw a filtered + tinted crop through a temporary canvas, so the tint is
   // limited to the map's own pixels instead of the background.
   function paintMapToContext(ctx, map, style, layout) {
-    if (!map || !map.image || !style.map.visible || style.map.opacity <= 0) return;
+    if (!map || !mapImageReady(map.image) || !style.map.visible || style.map.opacity <= 0) return;
     const image = map.image;
-    if (!image.complete && image.naturalWidth === 0) return;
     const rect = mapIntersection(map, layout.view);
     if (!rect) return;
 
@@ -142,8 +152,9 @@
     if (dw < 1 || dh < 1) return;
 
     const src = mapSourceRect(map, rect, image);
-    const tw = clamp(Math.round(dw), 1, 4096);
-    const th = clamp(Math.round(dh), 1, 4096);
+    const rasterScale = Math.min(1, 4096 / dw, 4096 / dh);
+    const tw = Math.max(1, Math.round(dw * rasterScale));
+    const th = Math.max(1, Math.round(dh * rasterScale));
     const tmp = makeCanvas(tw, th);
     const tctx = tmp.getContext('2d');
     tctx.imageSmoothingEnabled = true;
@@ -175,14 +186,15 @@
     if (filter !== 'none') ctx.filter = filter;
   }
 
-  function drawGrid(ctx, map, style, layout) {
+  function drawGrid(ctx, map, style, layout, includeMap = true) {
     if (!style.map.grid) return;
     const view = layout.view;
-    const step = GRID_STEP;
+    const gridBounds = includeMap && map && mapImageReady(map.image) ? map.bounds : view;
+    const step = Style.gridStep(gridBounds);
     const startX = Math.ceil(view.minX / step) * step;
     const startY = Math.ceil(view.minY / step) * step;
     ctx.save();
-    if (style.map.visible && map) {
+    if (includeMap && style.map.visible && Number(style.map.opacity) > 0 && map && mapImageReady(map.image)) {
       const rect = mapIntersection(map, view);
       if (rect) {
         ctx.beginPath();
@@ -312,7 +324,7 @@
   }
 
   // ── Checkpoints ────────────────────────────────────────────────────────
-  function markerShapePath(ctx, shape, x, y, r) {
+  function markerShapePath(ctx, shape, x, y, r, k = 1) {
     ctx.beginPath();
     if (shape === 'diamond') {
       ctx.moveTo(x, y - r);
@@ -322,7 +334,7 @@
       ctx.closePath();
     } else if (shape === 'square') {
       const s = r * 0.88;
-      const rad = Math.max(1.5, r * 0.14);
+      const rad = Math.max(2 * k, r * 2 * 0.11);
       if (ctx.roundRect) {
         ctx.roundRect(x - s, y - s, s * 2, s * 2, rad);
       } else {
@@ -361,12 +373,12 @@
       ctx.shadowColor = 'rgba(0,0,0,0.35)';
       ctx.shadowBlur = 7 * layout.k;
       ctx.shadowOffsetY = 2 * layout.k;
-      markerShapePath(ctx, s.shape, x, y, r);
+      markerShapePath(ctx, s.shape, x, y, r, layout.k);
       ctx.fillStyle = fill;
       ctx.fill();
       ctx.restore();
 
-      markerShapePath(ctx, s.shape, x, y, r);
+      markerShapePath(ctx, s.shape, x, y, r, layout.k);
       ctx.lineWidth = border;
       ctx.strokeStyle = s.border;
       ctx.stroke();
@@ -438,14 +450,12 @@
   }
 
   function titleMetrics(style, layout, title, sub) {
-    const k = layout.k;
+    const k = layout.overlayK || layout.k;
     const ts = clamp(Number(style.title.size) || 1, 0.5, 2);
     const titleScale = clamp(Number(style.title.titleSize) || 1, 0.5, 2);
     const subScale = clamp(Number(style.title.subSize) || 1, 0.5, 2);
     const margin = 40 * k;
     const maxW = layout.width - margin * 2 - 30 * k;
-    const titleShift = Math.max(0, titleScale - 1) * 16 * k * ts;
-    const subShift = Math.max(0, subScale - 1) * 6 * k * ts;
     const titleFont = (size) => `700 ${size}px ${FONT}`;
     let titleSize = 32 * k * ts * titleScale;
     while (titleSize > 16 * k && measureText(title, titleFont(titleSize)) > maxW) titleSize -= 1 * k;
@@ -453,14 +463,20 @@
     const subFont = `500 ${subSize}px ${FONT}`;
     const titleText = ellipsizeText(title, titleFont(titleSize), maxW);
     const subText = ellipsizeText(sub, subFont, maxW);
-    const accentH = 56 * k * ts + titleShift * 0.7;
+    const eyebrowBaseline = 15 * k * ts;
+    const titleBaseline = eyebrowBaseline + titleSize * 1.03;
+    const subBaseline = titleBaseline + titleSize * 0.25 + subSize * 0.75 + 4 * k * ts;
+    const accentH = Math.max(56 * k * ts, subBaseline + subSize * 0.25 - 4 * k * ts);
     const measured = Math.max(measureText(titleText, titleFont(titleSize)), measureText(subText, subFont));
     const scrimW = Math.min(layout.width * 0.94, Math.max(780 * k * ts, Math.min(measured, maxW) + 34 * k));
-    const scrimH = 150 * k * ts + Math.max(0, titleScale - 1) * 18 * k + Math.max(0, subScale - 1) * 8 * k;
+    const scrimH = Math.max(
+      150 * k * ts + Math.max(0, titleScale - 1) * 18 * k + Math.max(0, subScale - 1) * 8 * k,
+      subBaseline + subSize * 0.35 + 8 * k
+    );
     return {
-      k, ts, titleScale, subScale, margin, maxW, titleShift, subShift,
-      titleSize, subSize, titleFont, subFont, titleText, subText,
-      accentH, scrimW, scrimH,
+      k, ts, titleScale, subScale, margin, maxW, titleSize, subSize,
+      titleFont, subFont, titleText, subText,
+      eyebrowBaseline, titleBaseline, subBaseline, accentH, scrimW, scrimH,
     };
   }
 
@@ -495,17 +511,17 @@
       ctx.fillStyle = Style.withAlpha(style.title.accent, 0.92);
       ctx.font = `700 ${10.5 * k * ts}px ${FONT}`;
       if ('letterSpacing' in ctx) ctx.letterSpacing = `${1.5 * k}px`;
-      ctx.fillText(eyebrow.toUpperCase(), x + 16 * k, y + 15 * k * ts);
+      ctx.fillText(eyebrow.toUpperCase(), x + 16 * k, y + metrics.eyebrowBaseline);
       if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
     }
 
     ctx.fillStyle = style.title.color;
     ctx.font = metrics.titleFont(metrics.titleSize);
-    ctx.fillText(metrics.titleText, x + 16 * k, y + 48 * k * ts + metrics.titleShift);
+    ctx.fillText(metrics.titleText, x + 16 * k, y + metrics.titleBaseline);
 
     ctx.fillStyle = Style.withAlpha(style.title.color, 0.7);
     ctx.font = metrics.subFont;
-    ctx.fillText(metrics.subText, x + 16 * k, y + 70 * k * ts + metrics.titleShift + metrics.subShift);
+    ctx.fillText(metrics.subText, x + 16 * k, y + metrics.subBaseline);
   }
 
   function legendRows(track, style) {
@@ -528,7 +544,7 @@
 
   function drawLegend(ctx, track, route, style, layout) {
     if (!style.legend.show) return;
-    const k = layout.k;
+    const k = layout.overlayK || layout.k;
     const margin = 40 * k;
     const rows = legendRows(track, style);
     const pad = 14 * k;
@@ -584,7 +600,7 @@
   }
 
   function drawCredits(ctx, style, layout) {
-    const k = layout.k;
+    const k = layout.overlayK || layout.k;
     ctx.save();
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
@@ -609,7 +625,7 @@
       ctx.fillRect(0, 0, layout.width, layout.height);
     }
     if (opts.includeMap !== false) paintMapToContext(ctx, map, style, layout);
-    drawGrid(ctx, map, style, layout);
+    drawGrid(ctx, map, style, layout, opts.includeMap !== false);
     drawTitleScrim(ctx, track, route, style, layout, bg);
     drawRoute(ctx, route, style, layout);
     drawArrows(ctx, route, track, style, layout);
@@ -639,14 +655,14 @@
   }
 
   function mapSvgImage(map, style, layout) {
-    if (!map || !map.image || !style.map.visible || style.map.opacity <= 0) return null;
-    if (!map.image.complete && map.image.naturalWidth === 0) return null;
+    if (!map || !mapImageReady(map.image) || !style.map.visible || style.map.opacity <= 0) return null;
     const rect = mapIntersection(map, layout.view);
     if (!rect) return null;
     const image = map.image;
     const src = mapSourceRect(map, rect, image);
-    const rw = clamp(Math.round(src.sw), 1, 4096);
-    const rh = clamp(Math.round(src.sh), 1, 4096);
+    const rasterScale = Math.min(1, 4096 / src.sw, 4096 / src.sh);
+    const rw = Math.max(1, Math.round(src.sw * rasterScale));
+    const rh = Math.max(1, Math.round(src.sh * rasterScale));
     const tmp = makeCanvas(rw, rh);
     const tctx = tmp.getContext('2d');
     tctx.imageSmoothingEnabled = true;
@@ -676,23 +692,25 @@
     return `<image x="${r2(dx)}" y="${r2(dy)}" width="${r2(dw)}" height="${r2(dh)}" preserveAspectRatio="none" opacity="${style.map.opacity}" href="${href}"/>`;
   }
 
-  function gridSvg(map, style, layout) {
+  function gridSvg(map, style, layout, includeMap = true) {
     if (!style.map.grid) return '';
     const k = layout.k;
     const view = layout.view;
+    const gridBounds = includeMap && map && mapImageReady(map.image) ? map.bounds : view;
+    const step = Style.gridStep(gridBounds);
     let d = '';
-    for (let x = Math.ceil(view.minX / GRID_STEP) * GRID_STEP; x <= view.maxX; x += GRID_STEP) {
+    for (let x = Math.ceil(view.minX / step) * step; x <= view.maxX; x += step) {
       const px = r2(layout.xToPx(x));
       d += `M ${px} 0 L ${px} ${layout.height} `;
     }
-    for (let y = Math.ceil(view.minY / GRID_STEP) * GRID_STEP; y <= view.maxY; y += GRID_STEP) {
+    for (let y = Math.ceil(view.minY / step) * step; y <= view.maxY; y += step) {
       const py = r2(layout.yToPx(y));
       d += `M 0 ${py} L ${layout.width} ${py} `;
     }
     if (!d) return '';
     let clip = '';
     let close = '';
-    if (style.map.visible && map) {
+    if (includeMap && style.map.visible && Number(style.map.opacity) > 0 && map && mapImageReady(map.image)) {
       const rect = mapIntersection(map, view);
       if (rect) {
         const x = layout.xToPx(rect.minX), y = layout.yToPx(rect.maxY);
@@ -761,6 +779,7 @@
     const size = s.size * layout.k;
     const r = size / 2;
     const border = Math.max(0.6, s.borderWidth * layout.k);
+    const shadow = ' filter="url(#cpShadow)"';
     const out = [];
     const cps = track.checkpoints || [];
     for (let i = 0; i < cps.length; i++) {
@@ -774,12 +793,12 @@
         parts.push(`<circle r="${r2(r + 7 * layout.k)}" fill="${s.haloColor}" opacity="${s.haloOpacity}"/>`);
       }
       if (s.shape === 'diamond') {
-        parts.push(`<path d="M 0 ${r2(-r)} L ${r2(r)} 0 L 0 ${r2(r)} L ${r2(-r)} 0 Z" fill="${fill}" stroke="${s.border}" stroke-width="${r2(border)}" stroke-linejoin="round"/>`);
+        parts.push(`<path d="M 0 ${r2(-r)} L ${r2(r)} 0 L 0 ${r2(r)} L ${r2(-r)} 0 Z" fill="${fill}" stroke="${s.border}" stroke-width="${r2(border)}" stroke-linejoin="round"${shadow}/>`);
       } else if (s.shape === 'square') {
         const side = r * 0.88 * 2;
-        parts.push(`<rect x="${r2(-side / 2)}" y="${r2(-side / 2)}" width="${r2(side)}" height="${r2(side)}" rx="${r2(Math.max(1.5, r * 0.14))}" fill="${fill}" stroke="${s.border}" stroke-width="${r2(border)}"/>`);
+        parts.push(`<rect x="${r2(-side / 2)}" y="${r2(-side / 2)}" width="${r2(side)}" height="${r2(side)}" rx="${r2(Math.max(2 * layout.k, size * 0.11))}" fill="${fill}" stroke="${s.border}" stroke-width="${r2(border)}"${shadow}/>`);
       } else {
-        parts.push(`<circle r="${r2(r)}" fill="${fill}" stroke="${s.border}" stroke-width="${r2(border)}"/>`);
+        parts.push(`<circle r="${r2(r)}" fill="${fill}" stroke="${s.border}" stroke-width="${r2(border)}"${shadow}/>`);
       }
       if (s.showNumbers) {
         const fontSize = label.length > 1 ? size * 0.34 : size * 0.46;
@@ -788,7 +807,7 @@
       if (s.showLabels) {
         const labelText = cp.label || I18n.roleLabel(cp, i);
         const fs = Math.max(8, 11.5 * layout.k);
-        parts.push(`<text x="0" y="${r2(r + 7 * layout.k + fs)}" text-anchor="middle" fill="${s.labelColor}" font-family="${FONT_SVG}" font-size="${r2(fs)}" font-weight="600" stroke="rgba(0,0,0,0.55)" stroke-width="${r2(3 * layout.k)}" paint-order="stroke">${Style.escapeXml(labelText)}</text>`);
+        parts.push(`<text x="0" y="${r2(r + 7 * layout.k)}" text-anchor="middle" dominant-baseline="hanging" fill="${s.labelColor}" font-family="${FONT_SVG}" font-size="${r2(fs)}" font-weight="600" stroke="rgba(0,0,0,0.55)" stroke-width="${r2(3 * layout.k)}" paint-order="stroke">${Style.escapeXml(labelText)}</text>`);
       }
       out.push(`<g transform="translate(${r2(x)} ${r2(y)})">${parts.join('')}</g>`);
     }
@@ -816,16 +835,16 @@
     const x = metrics.margin, y = metrics.margin;
     parts.push(`<rect x="${r2(x)}" y="${r2(y + 4 * k)}" width="${r2(4 * k)}" height="${r2(metrics.accentH)}" fill="${style.title.accent}"/>`);
     if (eyebrow) {
-      parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + 15 * k * ts)}" fill="${style.title.accent}" font-family="${FONT_SVG}" font-size="${r2(10.5 * k * ts)}" font-weight="700" letter-spacing="${r2(1.5 * k)}">${Style.escapeXml(eyebrow.toUpperCase())}</text>`);
+      parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + metrics.eyebrowBaseline)}" fill="${style.title.accent}" font-family="${FONT_SVG}" font-size="${r2(10.5 * k * ts)}" font-weight="700" letter-spacing="${r2(1.5 * k)}">${Style.escapeXml(eyebrow.toUpperCase())}</text>`);
     }
-    parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + 48 * k * ts + metrics.titleShift)}" fill="${style.title.color}" font-family="${FONT_SVG}" font-size="${r2(metrics.titleSize)}" font-weight="700">${Style.escapeXml(metrics.titleText)}</text>`);
-    parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + 70 * k * ts + metrics.titleShift + metrics.subShift)}" fill="${style.title.color}" fill-opacity="0.7" font-family="${FONT_SVG}" font-size="${r2(metrics.subSize)}" font-weight="500">${Style.escapeXml(metrics.subText)}</text>`);
+    parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + metrics.titleBaseline)}" fill="${style.title.color}" font-family="${FONT_SVG}" font-size="${r2(metrics.titleSize)}" font-weight="700">${Style.escapeXml(metrics.titleText)}</text>`);
+    parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + metrics.subBaseline)}" fill="${style.title.color}" fill-opacity="0.7" font-family="${FONT_SVG}" font-size="${r2(metrics.subSize)}" font-weight="500">${Style.escapeXml(metrics.subText)}</text>`);
     return { defs, scrim, body: parts.join('') };
   }
 
   function legendSvg(track, route, style, layout) {
     if (!style.legend.show) return '';
-    const k = layout.k;
+    const k = layout.overlayK || layout.k;
     const margin = 40 * k;
     const rows = legendRows(track, style);
     const pad = 14 * k;
@@ -845,8 +864,8 @@
   }
 
   function creditsSvg(style, layout) {
-    const k = layout.k;
-    return `<text x="${r2(layout.width - 26 * k)}" y="${r2(layout.height - 18 * k)}" text-anchor="end" fill="${style.legend.color}" fill-opacity="0.38" font-family="${FONT_SVG}" font-size="${r2(9 * k)}" font-weight="600">GTA: SAN ANDREAS · TRACK LAYOUT</text>`;
+    const k = layout.overlayK || layout.k;
+    return `<text x="${r2(layout.width - 26 * k)}" y="${r2(layout.height - 18 * k)}" text-anchor="end" dominant-baseline="text-after-edge" fill="${style.legend.color}" fill-opacity="0.38" font-family="${FONT_SVG}" font-size="${r2(9 * k)}" font-weight="600">GTA: SAN ANDREAS · TRACK LAYOUT</text>`;
   }
 
   function renderSVG(opts) {
@@ -855,12 +874,19 @@
     const bg = resolveBackground(opts, style);
     const defs = [];
     const body = [];
+    if (style.cp.visible !== false && track && track.checkpoints && track.checkpoints.length) {
+      defs.push(
+        `<filter id="cpShadow" x="-50%" y="-50%" width="200%" height="200%">` +
+        `<feDropShadow dx="0" dy="${r2(2 * layout.k)}" stdDeviation="${r2(3.5 * layout.k)}" flood-color="#000000" flood-opacity="0.35"/>` +
+        `</filter>`
+      );
+    }
     if (bg) body.push(`<rect x="0" y="0" width="${layout.width}" height="${layout.height}" fill="${bg}"/>`);
     if (opts.includeMap !== false) {
       const img = mapSvgImage(map, style, layout);
       if (img) body.push(img);
     }
-    const grid = gridSvg(map, style, layout);
+    const grid = gridSvg(map, style, layout, opts.includeMap !== false);
     if (grid) body.push(grid);
     const title = titleSvg(track, route, style, layout, bg);
     if (title) {

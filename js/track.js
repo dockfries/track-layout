@@ -95,6 +95,18 @@
     const closed = closedRaw === true || closedRaw === 1 ||
       ['true', '1', 'yes', 'loop'].includes(String(closedRaw).toLowerCase());
 
+    if (closed && checkpoints.length > 1) {
+      const first = checkpoints[0];
+      const last = checkpoints[checkpoints.length - 1];
+      if (Math.hypot(first.x - last.x, first.y - last.y) < 0.01) {
+        warnings.push({
+          code: 'duplicate-start',
+          index: checkpoints.length - 1,
+          text: `CP ${checkpoints.length - 1} 与起点位置重复`,
+        });
+      }
+    }
+
     const track = {
       format: FORMAT,
       name, author, description,
@@ -149,21 +161,30 @@
     if (!coords || coords.length < 2) {
       throw trackError('point-no-coords', [index + 1], `${label}没有坐标：需要 {x, y, z} 或 [x, y, z]`);
     }
-    const x = Number(coords[0]);
-    const y = Number(coords[1]);
-    const hasZField = coords.length > 2 ? coords[2] !== undefined : meta.z !== undefined;
-    const zRaw = Number(coords.length > 2 ? coords[2] : meta.z);
-    const hasZ = hasZField && Number.isFinite(zRaw);
-    const z = hasZ ? zRaw : 0;
-
-    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    const rawX = coords[0];
+    const rawY = coords[1];
+    if (typeof rawX !== 'number' || typeof rawY !== 'number' || !Number.isFinite(rawX) || !Number.isFinite(rawY)) {
       throw trackError('point-bad-xy', [index + 1], `${label}的 x / y 不是有效数字`);
     }
+    const x = rawX;
+    const y = rawY;
+    const rawZ = coords.length > 2 ? coords[2] : meta.z;
+    const hasZField = rawZ !== undefined;
+    let hasZ = false;
+    let z = 0;
+    if (hasZField) {
+      if (typeof rawZ !== 'number' || !Number.isFinite(rawZ)) {
+        throw trackError('point-bad-z', [index + 1], `${label}的 z 不是有效数字`);
+      }
+      hasZ = true;
+      z = rawZ;
+    }
+
     if (Math.abs(x) > 100000 || Math.abs(y) > 100000) {
       throw trackError('point-too-far', [index + 1, x, y], `${label}坐标 ${x}, ${y} 远超地图范围`);
     }
-    if (hasZField && !Number.isFinite(zRaw)) {
-      throw trackError('point-bad-z', [index + 1], `${label}的 z 不是有效数字`);
+    if (hasZField && Math.abs(z) > 100000) {
+      throw trackError('point-bad-z', [index + 1], `${label}的 z 超出有效范围`);
     }
 
     const typeRaw = meta.type ?? meta.kind ?? meta.role;
@@ -290,12 +311,60 @@
       offsets[i] = at;
       const adj = data.v[i][5] || [];
       for (let k = 0; k < adj.length; k++) {
-        const j = adj[k] | 0;
-        if (j >= 0 && j < n && j !== i) targets[at++] = j;
+        const j = adj[k];
+        if (!Number.isInteger(j) || j < 0 || j >= n) {
+          throw trackError('graph-bad-data', [i], `路网节点 ${i} 的邻接节点 ${j} 无效`);
+        }
+        if (j !== i) targets[at++] = j;
       }
     }
     offsets[n] = at;
     const usedTargets = at === targets.length ? targets : targets.subarray(0, at);
+
+    // Weakly connected components: prefer the main road network when a CP is
+    // next to both a tiny island component and the drivable main graph. Union
+    // over both directions so directed custom graphs are grouped correctly.
+    const parent = new Int32Array(n);
+    const rank = new Uint8Array(n);
+    for (let i = 0; i < n; i++) parent[i] = i;
+    const find = (x) => {
+      let r = x;
+      while (parent[r] !== r) r = parent[r];
+      while (parent[x] !== x) {
+        const next = parent[x];
+        parent[x] = r;
+        x = next;
+      }
+      return r;
+    };
+    const union = (a, b) => {
+      let ra = find(a), rb = find(b);
+      if (ra === rb) return;
+      if (rank[ra] < rank[rb]) { const t = ra; ra = rb; rb = t; }
+      parent[rb] = ra;
+      if (rank[ra] === rank[rb]) rank[ra]++;
+    };
+    for (let u = 0; u < n; u++) {
+      for (let e = offsets[u]; e < offsets[u + 1]; e++) union(u, usedTargets[e]);
+    }
+    const components = new Int32Array(n).fill(-1);
+    const componentSizes = [];
+    const rootLabels = new Map();
+    for (let i = 0; i < n; i++) {
+      const root = find(i);
+      let label = rootLabels.get(root);
+      if (label === undefined) {
+        label = componentSizes.length;
+        rootLabels.set(root, label);
+        componentSizes.push(0);
+      }
+      components[i] = label;
+      componentSizes[label]++;
+    }
+    let mainComponent = 0;
+    for (let i = 1; i < componentSizes.length; i++) {
+      if (componentSizes[i] > componentSizes[mainComponent]) mainComponent = i;
+    }
 
     // 100 m spatial grid; enough for fast nearest-node queries at snapping distances.
     const cell = 100;
@@ -312,17 +381,20 @@
     const graph = {
       n, xs, ys, zs, flags, weights, offsets,
       targets: usedTargets,
+      components, componentSizes, mainComponent,
       cell, cols, grid,
       cache: new Map(),
       stats: {
         nodes: n,
         edges: usedTargets.length,
+        components: componentSizes.length,
+        mainComponentSize: componentSizes[mainComponent] || 0,
         highway: countFlags(flags, FLAG_HIGHWAY),
         boat: countFlags(flags, FLAG_BOAT),
         emergency: countFlags(flags, FLAG_EMERGENCY),
       },
-      nearest(x, y, z, maxDist, useZ, maxZ) {
-        return nearestNode(graph, x, y, z, maxDist, useZ, maxZ);
+      nearest(x, y, z, maxDist, useZ, maxZ, component) {
+        return nearestNode(graph, x, y, z, maxDist, useZ, maxZ, component);
       },
       routeNodes(a, b) {
         return astar(graph, a, b);
@@ -350,8 +422,9 @@
     return v < lo ? lo : v > hi ? hi : v;
   }
 
-  function nearestNode(graph, x, y, z, maxDist, useZ, maxZ) {
+  function nearestNode(graph, x, y, z, maxDist, useZ, maxZ, component) {
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    if (!Number.isFinite(maxDist) || maxDist < 0) return null;
     const { cell, cols, grid, xs, ys, zs } = graph;
     const reach = Math.max(1, Math.ceil(maxDist / cell));
     const zLimit = Number.isFinite(maxZ) ? maxZ : Infinity;
@@ -371,6 +444,7 @@
         if (!bucket) continue;
         for (let k = 0; k < bucket.length; k++) {
           const i = bucket[k];
+          if (component !== undefined && graph.components[i] !== component) continue;
           const dx = xs[i] - x, dy = ys[i] - y;
           const dist = Math.hypot(dx, dy);
           if (dist > maxDist) continue;
@@ -391,12 +465,18 @@
 
   // A* over the vehicle graph. Edge cost = 2D length × average node penalty.
   function astar(graph, start, goal) {
+    if (!Number.isInteger(start) || !Number.isInteger(goal) ||
+        start < 0 || goal < 0 || start >= graph.n || goal >= graph.n) return null;
     if (start === goal) {
       return { nodes: [start], length: 0, expansions: 0, cached: false };
     }
+    // Different weakly connected components cannot be connected by any path.
+    if (graph.components[start] !== graph.components[goal]) return null;
     const key = `${start}|${goal}`;
-    const cached = graph.cache.get(key);
-    if (cached) return { ...cached, cached: true };
+    if (graph.cache.has(key)) {
+      const cached = graph.cache.get(key);
+      return cached ? { ...cached, cached: true } : null;
+    }
 
     const n = graph.n;
     const gScore = new Float64Array(n).fill(Infinity);
@@ -468,7 +548,11 @@
       }
     }
 
-    if (!found) return null;
+    if (!found) {
+      if (graph.cache.size > 240) graph.cache.clear();
+      graph.cache.set(key, null);
+      return null;
+    }
     const nodes = [];
     let u = goal;
     while (u !== -1) {
@@ -552,8 +636,8 @@
       for (let i = 0; i < count; i++) {
         const a = src[i];
         const b = src[(i + 1) % src.length];
-        out.push({ x: a.x * 0.75 + b.x * 0.25, y: a.y * 0.75 + b.y * 0.25, z: a.z * 0.75 + b.z * 0.25 });
-        out.push({ x: a.x * 0.25 + b.x * 0.75, y: a.y * 0.25 + b.y * 0.75, z: a.z * 0.25 + b.z * 0.75 });
+        out.push({ x: a.x * 0.75 + b.x * 0.25, y: a.y * 0.75 + b.y * 0.25, z: (a.z || 0) * 0.75 + (b.z || 0) * 0.25 });
+        out.push({ x: a.x * 0.25 + b.x * 0.75, y: a.y * 0.25 + b.y * 0.75, z: (a.z || 0) * 0.25 + (b.z || 0) * 0.75 });
       }
       if (!closed) out.push(src[src.length - 1]);
       src = out;
@@ -585,6 +669,7 @@
 
   // Centripetal Catmull–Rom through every control point (used for smooth tracks).
   function catmullRom(points, closed, spacing = 6) {
+    spacing = Number.isFinite(Number(spacing)) && Number(spacing) > 0 ? Number(spacing) : 6;
     const pts = points.map((p) => ({ x: p.x, y: p.y, z: p.z || 0 }));
     if (pts.length < 2) return pts;
     if (pts.length === 2) return closed ? [...pts, { ...pts[0] }] : pts.slice();
@@ -644,6 +729,7 @@
   }
 
   function computeRoute(track, graph, options = {}) {
+    options = options || {};
     const opts = {
       mode: MODES.includes(options.mode) ? options.mode : 'auto',
       snapRadius: clampNumber(options.snapRadius, 5, 500, 80),
@@ -717,7 +803,8 @@
     } else {
       const local = [];
       result = tryRoad(cps, graph, opts, local, false);
-      if (!result) {
+      if (!result || !result.segments.some((segment) => segment.routed)) {
+        warnings.push(...local);
         result = buildStraight(cps, opts);
         warnings.push({
           code: 'fallback',
@@ -741,6 +828,11 @@
       points = dedupe(points, 0.2, opts.closed);
     }
     points = ensureCpPoints(points, cps, result.modeUsed);
+    if (points.length < 2) {
+      // Coincident or near-coincident CPs can collapse under dedupe. Keep the
+      // route renderable instead of returning a one-point "route" with legs.
+      points = [cpPoint(cps[0], 0), cpPoint(cps[cps.length - 1], cps.length - 1)];
+    }
 
     const zr = zRange(points);
     return {
@@ -818,7 +910,16 @@
     if (!graph) return null;
 
     const localWarnings = [];
-    const snaps = cps.map((cp) => graph.nearest(cp.x, cp.y, cp.z, opts.snapRadius, !!cp.hasZ, opts.maxSnapZ));
+    const nearestSnaps = cps.map((cp) =>
+      graph.nearest(cp.x, cp.y, cp.z, opts.snapRadius, !!cp.hasZ, opts.maxSnapZ));
+    const mainSnaps = cps.map((cp) =>
+      graph.nearest(cp.x, cp.y, cp.z, opts.snapRadius, !!cp.hasZ, opts.maxSnapZ, graph.mainComponent));
+    const nearestSet = new Set(nearestSnaps.filter(Boolean).map((snap) => graph.components[snap.index]));
+    const allNearest = nearestSnaps.every(Boolean);
+    // A track wholly on one local component should stay local even if every
+    // CP also has a main-network node within the snap radius.
+    const localOnly = allNearest && nearestSet.size === 1;
+    const snaps = localOnly ? nearestSnaps : (mainSnaps.every(Boolean) ? mainSnaps : nearestSnaps);
     if (snaps.some((s) => !s)) {
       if (strict) return null;
       for (let i = 0; i < snaps.length; i++) {
@@ -844,9 +945,9 @@
     const appendNode = (ni) => append({ x: graph.xs[ni], y: graph.ys[ni], z: graph.zs[ni], snapped: true });
     const appendCp = (i) => append({ x: cps[i].x, y: cps[i].y, z: cps[i].z || 0, cp: i });
 
-    // Start exactly on CP 1, then bridge to the road if the snap moved us.
+    // Start exactly on CP 1. The first snapped node is only appended if leg 0
+    // actually routes; otherwise it would create a dead-end spur from CP0.
     appendCp(0);
-    if (snaps[0] && snaps[0].dist > 2.5) appendNode(snaps[0].index);
 
     for (let i = 0; i < cps.length - 1; i++) {
       const a = snaps[i], b = snaps[i + 1];
