@@ -18,6 +18,13 @@
     // ── top bar / toolbar ──
     '打开 JSON': 'Open JSON',
     '示例': 'Samples',
+    '搜索示例…': 'Search samples…',
+    '搜索示例': 'Search samples',
+    '清空搜索': 'Clear search',
+    '没有匹配的示例': 'No matching samples',
+    '{0} 个示例': '{0} samples',
+    '{0} / {1} 个示例': '{0} / {1} samples',
+    '全部 {0} 个示例': 'All {0} samples',
     '载入中…': 'Loading…',
     '适配赛道 (F)': 'Fit track (F)',
     '赛道 JSON 格式': 'Track JSON format',

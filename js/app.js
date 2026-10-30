@@ -12,6 +12,10 @@ const WARN_ROW_HEIGHT = 48;
 const WARN_ROW_STEP = 54;
 const WARN_ROW_OVERSCAN = 3;
 const WARN_VIRTUAL_THRESHOLD = 24;
+const SAMPLE_ROW_HEIGHT = 48;
+const SAMPLE_ROW_STEP = 52;
+const SAMPLE_ROW_OVERSCAN = 3;
+const SAMPLE_CHIP_LIMIT = 8;
 const t = (text, ...args) => I18n.t(text, ...args);
 let themeMode = 'system';
 let themeMedia = null;
@@ -47,6 +51,11 @@ const state = {
   netState: 'loading',
   samples: [],
   samplesLoading: true,
+  sampleQuery: '',
+  sampleFiltered: [],
+  sampleWindow: null,
+  sampleActive: -1,
+  sampleScrollRaf: 0,
   base: { source: 'builtin', customUrl: null, customName: '', bounds: { ...SA_BOUNDS } },
   previewInfo: null,
   routeTimer: 0,
@@ -1304,18 +1313,181 @@ function findSampleMeta(file) {
   }) || null;
 }
 
-function renderSampleMenu() {
-  const el = $('sample-menu');
-  if (!el) return;
-  if (!state.samples.length) {
-    el.innerHTML = `<div class="menu-loading">${escapeHtml(state.samplesLoading ? t('载入中…') : t('没有可用示例'))}</div>`;
+function normalizeSampleText(value) {
+  return String(value == null ? '' : value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function isSubsequence(token, text) {
+  let pos = 0;
+  for (const ch of token) {
+    pos = text.indexOf(ch, pos);
+    if (pos < 0) return false;
+    pos += 1;
+  }
+  return true;
+}
+
+function sampleFieldScore(text, token) {
+  if (!text) return -Infinity;
+  const at = text.indexOf(token);
+  if (at === 0) return 120;
+  if (at > 0) return 90 - Math.min(at, 50);
+  return isSubsequence(token, text) ? 24 : -Infinity;
+}
+
+function filterSampleList(query) {
+  const q = normalizeSampleText(query).trim();
+  if (!q) return state.samples.slice();
+  const tokens = q.split(/\s+/).filter(Boolean);
+  const ranked = [];
+  state.samples.forEach((sample, order) => {
+    const fields = [
+      { text: normalizeSampleText(I18n.sampleName(sample) || sample.file), weight: 4 },
+      { text: normalizeSampleText(sample.name), weight: 3 },
+      { text: normalizeSampleText(sample.nameEn), weight: 3 },
+      { text: normalizeSampleText(I18n.sampleNote(sample)), weight: 1.2 },
+      { text: normalizeSampleText(sample.note), weight: 1 },
+      { text: normalizeSampleText(sample.noteEn), weight: 1 },
+      { text: normalizeSampleText(sample.file), weight: 2 },
+      { text: normalizeSampleText(`${sample.cps || ''} ${sample.length || ''}`), weight: 1 },
+    ];
+    let score = 0;
+    for (const token of tokens) {
+      let best = -Infinity;
+      for (const field of fields) {
+        if (!field.text) continue;
+        const current = sampleFieldScore(field.text, token);
+        if (current > -Infinity) best = Math.max(best, current * field.weight);
+      }
+      if (!Number.isFinite(best)) return;
+      score += best;
+    }
+    ranked.push({ sample, order, score });
+  });
+  ranked.sort((a, b) => b.score - a.score || a.order - b.order);
+  return ranked.map((entry) => entry.sample);
+}
+
+function sampleRowHtml(sample, index, total) {
+  const name = I18n.sampleName(sample) || sample.file;
+  const note = I18n.sampleNote(sample) || sample.note || '';
+  const meta = `${Number(sample.cps) || '?'} CP${sample.length ? ` · ${escapeHtml(sample.length)}` : ''}`;
+  const active = index === state.sampleActive;
+  return `<button class="menu-item sample-item${active ? ' is-active' : ''}" data-sample="${escapeHtml(sample.file)}" id="sample-opt-${index}" role="option" aria-selected="${active}" aria-posinset="${index + 1}" aria-setsize="${total}" tabindex="-1" style="top:${index * SAMPLE_ROW_STEP + 2}px;height:${SAMPLE_ROW_HEIGHT}px" type="button" title="${escapeHtml(note)}">
+    <span class="mi-dot"></span>
+    <span class="mi-text"><span class="mi-name">${escapeHtml(name)}</span>
+    <span class="mi-meta">${meta}</span></span>
+  </button>`;
+}
+
+function renderSampleWindow(force = false) {
+  const list = $('sample-menu');
+  if (!list) return;
+  const items = state.sampleFiltered;
+  if (!items.length) return;
+  const total = items.length;
+  const viewport = Math.max(
+    list.clientHeight || 0,
+    Math.min(420, Math.max(160, window.innerHeight * 0.55))
+  );
+  const scrollTop = list.scrollTop;
+  const start = Math.max(0, Math.floor(scrollTop / SAMPLE_ROW_STEP) - SAMPLE_ROW_OVERSCAN);
+  const end = Math.min(total, Math.ceil((scrollTop + viewport) / SAMPLE_ROW_STEP) + SAMPLE_ROW_OVERSCAN);
+  if (!force && state.sampleWindow &&
+      state.sampleWindow.start === start && state.sampleWindow.end === end && state.sampleWindow.total === total) {
     return;
   }
-  el.innerHTML = state.samples.map((s) => `<button class="menu-item" data-sample="${escapeHtml(s.file)}" type="button">
-    <span class="mi-dot"></span>
-    <span class="mi-text"><span class="mi-name">${escapeHtml(I18n.sampleName(s) || s.file)}</span>
-    <span class="mi-meta">${Number(s.cps) || '?'} CP${s.length ? ` · ${escapeHtml(s.length)}` : ''}</span></span>
-  </button>`).join('');
+  const rows = [];
+  for (let i = start; i < end; i++) rows.push(sampleRowHtml(items[i], i, total));
+  list.innerHTML = `<div class="sample-list-spacer" style="height:${total * SAMPLE_ROW_STEP}px">${rows.join('')}</div>`;
+  list.scrollTop = scrollTop;
+  state.sampleWindow = { start, end, total };
+}
+
+function updateSampleFooter() {
+  const footer = $('sample-footer');
+  if (!footer) return;
+  if (state.samplesLoading) {
+    footer.textContent = '';
+  } else if (state.sampleQuery) {
+    footer.textContent = t('{0} / {1} 个示例', state.sampleFiltered.length, state.samples.length);
+  } else {
+    footer.textContent = t('{0} 个示例', state.samples.length);
+  }
+}
+
+function updateSampleClearButton() {
+  const clear = $('sample-search-clear');
+  if (clear) clear.classList.toggle('hidden', !state.sampleQuery);
+}
+
+function renderSampleMenu(opts = {}) {
+  const list = $('sample-menu');
+  if (!list) return;
+  state.sampleFiltered = filterSampleList(state.sampleQuery);
+  state.sampleWindow = null;
+  if (opts.resetScroll) list.scrollTop = 0;
+  updateSampleClearButton();
+  if (!state.samples.length) {
+    list.innerHTML = `<div class="menu-loading">${escapeHtml(state.samplesLoading ? t('载入中…') : t('没有可用示例'))}</div>`;
+    state.sampleFiltered = [];
+    updateSampleFooter();
+    return;
+  }
+  if (!state.sampleFiltered.length) {
+    list.innerHTML = `<div class="sample-empty">${escapeHtml(t('没有匹配的示例'))}</div>`;
+    updateSampleFooter();
+    return;
+  }
+  renderSampleWindow(true);
+  updateSampleFooter();
+}
+
+function resetSampleSearch() {
+  state.sampleQuery = '';
+  state.sampleActive = -1;
+  state.sampleWindow = null;
+  const input = $('sample-search');
+  if (input) {
+    input.value = '';
+    input.removeAttribute('aria-activedescendant');
+  }
+  updateSampleClearButton();
+}
+
+function openSamplesMenu() {
+  const menu = $('samples-menu');
+  if (!menu) return;
+  menu.open = true;
+  renderSampleMenu();
+  requestAnimationFrame(() => {
+    const input = $('sample-search');
+    if (input) input.focus();
+  });
+}
+
+function setSampleActive(index) {
+  const total = state.sampleFiltered.length;
+  if (!total) {
+    state.sampleActive = -1;
+    return;
+  }
+  state.sampleActive = ((index % total) + total) % total;
+  const list = $('sample-menu');
+  if (list) {
+    const top = state.sampleActive * SAMPLE_ROW_STEP;
+    const viewHeight = list.clientHeight || Math.min(420, Math.max(160, window.innerHeight * 0.55));
+    if (top < list.scrollTop) list.scrollTop = Math.max(0, top - 3);
+    else if (top + SAMPLE_ROW_STEP > list.scrollTop + viewHeight) {
+      list.scrollTop = Math.max(0, top + SAMPLE_ROW_STEP - viewHeight + 3);
+    }
+    renderSampleWindow(true);
+  }
+  const input = $('sample-search');
+  if (input) input.setAttribute('aria-activedescendant', `sample-opt-${state.sampleActive}`);
 }
 
 function renderSampleChips() {
@@ -1325,10 +1497,15 @@ function renderSampleChips() {
     el.innerHTML = `<span class="muted">${escapeHtml(state.samplesLoading ? t('载入中…') : t('没有可用示例'))}</span>`;
     return;
   }
-  el.innerHTML = state.samples.map((s) => `<button class="chip-btn" data-sample="${escapeHtml(s.file)}" type="button">
+  const shown = state.samples.slice(0, SAMPLE_CHIP_LIMIT);
+  let html = shown.map((s) => `<button class="chip-btn" data-sample="${escapeHtml(s.file)}" type="button">
     <span class="sw" style="background:var(--accent)"></span>${escapeHtml(I18n.sampleName(s) || s.file)}
     <span class="meta">${Number(s.cps) || '?'} CP</span>
   </button>`).join('');
+  if (state.samples.length > SAMPLE_CHIP_LIMIT) {
+    html += `<button class="chip-btn chip-more" data-action="open-samples-menu" type="button">${escapeHtml(t('全部 {0} 个示例', state.samples.length))}</button>`;
+  }
+  el.innerHTML = html;
 }
 
 function saveTrackJSON() {
@@ -1564,6 +1741,78 @@ function bindUi() {
     tabs[next].click();
   });
 
+  // Sample search / virtual dropdown
+  const samplesMenu = $('samples-menu');
+  const sampleSearch = $('sample-search');
+  if (samplesMenu && sampleSearch) {
+    samplesMenu.addEventListener('toggle', () => {
+      sampleSearch.setAttribute('aria-expanded', String(samplesMenu.open));
+      if (samplesMenu.open) {
+        renderSampleMenu();
+        requestAnimationFrame(() => sampleSearch.focus());
+      } else {
+        resetSampleSearch();
+      }
+    });
+    sampleSearch.addEventListener('input', () => {
+      state.sampleQuery = sampleSearch.value;
+      state.sampleActive = -1;
+      sampleSearch.removeAttribute('aria-activedescendant');
+      renderSampleMenu({ resetScroll: true });
+    });
+    sampleSearch.addEventListener('keydown', (ev) => {
+      if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (!state.sampleFiltered.length) return;
+        if (state.sampleActive < 0) setSampleActive(ev.key === 'ArrowDown' ? 0 : state.sampleFiltered.length - 1);
+        else setSampleActive(state.sampleActive + (ev.key === 'ArrowDown' ? 1 : -1));
+      } else if (ev.key === 'Enter') {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const sample = state.sampleFiltered[state.sampleActive >= 0 ? state.sampleActive : 0];
+        if (sample) {
+          closeMenus();
+          loadSample(sample.file);
+        }
+      } else if (ev.key === 'Escape') {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (state.sampleQuery) {
+          sampleSearch.value = '';
+          state.sampleQuery = '';
+          state.sampleActive = -1;
+          sampleSearch.removeAttribute('aria-activedescendant');
+          renderSampleMenu({ resetScroll: true });
+          sampleSearch.focus();
+        } else {
+          samplesMenu.open = false;
+          sampleSearch.blur();
+          const summary = qs('summary', samplesMenu);
+          if (summary) summary.focus();
+        }
+      }
+    });
+    const clearSearch = $('sample-search-clear');
+    if (clearSearch) {
+      clearSearch.addEventListener('click', () => {
+        sampleSearch.value = '';
+        state.sampleQuery = '';
+        state.sampleActive = -1;
+        sampleSearch.removeAttribute('aria-activedescendant');
+        renderSampleMenu({ resetScroll: true });
+        sampleSearch.focus();
+      });
+    }
+    $('sample-menu').addEventListener('scroll', () => {
+      if (state.sampleScrollRaf) return;
+      state.sampleScrollRaf = requestAnimationFrame(() => {
+        state.sampleScrollRaf = 0;
+        renderSampleWindow();
+      });
+    });
+  }
+
   // Language picker
   const langSel = $('lang-select');
   if (langSel) {
@@ -1604,7 +1853,9 @@ function bindUi() {
 
   // Close menus when clicking elsewhere
   document.addEventListener('click', (ev) => {
-    if (!ev.target.closest('details')) closeMenus();
+    if (ev.target.closest('details')) return;
+    if (ev.target.closest('[data-action="open-samples-menu"]')) return;
+    closeMenus();
   });
 
   // Segmented controls
@@ -1734,6 +1985,7 @@ function bindUi() {
     renderCpWindow(true);
     renderWarnWindow($('track-warnings'), true);
     renderWarnWindow($('route-warnings'), true);
+    renderSampleWindow(true);
   });
 
   // CP list delegation
@@ -1862,6 +2114,7 @@ function bindUi() {
       return;
     }
     if (ev.key === 'Escape') {
+      if ($('samples-menu') && $('samples-menu').open) { closeMenus(); return; }
       if (state.addMode) {
         setAddMode(false);
         if (typing && ev.target && typeof ev.target.blur === 'function') ev.target.blur();
@@ -2003,12 +2256,14 @@ function runAction(action) {
     case 'download-svg': downloadSVG(); break;
     case 'copy-spec': copyText(SPEC_EXAMPLE); break;
     case 'load-sample': loadSample('los-santos-loop'); break;
+    case 'open-samples-menu': openSamplesMenu(); break;
     default: break;
   }
 }
 
 function closeMenus() {
   for (const d of qsa('details[open]')) d.removeAttribute('open');
+  resetSampleSearch();
 }
 
 async function copyText(text) {

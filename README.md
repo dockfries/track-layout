@@ -21,6 +21,7 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **PNG export**: 16:9, 4:3, 1:1, 9:16, 4K, transparent background, and **full track / current view** framing.
 - **SVG export**: route, CPs, title and legend stay vector; the base map is embedded as a raster image, or turn it off for a pure-vector route map.
 - **Custom base maps**: upload an image and set its coordinate bounds for other games or hand-made maps.
+- **Sample library**: the Samples menu has fuzzy search, keyboard navigation and a virtualized scrolling list, so forks can add hundreds of sample tracks without slowing the UI; the sidebar shows the first few plus an "all samples" shortcut.
 - **Autosave**: track, styles and export settings live in this browser's `localStorage` and survive reloads.
 - **Internationalization**: first visit follows the browser locale (`zh*` → Simplified Chinese, everything else → English); the `EN / 中文` picker in the top bar overrides it. UI, map title/legend, CP list, notices, help and PNG/SVG export text all follow the active language.
 - **Dark / light UI**: choose **System / Dark / Light** in the top bar. **System** follows `prefers-color-scheme` live, and the choice is remembered in this browser. This only affects the app chrome, not the route-map artwork itself.
