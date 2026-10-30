@@ -2186,6 +2186,7 @@ function bindUi() {
       }
       if ($('preview-dialog').open) { closeDialog($('preview-dialog')); return; }
       if ($('help-dialog').open) { closeDialog($('help-dialog')); return; }
+      if ($('shortcuts-dialog').open) { closeDialog($('shortcuts-dialog')); return; }
       if (!typing) {
         state.selected = -1;
         MapView.setSelected(-1);
@@ -2200,6 +2201,11 @@ function bindUi() {
       return;
     }
     if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    if (ev.key === '?') {
+      ev.preventDefault();
+      openDialog($('shortcuts-dialog'));
+      return;
+    }
     const k = ev.key.toLowerCase();
     if (k === 'f') { ev.preventDefault(); MapView.fitRoute(); }
     else if (k === 'g') { ev.preventDefault(); toggleGrid(); }
@@ -2302,6 +2308,10 @@ function runAction(action) {
     case 'new-track': newTrack(); break;
     case 'help': {
       openDialog($('help-dialog'));
+      break;
+    }
+    case 'shortcuts': {
+      openDialog($('shortcuts-dialog'));
       break;
     }
     case 'fit': MapView.fitRoute(); break;

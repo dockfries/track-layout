@@ -23,7 +23,7 @@
   <meta name="description" content="Import GTA San Andreas track JSON, route CPs along the road graph, style the map, and export PNG / SVG.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0e15'/%3E%3Cpath d='M6 23c5 0 5-14 10-14s5 12 10 12' stroke='%23f97316' stroke-width='3.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
   <noscript><div style="padding:20px;font-family:sans-serif;color:#fff;background:#0b0e15">Track Layout requires JavaScript. / 需要启用 JavaScript。</div></noscript>
@@ -75,6 +75,9 @@
         </select>
         <button class="btn icon-btn" data-action="help" title="赛道 JSON 格式">
           <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-circle-help"></use></svg>
+        </button>
+        <button class="btn icon-btn" data-action="shortcuts" title="键盘快捷键 (?)" aria-label="键盘快捷键">
+          <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-keyboard"></use></svg>
         </button>
       </div>
     </header>
@@ -613,6 +616,57 @@
     </div>
   </dialog>
 
+  <dialog id="shortcuts-dialog" class="dialog shortcuts-dialog" aria-labelledby="shortcuts-dialog-title">
+    <div class="dialog-head">
+      <h2 id="shortcuts-dialog-title"><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-keyboard"></use></svg> 键盘快捷键</h2>
+      <button class="icon-x" data-close-dialog="shortcuts-dialog" aria-label="关闭">
+        <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-x"></use></svg>
+      </button>
+    </div>
+    <div class="dialog-body shortcuts-body">
+      <p class="shortcut-intro">常用操作都集中在这里。输入框获得焦点时，单键快捷键不会触发。</p>
+      <div class="shortcut-groups">
+        <section class="shortcut-section">
+          <h3><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-eye"></use></svg> 查看</h3>
+          <ul class="shortcut-list">
+            <li><span>适配赛道</span><span class="shortcut-keys"><kbd>F</kbd></span></li>
+            <li><span>显示 / 隐藏底图</span><span class="shortcut-keys"><kbd>M</kbd></span></li>
+            <li><span>显示 / 隐藏网格</span><span class="shortcut-keys"><kbd>G</kbd></span></li>
+            <li><span>显示 / 隐藏检查点</span><span class="shortcut-keys"><kbd>C</kbd></span></li>
+          </ul>
+        </section>
+        <section class="shortcut-section">
+          <h3><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-map-pin-plus"></use></svg> 编辑</h3>
+          <ul class="shortcut-list">
+            <li><span>进入 / 退出地图加点模式</span><span class="shortcut-keys"><kbd>+</kbd><kbd>=</kbd></span></li>
+            <li><span>取消加点 / 关闭菜单或弹窗</span><span class="shortcut-keys"><kbd>Esc</kbd></span></li>
+            <li><span>删除选中的检查点</span><span class="shortcut-keys"><kbd>Delete</kbd><kbd>Backspace</kbd></span></li>
+          </ul>
+        </section>
+        <section class="shortcut-section">
+          <h3><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-file-code"></use></svg> 文件</h3>
+          <ul class="shortcut-list">
+            <li><span>打开赛道 JSON</span><span class="shortcut-keys"><kbd>Ctrl / Cmd + O</kbd></span></li>
+            <li><span>打开此快捷键面板</span><span class="shortcut-keys"><kbd>?</kbd></span></li>
+          </ul>
+        </section>
+        <section class="shortcut-section">
+          <h3><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-layout-grid"></use></svg> 示例搜索</h3>
+          <ul class="shortcut-list">
+            <li><span>在搜索结果中上下选择</span><span class="shortcut-keys"><kbd>↑</kbd><kbd>↓</kbd></span></li>
+            <li><span>载入当前示例</span><span class="shortcut-keys"><kbd>Enter</kbd></span></li>
+            <li><span>清空搜索 / 关闭示例菜单</span><span class="shortcut-keys"><kbd>Esc</kbd></span></li>
+          </ul>
+        </section>
+      </div>
+    </div>
+    <div class="dialog-foot">
+      <span class="shortcut-foot-hint">按 ? 随时打开</span>
+      <span class="spacer"></span>
+      <button class="btn" data-close-dialog="shortcuts-dialog">关闭</button>
+    </div>
+  </dialog>
+
   <dialog id="preview-dialog" class="dialog preview-dialog" aria-labelledby="preview-dialog-title">
     <div class="dialog-head">
       <h2 id="preview-dialog-title">导出预览 <span id="preview-meta" class="mono muted" data-no-i18n></span></h2>
@@ -635,11 +689,11 @@
   <input id="map-input" type="file" accept="image/*" hidden>
 
   <script src="vendor/leaflet/leaflet.js"></script>
-  <script src="js/track.js?v=14"></script>
-  <script src="js/style.js?v=14"></script>
-  <script src="js/i18n.js?v=14"></script>
-  <script src="js/mapview.js?v=14"></script>
-  <script src="js/export.js?v=14"></script>
-  <script src="js/app.js?v=14"></script>
+  <script src="js/track.js?v=15"></script>
+  <script src="js/style.js?v=15"></script>
+  <script src="js/i18n.js?v=15"></script>
+  <script src="js/mapview.js?v=15"></script>
+  <script src="js/export.js?v=15"></script>
+  <script src="js/app.js?v=15"></script>
 </body>
 </html>

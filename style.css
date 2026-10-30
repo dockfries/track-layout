@@ -1212,7 +1212,54 @@ details.section[open] > summary .chev { transform: rotate(180deg); }
 .icon-x:hover { background: var(--surface3); color: var(--text); }
 
 .prose { font-size: 12.5px; line-height: 1.7; color: var(--prose-text); }
-.prose p { margin: 0 0 10px; }
+.shortcuts-dialog { width: min(680px, calc(100vw - 24px)); }
+.shortcuts-body { padding-top: 15px; }
+.shortcut-intro { margin: 0 0 16px; color: var(--muted); font-size: 12px; }
+.shortcut-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 28px; }
+.shortcut-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 7px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.shortcut-section h3 .ico { width: 13px; height: 13px; color: var(--accent-2); }
+.shortcut-list { display: flex; flex-direction: column; gap: 1px; margin: 0 0 16px; padding: 0; list-style: none; }
+.shortcut-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+}
+.shortcut-list li:last-child { border-bottom: none; }
+.shortcut-keys { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.shortcut-list kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface2);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.shortcut-foot-hint { color: var(--muted); font-size: 11px; }.prose p { margin: 0 0 10px; }
 .prose h3 { color: var(--text); font-size: 12.5px; margin: 16px 0 6px; }
 .prose ul { margin: 0 0 10px; padding-left: 18px; }
 .prose li { margin: 3px 0; }
@@ -1368,6 +1415,11 @@ details.section[open] > summary .chev { transform: rotate(180deg); }
   .theme-grid { grid-template-columns: 1fr 1fr; }
   .dialog { width: calc(100vw - 18px); max-height: 92vh; }
   .dialog-body { max-height: calc(92vh - 118px); }
+}
+
+@media (max-width: 720px) {
+  .shortcut-groups { grid-template-columns: 1fr; gap: 0 0; }
+  .shortcut-list { margin-bottom: 12px; }
 }
 
 @media (max-width: 480px) {
