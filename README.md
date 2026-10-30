@@ -30,7 +30,7 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 Requires Node.js 18+. The app is static: no build step and no `npm install` required.
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/dockfries/track-layout
 cd track-layout
 
 # Option A (recommended): temporary static server via npx

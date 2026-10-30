@@ -30,7 +30,7 @@ Track Layout 是一个纯前端的 **GTA San Andreas 赛道路线图生成器**�
 需要 Node.js 18+。页面本身是纯静态的，不需要构建，也不需要 `npm install`。
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/dockfries/track-layout
 cd track-layout
 
 # 方式 A（推荐）：用 npx 临时启动 serve
