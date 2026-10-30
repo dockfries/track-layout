@@ -33,6 +33,7 @@
     selected: -1,
     addMode: false,
     dragging: false,
+    cpLocked: false,
   };
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
@@ -350,14 +351,14 @@
     const total = Style.markerTotalSize(style);
     track.checkpoints.forEach((cp, i) => {
       const icon = L.divIcon({
-        className: `tl-cp${i === state.selected ? ' is-selected' : ''}`,
+        className: `tl-cp${i === state.selected ? ' is-selected' : ''}${state.cpLocked ? ' is-locked' : ''}`,
         html: cpMarkerHtml(cp, i, style),
         iconSize: [total, total],
         iconAnchor: [total / 2, total / 2],
       });
       const marker = L.marker([cp.y, cp.x], {
         icon,
-        draggable: true,
+        draggable: !state.cpLocked,
         keyboard: false,
         riseOnHover: true,
         autoPan: true,
@@ -369,14 +370,23 @@
         if (handlers.onSelect) handlers.onSelect(i);
       });
       marker.on('dragstart', () => {
+        if (state.cpLocked) {
+          if (marker.dragging) marker.dragging.disable();
+          return;
+        }
         state.dragging = true;
         if (handlers.onCpDragStart) handlers.onCpDragStart(i);
       });
       marker.on('drag', (ev) => {
+        if (state.cpLocked) return;
         const ll = ev.target.getLatLng();
         if (handlers.onCpDrag) handlers.onCpDrag(i, ll.lng, ll.lat);
       });
       marker.on('dragend', (ev) => {
+        if (state.cpLocked) {
+          state.dragging = false;
+          return;
+        }
         const ll = ev.target.getLatLng();
         state.dragging = false;
         if (handlers.onCpDragEnd) handlers.onCpDragEnd(i, ll.lng, ll.lat);
@@ -535,6 +545,20 @@
     if (hint) hint.classList.toggle('hidden', !state.addMode);
   }
 
+  function setCpLocked(locked) {
+    state.cpLocked = !!locked;
+    if (!cpGroup) return;
+    cpGroup.eachLayer((marker) => {
+      marker.options.draggable = !state.cpLocked;
+      if (marker.dragging) {
+        if (state.cpLocked) marker.dragging.disable();
+        else marker.dragging.enable();
+      }
+      const el = marker.getElement();
+      if (el) el.classList.toggle('is-locked', state.cpLocked);
+    });
+  }
+
   function getExportMap() {
     return { image: baseImage, bounds: { ...baseBounds } };
   }
@@ -549,7 +573,7 @@
 
   root.MapView = {
     init, setBaseMap, setData, setRouteOnly, setStyleOnly, setSelected,
-    fitRoute, fitBase, focusCp, setAddMode, getExportMap, getViewBounds,
+    fitRoute, fitBase, focusCp, setAddMode, setCpLocked, getExportMap, getViewBounds,
     refreshOverlays: updateOverlays, getZoom, map: () => map,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

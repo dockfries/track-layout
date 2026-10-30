@@ -17,6 +17,7 @@ const SAMPLE_ROW_STEP = 52;
 const SAMPLE_ROW_OVERSCAN = 3;
 const SAMPLE_CHIP_LIMIT = 8;
 const ROUTING_DEFAULTS = { snapRadius: 80, smooth: 45 };
+const HISTORY_LIMIT = 50;
 const t = (text, ...args) => I18n.t(text, ...args);
 let themeMode = 'system';
 let themeMedia = null;
@@ -48,6 +49,9 @@ const state = {
   routing: { mode: 'auto', snapRadius: 80, smooth: 45, closed: false },
   selected: -1,
   addMode: false,
+  cpLocked: false,
+  undoStack: [],
+  redoStack: [],
   graph: null,
   netState: 'loading',
   samples: [],
@@ -268,6 +272,7 @@ function restorePrefs() {
       closed: !!saved.routing.closed,
     };
   }
+  state.cpLocked = !!saved.cpLocked;
   if (saved.base && saved.base.bounds) {
     const b = saved.base.bounds;
     if ([b.minX, b.maxX, b.minY, b.maxY].every(Number.isFinite) && b.maxX > b.minX && b.maxY > b.minY) {
@@ -292,6 +297,7 @@ function saveSession() {
       v: 1,
       track: state.track ? Track.toJSON(state.track) : null,
       empty: !state.track || !state.track.checkpoints.length,
+      cpLocked: state.cpLocked,
       routing: state.routing,
       style: state.style,
       exportOpts: state.exportOpts,
@@ -313,6 +319,7 @@ function loadSessionTrack(saved) {
 // ── Track load / route ─────────────────────────────────────────────────
 function applyTrack(track, opts = {}) {
   if (!track) return;
+  if (!opts.preserveHistory) clearHistory();
   state.track = track;
   state.routing.closed = !!track.closed;
   state.selected = -1;
@@ -626,10 +633,119 @@ function selectCp(index, opts = {}) {
   }
 }
 
+function captureTrackSnapshot() {
+  return {
+    track: state.track ? Track.toJSON(state.track) : null,
+    sampleFile: state.track && state.track.sampleFile ? state.track.sampleFile : null,
+    selected: state.selected,
+  };
+}
+
+function syncHistoryButtons() {
+  const undoBtn = qs('[data-action="undo"]');
+  const redoBtn = qs('[data-action="redo"]');
+  if (undoBtn) undoBtn.disabled = !state.undoStack.length;
+  if (redoBtn) redoBtn.disabled = !state.redoStack.length;
+}
+
+function clearHistory() {
+  state.undoStack.length = 0;
+  state.redoStack.length = 0;
+  syncHistoryButtons();
+}
+
+function pushUndoSnapshot() {
+  state.undoStack.push(captureTrackSnapshot());
+  if (state.undoStack.length > HISTORY_LIMIT) state.undoStack.shift();
+  state.redoStack.length = 0;
+  syncHistoryButtons();
+}
+
+function restoreEmptyTrackState() {
+  clearTimeout(state.routeTimer);
+  state.track = null;
+  state.route = null;
+  state.selected = -1;
+  state.addMode = false;
+  state.routing.closed = false;
+  MapView.setAddMode(false);
+  $('empty-state').classList.remove('hidden');
+  $('track-name').value = '';
+  $('track-author').value = '';
+  $('closed-toggle').checked = false;
+  MapView.setData({ track: null, route: null, style: state.style, selected: -1 });
+  syncAll();
+  renderCpList();
+  renderWarnings();
+  updateDocumentTitle();
+  setSideStatus('ready', t('准备就绪'));
+  saveSessionSoon();
+}
+
+function restoreTrackSnapshot(snapshot) {
+  if (!snapshot || !snapshot.track || !snapshot.track.checkpoints || !snapshot.track.checkpoints.length) {
+    restoreEmptyTrackState();
+    return;
+  }
+  clearTimeout(state.routeTimer);
+  const track = Track.parseTrack(JSON.stringify(snapshot.track), snapshot.sampleFile || 'history.json');
+  if (snapshot.sampleFile) track.sampleFile = snapshot.sampleFile;
+  applyTrack(track, { fit: false, preserveHistory: true });
+  const index = Number.isInteger(snapshot.selected)
+    ? Math.min(snapshot.selected, track.checkpoints.length - 1)
+    : -1;
+  state.selected = index;
+  MapView.setSelected(index);
+  renderCpList();
+  if (index >= 0) ensureCpRowVisible(index);
+  saveSessionSoon();
+}
+
+function undo() {
+  if (!state.undoStack.length) return;
+  const current = captureTrackSnapshot();
+  const previous = state.undoStack.pop();
+  state.redoStack.push(current);
+  restoreTrackSnapshot(previous);
+  syncHistoryButtons();
+  toast(t('已撤销上一步'), 'ok');
+}
+
+function redo() {
+  if (!state.redoStack.length) return;
+  const current = captureTrackSnapshot();
+  const next = state.redoStack.pop();
+  state.undoStack.push(current);
+  restoreTrackSnapshot(next);
+  syncHistoryButtons();
+  toast(t('已重做'), 'ok');
+}
+
+function syncCpLockButton() {
+  const btn = qs('.map-btn[data-action="toggle-cp-lock"]');
+  if (!btn) return;
+  const label = t(state.cpLocked ? '解锁地图 CP 拖动 (L)' : '锁定地图 CP 拖动 (L)');
+  btn.classList.toggle('active', state.cpLocked);
+  btn.setAttribute('aria-pressed', String(state.cpLocked));
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+  const use = document.getElementById('cp-lock-use');
+  if (use) use.setAttribute('href', `assets/icons/sprite.svg#i-${state.cpLocked ? 'lock' : 'lock-open'}`);
+}
+
+function toggleCpLock() {
+  state.cpLocked = !state.cpLocked;
+  MapView.setCpLocked(state.cpLocked);
+  syncCpLockButton();
+  saveSessionSoon();
+  toast(t(state.cpLocked ? '检查点拖动已锁定' : '检查点拖动已解锁'), 'ok');
+}
+
 function moveCp(index, dir) {
   if (!state.track) return;
   const j = index + dir;
   if (j < 0 || j >= state.track.checkpoints.length) return;
+  pushUndoSnapshot();
   const cps = state.track.checkpoints;
   [cps[index], cps[j]] = [cps[j], cps[index]];
   state.selected = j;
@@ -645,6 +761,7 @@ function deleteCp(index) {
     toast(t('至少保留一个检查点'), 'error');
     return;
   }
+  pushUndoSnapshot();
   state.track.checkpoints.splice(index, 1);
   state.selected = Math.min(index, state.track.checkpoints.length - 1);
   Track.assignRoles(state.track);
@@ -676,6 +793,7 @@ function ensureTrack() {
 }
 
 function addCpAt(x, y) {
+  pushUndoSnapshot();
   const track = ensureTrack();
   let z = 0;
   let hasZ = false;
@@ -713,6 +831,7 @@ function toggleAddMode() {
 
 function newTrack() {
   if (state.track && !confirm(t('新建会清空当前赛道（样式与导出设置会保留），继续？'))) return;
+  clearHistory();
   state.track = null;
   state.route = null;
   state.selected = -1;
@@ -1263,6 +1382,8 @@ function syncAll() {
   renderThemes();
   syncCpCollapseButton();
   syncWarnCollapseButton();
+  syncCpLockButton();
+  syncHistoryButtons();
   syncTrackMeta();
   syncStyleInputs();
   syncRoutingInputs();
@@ -2230,6 +2351,7 @@ function bindUi() {
     }
     const value = Number(input.value);
     if (!Number.isFinite(value)) return;
+    if (Number(cp[axis]) !== value) pushUndoSnapshot();
     cp[axis] = value;
     if (axis === 'z') cp.hasZ = true;
     state.selected = i;
@@ -2350,6 +2472,16 @@ function bindUi() {
     }
     if (qs('dialog[open]')) return;
     if (typing) return;
+    if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && ev.key.toLowerCase() === 'z') {
+      ev.preventDefault();
+      if (ev.shiftKey) redo(); else undo();
+      return;
+    }
+    if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && ev.key.toLowerCase() === 'y') {
+      ev.preventDefault();
+      redo();
+      return;
+    }
     if (ev.key === 'Delete' || ev.key === 'Backspace') {
       if (state.selected >= 0 && state.track) { ev.preventDefault(); deleteCp(state.selected); }
       return;
@@ -2365,6 +2497,7 @@ function bindUi() {
     else if (k === 'g') { ev.preventDefault(); toggleGrid(); }
     else if (k === 'm') { ev.preventDefault(); toggleMapVisible(); }
     else if (k === 'c') { ev.preventDefault(); toggleCpVisible(); }
+    else if (k === 'l') { ev.preventDefault(); toggleCpLock(); }
     else if ((k === '+' || k === '=') && !(ev.target instanceof Element && ev.target.closest('#map'))) {
       ev.preventDefault();
       toggleAddMode();
@@ -2469,6 +2602,9 @@ function runAction(action) {
       break;
     }
     case 'fit': MapView.fitRoute(); break;
+    case 'undo': undo(); break;
+    case 'redo': redo(); break;
+    case 'toggle-cp-lock': toggleCpLock(); break;
     case 'add-cp': toggleAddMode(); break;
     case 'toggle-cp-list': toggleCpList(); break;
     case 'toggle-warn-list': toggleWarnList(); break;
@@ -2524,10 +2660,12 @@ const mapHandlers = {
     if (state.track) selectCp(index, { focus: false, scroll: true });
   },
   onCpDragStart(index) {
+    if (state.cpLocked) return;
+    pushUndoSnapshot();
     if (state.track) selectCp(index, { focus: false, scroll: false });
   },
   onCpDrag(index, x, y) {
-    if (!state.track) return;
+    if (state.cpLocked || !state.track) return;
     const cp = state.track.checkpoints[index];
     if (!cp) return;
     cp.x = x;
@@ -2543,7 +2681,7 @@ const mapHandlers = {
     scheduleRoute(70, { markers: false, fit: false });
   },
   onCpDragEnd(index, x, y) {
-    if (!state.track) return;
+    if (state.cpLocked || !state.track) return;
     const cp = state.track.checkpoints[index];
     if (!cp) return;
     cp.x = x;
@@ -2676,6 +2814,7 @@ async function boot() {
   }
   const saved = restorePrefs();
   MapView.init(mapHandlers);
+  MapView.setCpLocked(!!state.cpLocked);
   MapView.setData({ track: null, route: null, style: state.style, selected: -1 });
   bindUi();
   renderThemes();

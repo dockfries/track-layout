@@ -26,6 +26,7 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **Stacked toasts**: rapid actions show up to five top-center notices at once; extra notices queue and dismiss oldest-first.
 - **Shortcut reference**: press `?` or click the keyboard icon to open a grouped keyboard-shortcut dialog.
 - **Slider helpers**: double-click a range input to restore its current theme/default value; click the numeric readout to type an exact value with min/max validation.
+- **Safe CP editing**: lock map marker dragging to avoid accidental moves, and undo/redo checkpoint edits (drag, coordinate input, add/delete/reorder).
 - **Responsive map**: window resizing is debounced (180 ms), then the map re-fits the current track; virtual lists and the scale bar refresh at the same time.
 - **Internationalization**: first visit follows the browser locale (`zh*` → Simplified Chinese, everything else → English); the `EN / 中文` picker in the top bar overrides it. UI, map title/legend, CP list, notices, help and PNG/SVG export text all follow the active language.
 - **Dark / light UI**: choose **System / Dark / Light** in the top bar. **System** follows `prefers-color-scheme` live, and the choice is remembered in this browser. This only affects the app chrome, not the route-map artwork itself.
@@ -181,6 +182,9 @@ Can visual styles be saved to JSON? Currently they are autosaved in `localStorag
 | `G` | Show / hide grid |
 | `M` | Show / hide base map |
 | `C` | Show / hide checkpoints |
+| `L` | Lock / unlock map CP dragging |
+| `Ctrl/Cmd + Z` | Undo last checkpoint edit |
+| `Ctrl/Cmd + Shift + Z` | Redo checkpoint edit |
 | `+` / `=` | Enter / leave map add-CP mode |
 | `Esc` | Cancel add mode / clear selection / close dialog |
 | `Delete` | Delete the selected checkpoint |

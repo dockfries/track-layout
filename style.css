@@ -720,6 +720,9 @@ html.i18n-pending #ui { visibility: hidden; }
 
 .cp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .cp-head .group-title { flex: 1; margin-bottom: 0; }
+.cp-head-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.cp-head-actions .icon-btn { min-width: 26px; padding: 0 6px; }
+.cp-history-btn:disabled { opacity: .35; }
 .cp-collapse {
   width: 24px;
   height: 24px;
@@ -1369,6 +1372,8 @@ details.section[open] > summary .chev { transform: rotate(180deg); }
   text-shadow: 0 1px 4px var(--cp-label-shadow);
 }
 .tl-cp:hover { transform: scale(1.12); filter: drop-shadow(0 5px 12px rgba(0,0,0,.55)); }
+.tl-cp.is-locked { cursor: default; }
+.tl-cp.is-locked:hover { transform: none; }
 .tl-cp.is-selected { transform: scale(1.18); filter: drop-shadow(0 0 12px rgba(249,115,22,.85)) drop-shadow(0 4px 10px rgba(0,0,0,.5)); }
 .tl-cp:active { cursor: grabbing; }
 .tl-arrow { background: none; border: none; pointer-events: none; }

@@ -23,7 +23,7 @@
   <meta name="description" content="Import GTA San Andreas track JSON, route CPs along the road graph, style the map, and export PNG / SVG.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0e15'/%3E%3Cpath d='M6 23c5 0 5-14 10-14s5 12 10 12' stroke='%23f97316' stroke-width='3.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
   <noscript><div style="padding:20px;font-family:sans-serif;color:#fff;background:#0b0e15">Track Layout requires JavaScript. / 需要启用 JavaScript。</div></noscript>
@@ -94,6 +94,9 @@
         <div id="map-toolbar" class="map-toolbar">
           <button class="map-btn map-btn-add" data-action="add-cp" title="点击地图添加检查点" aria-pressed="false">
             <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-map-pin-plus"></use></svg>
+          </button>
+          <button class="map-btn" data-action="toggle-cp-lock" title="锁定地图 CP 拖动 (L)" aria-pressed="false">
+            <svg class="ico" aria-hidden="true" focusable="false"><use id="cp-lock-use" href="assets/icons/sprite.svg#i-lock-open"></use></svg>
           </button>
           <button class="map-btn" data-action="toggle-cp" title="显示 / 隐藏检查点 (C)" aria-pressed="true">
             <svg class="ico" aria-hidden="true" focusable="false"><use id="cp-visibility-use" href="assets/icons/sprite.svg#i-eye"></use></svg>
@@ -172,10 +175,18 @@
                 <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-chevron-down"></use></svg>
               </button>
               <div class="group-title">检查点 <span id="cp-count" class="count">0</span></div>
-              <button class="btn small" data-action="add-cp" id="btn-add-cp">
-                <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-map-pin-plus"></use></svg>
-                地图添加
-              </button>
+              <div class="cp-head-actions">
+                <button class="btn small icon-btn cp-history-btn" data-action="undo" title="撤销 (Ctrl/Cmd+Z)" aria-label="撤销" disabled>
+                  <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-undo"></use></svg>
+                </button>
+                <button class="btn small icon-btn cp-history-btn" data-action="redo" title="重做 (Ctrl/Cmd+Shift+Z)" aria-label="重做" disabled>
+                  <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-redo"></use></svg>
+                </button>
+                <button class="btn small" data-action="add-cp" id="btn-add-cp">
+                  <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-map-pin-plus"></use></svg>
+                  地图添加
+                </button>
+              </div>
             </div>
             <div id="cp-body" class="cp-body">
               <div id="cp-list" class="cp-list" data-no-i18n></div>
@@ -639,6 +650,9 @@
           <h3><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-map-pin-plus"></use></svg> 编辑</h3>
           <ul class="shortcut-list">
             <li><span>进入 / 退出地图加点模式</span><span class="shortcut-keys"><kbd>+</kbd><kbd>=</kbd></span></li>
+            <li><span>锁定 / 解锁地图 CP 拖动</span><span class="shortcut-keys"><kbd>L</kbd></span></li>
+            <li><span>撤销上一步</span><span class="shortcut-keys"><kbd>Ctrl / Cmd + Z</kbd></span></li>
+            <li><span>重做</span><span class="shortcut-keys"><kbd>Ctrl / Cmd + Shift + Z</kbd></span></li>
             <li><span>取消加点 / 关闭菜单或弹窗</span><span class="shortcut-keys"><kbd>Esc</kbd></span></li>
             <li><span>删除选中的检查点</span><span class="shortcut-keys"><kbd>Delete</kbd><kbd>Backspace</kbd></span></li>
           </ul>
@@ -689,11 +703,11 @@
   <input id="map-input" type="file" accept="image/*" hidden>
 
   <script src="vendor/leaflet/leaflet.js"></script>
-  <script src="js/track.js?v=17"></script>
-  <script src="js/style.js?v=17"></script>
-  <script src="js/i18n.js?v=17"></script>
-  <script src="js/mapview.js?v=17"></script>
-  <script src="js/export.js?v=17"></script>
-  <script src="js/app.js?v=17"></script>
+  <script src="js/track.js?v=18"></script>
+  <script src="js/style.js?v=18"></script>
+  <script src="js/i18n.js?v=18"></script>
+  <script src="js/mapview.js?v=18"></script>
+  <script src="js/export.js?v=18"></script>
+  <script src="js/app.js?v=18"></script>
 </body>
 </html>
