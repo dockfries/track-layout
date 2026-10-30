@@ -75,6 +75,7 @@ const state = {
   cpWindow: null,
   cpScrollRaf: 0,
   warnListCollapsed: false,
+  routeWarnCollapsed: false,
 };
 
 // ── Utilities ───────────────────────────────────────────────────────────
@@ -458,29 +459,56 @@ function playbackPoint(progress) {
 
 function updatePlaybackStatus() {
   const el = $('playback-status');
-  if (!el) return;
+  const hudPct = $('playback-hud-pct');
+  const hudFill = $('playback-hud-fill');
   const pb = state.playback;
-  el.textContent = state.route ? `${Math.round(pb.progress * 100)}%` : '—';
+  const pct = `${Math.round(pb.progress * 100)}%`;
+  if (el) el.textContent = state.route ? pct : '—';
+  if (hudPct) hudPct.textContent = pct;
+  if (hudFill) hudFill.style.width = pct;
 }
 
 function syncPlaybackUI() {
   const pb = state.playback;
   const hasRoute = !!(state.route && state.route.points && state.route.points.length > 1);
+  const finished = !pb.playing && pb.progress >= 1;
   const toggle = $('playback-toggle');
-  const reset = $('playback-reset');
+  const stop = $('playback-stop');
   if (toggle) {
     toggle.disabled = !hasRoute;
-    toggle.title = t(pb.playing ? 'playback.pause' : 'playback.play');
-    toggle.setAttribute('aria-label', t(pb.playing ? 'playback.pause' : 'playback.play'));
+    toggle.title = t(finished ? 'playback.replay' : pb.playing ? 'playback.pause' : 'playback.play');
+    toggle.setAttribute('aria-label', toggle.title);
   }
-  if (reset) reset.disabled = !hasRoute;
+  if (stop) {
+    stop.disabled = !hasRoute || (!pb.playing && pb.progress <= 0);
+    stop.title = t('playback.stop');
+    stop.setAttribute('aria-label', t('playback.stop'));
+  }
   const label = $('playback-label');
-  if (label) label.textContent = t(pb.playing ? 'playback.pauseShort' : 'playback.playShort');
+  if (label) label.textContent = t(finished ? 'playback.replayShort' : pb.playing ? 'playback.pauseShort' : 'playback.playShort');
   const icon = $('playback-icon');
   if (icon) icon.setAttribute('href', `assets/icons/sprite.svg#i-${pb.playing ? 'pause' : 'play'}`);
+  const hud = $('playback-hud');
+  if (hud) {
+    hud.classList.toggle('hidden', !hasRoute || (!pb.playing && pb.progress <= 0));
+    const hudState = $('playback-hud-state');
+    if (hudState) hudState.textContent = t(pb.playing ? 'playback.playing' : finished ? 'playback.finished' : 'playback.paused');
+    const hudIcon = $('playback-hud-icon');
+    if (hudIcon) hudIcon.setAttribute('href', `assets/icons/sprite.svg#i-${pb.playing ? 'pause' : 'play'}`);
+    const hudToggle = hud.querySelector('[data-action="toggle-playback"]');
+    if (hudToggle) {
+      hudToggle.title = t(finished ? 'playback.replay' : pb.playing ? 'playback.pause' : 'playback.play');
+      hudToggle.setAttribute('aria-label', hudToggle.title);
+    }
+    const hudStop = hud.querySelector('[data-action="stop-playback"]');
+    if (hudStop) {
+      hudStop.title = t('playback.stop');
+      hudStop.setAttribute('aria-label', t('playback.stop'));
+    }
+  }
   const speed = $('playback-speed');
   if (speed) {
-    speed.title = t("hint.playbackSpeedDefault");
+    speed.title = t('hint.playbackSpeedDefault');
     if (document.activeElement !== speed) speed.value = String(pb.speed);
     updateRangeFill(speed);
   }
@@ -550,6 +578,10 @@ function resetPlayback() {
   syncPlaybackUI();
 }
 
+function stopPlayback() {
+  resetPlayback();
+}
+
 function togglePlayback() {
   if (state.playback.playing) pausePlayback();
   else startPlayback();
@@ -562,7 +594,7 @@ function bindPlayback() {
   speed.addEventListener('input', () => {
     const value = Number(speed.value);
     if (!Number.isFinite(value)) return;
-    state.playback.speed = Math.max(0.5, Math.min(4, value));
+    state.playback.speed = Math.max(0.1, Math.min(4, value));
     syncPlaybackUI();
   });
   speed.addEventListener('dblclick', (ev) => {
@@ -1168,6 +1200,38 @@ function toggleWarnList() {
   setWarnListCollapsed(!state.warnListCollapsed);
 }
 
+function syncRouteWarnCollapseButton() {
+  const btn = $('route-warn-collapse');
+  if (!btn) return;
+  const label = t(state.routeWarnCollapsed ? 'warning.expandRoute' : 'warning.collapseRoute');
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+  btn.setAttribute('aria-expanded', String(!state.routeWarnCollapsed));
+  btn.classList.toggle('is-collapsed', state.routeWarnCollapsed);
+}
+
+function setRouteWarnCollapsed(collapsed) {
+  state.routeWarnCollapsed = !!collapsed;
+  syncRouteWarnCollapseButton();
+  const el = $('route-warnings');
+  if (state.routeWarnCollapsed) {
+    if (el) {
+      el.classList.add('hidden');
+      el.classList.remove('virtual');
+      el._warnItems = [];
+      el._warnWindow = null;
+      el.innerHTML = '';
+    }
+  } else {
+    if (el) el.classList.remove('hidden');
+    renderWarnings();
+  }
+}
+
+function toggleRouteWarnList() {
+  setRouteWarnCollapsed(!state.routeWarnCollapsed);
+}
+
 function renderWarnings() {
   const trackEl = $('track-warnings');
   const routeEl = $('route-warnings');
@@ -1204,7 +1268,16 @@ function renderWarnings() {
       trackEl.classList.remove('hidden');
       empty(trackEl, t("warning.emptyTrack"));
     }
-    empty(routeEl, t("warning.emptyRoute"));
+    if (state.routeWarnCollapsed) {
+      routeEl.classList.add('hidden');
+      routeEl.classList.remove('virtual');
+      routeEl._warnItems = [];
+      routeEl._warnWindow = null;
+      routeEl.innerHTML = '';
+    } else {
+      routeEl.classList.remove('hidden');
+      empty(routeEl, t("warning.emptyRoute"));
+    }
     return;
   }
   if (state.warnListCollapsed) {
@@ -1218,6 +1291,15 @@ function renderWarnings() {
     if (all.length) renderWarnList(trackEl, all);
     else empty(trackEl, t("warning.noIssues"));
   }
+  if (state.routeWarnCollapsed) {
+    routeEl.classList.add('hidden');
+    routeEl.classList.remove('virtual');
+    routeEl._warnItems = [];
+    routeEl._warnWindow = null;
+    routeEl.innerHTML = '';
+    return;
+  }
+  routeEl.classList.remove('hidden');
   const routeOnly = (state.route && state.route.warnings) || [];
   if (routeOnly.length) {
     renderWarnList(routeEl, routeOnly);
@@ -1571,6 +1653,7 @@ function syncAll() {
   renderThemes();
   syncCpCollapseButton();
   syncWarnCollapseButton();
+  syncRouteWarnCollapseButton();
   syncCpLockButton();
   syncHistoryButtons();
   syncPlaybackUI();
@@ -2796,11 +2879,12 @@ function runAction(action) {
     case 'undo': undo(); break;
     case 'redo': redo(); break;
     case 'toggle-playback': togglePlayback(); break;
-    case 'reset-playback': resetPlayback(); break;
+    case 'stop-playback': stopPlayback(); break;
     case 'toggle-cp-lock': toggleCpLock(); break;
     case 'add-cp': toggleAddMode(); break;
     case 'toggle-cp-list': toggleCpList(); break;
     case 'toggle-warn-list': toggleWarnList(); break;
+    case 'toggle-route-warn': toggleRouteWarnList(); break;
     case 'toggle-cp': toggleCpVisible(); break;
     case 'toggle-map': toggleMapVisible(); break;
     case 'toggle-grid': toggleGrid(); break;
@@ -2973,6 +3057,7 @@ function refreshLanguage() {
   updatePreviewLabels();
   syncCpCollapseButton();
   syncWarnCollapseButton();
+  syncRouteWarnCollapseButton();
   syncRangeHelperLabels();
   syncPlaybackUI();
   renderThemes();

@@ -23,7 +23,7 @@
   <meta name="description" content="Import GTA San Andreas track JSON, route CPs along the road graph, style the map, and export PNG / SVG.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0e15'/%3E%3Cpath d='M6 23c5 0 5-14 10-14s5 12 10 12' stroke='%23f97316' stroke-width='3.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
   <noscript><div style="padding:20px;font-family:sans-serif;color:#fff;background:#0b0e15">Track Layout requires JavaScript. / 需要启用 JavaScript。</div></noscript>
@@ -90,6 +90,21 @@
         <div id="map-legend" class="map-legend hidden" data-no-i18n></div>
         <div id="map-coords" class="map-coords"></div>
         <div id="add-hint" class="add-hint hidden">点击地图放置检查点 <kbd>Esc</kbd> 取消</div>
+        <div id="playback-hud" class="playback-hud hidden" data-no-i18n>
+          <div class="playback-hud-line">
+            <span id="playback-hud-state">Playing</span>
+            <span id="playback-hud-pct">0%</span>
+          </div>
+          <div class="playback-hud-track"><span id="playback-hud-fill"></span></div>
+          <div class="playback-hud-actions">
+            <button class="playback-hud-btn" data-action="toggle-playback" title="Pause" aria-label="Pause">
+              <svg class="ico" aria-hidden="true" focusable="false"><use id="playback-hud-icon" href="assets/icons/sprite.svg#i-pause"></use></svg>
+            </button>
+            <button class="playback-hud-btn" data-action="stop-playback" title="Stop" aria-label="Stop">
+              <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-square"></use></svg>
+            </button>
+          </div>
+        </div>
 
         <div id="map-toolbar" class="map-toolbar">
           <button class="map-btn map-btn-add" data-action="add-cp" title="点击地图添加检查点" aria-pressed="false">
@@ -250,14 +265,14 @@
                 <svg class="ico" aria-hidden="true" focusable="false"><use id="playback-icon" href="assets/icons/sprite.svg#i-play"></use></svg>
                 <span id="playback-label">播放</span>
               </button>
-              <button class="btn icon-btn" data-action="reset-playback" id="playback-reset" title="重置动画" aria-label="重置动画" disabled>
-                <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-rotate-ccw"></use></svg>
+              <button class="btn icon-btn" data-action="stop-playback" id="playback-stop" title="停止动画" aria-label="停止动画" disabled>
+                <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-square"></use></svg>
               </button>
               <span id="playback-status" class="mono muted" data-no-i18n>0%</span>
             </div>
             <div class="field-block">
               <div class="field-line"><label for="playback-speed">播放速度</label><output id="playback-speed-out">1.0×</output></div>
-              <input id="playback-speed" type="range" min="0.5" max="4" step="0.1" value="1">
+              <input id="playback-speed" type="range" min="0.1" max="4" step="0.1" value="1">
             </div>
             <div class="hint">箭头动画仅用于地图预览，不影响导出画面。</div>
           </div>
@@ -265,7 +280,15 @@
           <div class="group">
             <div class="group-title">路网覆盖</div>
             <div class="coverage"><div class="coverage-bar"><span id="coverage-fill"></span></div><span id="coverage-text" data-no-i18n>–</span></div>
-            <div id="route-warnings" class="warn-list" data-no-i18n></div>
+            <div class="warn-head route-warn-head">
+              <button class="cp-collapse" id="route-warn-collapse" data-action="toggle-route-warn" aria-expanded="true" aria-controls="route-warn-body" title="折叠路段提示">
+                <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-chevron-down"></use></svg>
+              </button>
+              <div class="group-title">路段提示</div>
+            </div>
+            <div id="route-warn-body">
+              <div id="route-warnings" class="warn-list" data-no-i18n></div>
+            </div>
           </div>
 
           <div class="pane-note">路网来自 GTA SA 的 NODES0–63 车辆节点；寻路权重会避开水上与应急道路。</div>
@@ -723,11 +746,11 @@
   <input id="map-input" type="file" accept="image/*" hidden>
 
   <script src="vendor/leaflet/leaflet.js"></script>
-  <script src="js/track.js?v=20"></script>
-  <script src="js/style.js?v=20"></script>
-  <script src="js/i18n.js?v=20"></script>
-  <script src="js/mapview.js?v=20"></script>
-  <script src="js/export.js?v=20"></script>
-  <script src="js/app.js?v=20"></script>
+  <script src="js/track.js?v=21"></script>
+  <script src="js/style.js?v=21"></script>
+  <script src="js/i18n.js?v=21"></script>
+  <script src="js/mapview.js?v=21"></script>
+  <script src="js/export.js?v=21"></script>
+  <script src="js/app.js?v=21"></script>
 </body>
 </html>

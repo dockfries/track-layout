@@ -168,6 +168,14 @@
     "label.route": { en: "Route", zh: "路线" },
     "label.startFinish": { en: "Start / Finish", zh: "起点 / 终点" },
     "cp.snapDistanceLong": { en: "Snap {0} m", zh: "吸附 {0} m" },
+    "playback.playing": { en: "Playing", zh: "播放中" },
+    "playback.paused": { en: "Paused", zh: "已暂停" },
+    "playback.finished": { en: "Finished", zh: "已结束" },
+    "playback.replay": { en: "Replay route animation", zh: "重播路线动画" },
+    "playback.replayShort": { en: "Replay", zh: "重播" },
+    "playback.stop": { en: "Stop animation", zh: "停止动画" },
+    "warning.collapseRoute": { en: "Collapse route notes", zh: "折叠路段提示" },
+    "warning.expandRoute": { en: "Expand route notes", zh: "展开路段提示" },
   };
 
   const STATIC_TEXT = {
@@ -587,6 +595,10 @@
     'JSON 解析失败（第 {0} 个字符附近）：{1}':
       'JSON parse failed near character {0}: {1}',
     'JSON 解析失败：{0}': 'JSON parse failed: {0}',
+    '路段提示': 'Route notes',
+    '折叠路段提示': 'Collapse route notes',
+    '展开路段提示': 'Expand route notes',
+    '停止动画': 'Stop animation',
   };
 
   // Rich-text blocks (help dialog) keep inline <code>; keyed separately so the
