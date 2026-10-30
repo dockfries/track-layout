@@ -24,7 +24,7 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **Sample library**: the Samples menu has fuzzy search, keyboard navigation and a virtualized scrolling list, so forks can add hundreds of sample tracks without slowing the UI; the sidebar shows the first few plus an "all samples" shortcut.
 - **Autosave**: track, styles and export settings live in this browser's `localStorage` and survive reloads.
 - **Stacked toasts**: rapid actions show up to five top-center notices at once; extra notices queue and dismiss oldest-first.
-- **Shortcut reference**: press `?` or click the keyboard icon to open a grouped keyboard-shortcut dialog.
+- **Shortcut reference**: press `?` or click the keyboard icon to open a grouped keyboard-shortcut dialog. Single-key shortcuts can be disabled there; modifier shortcuts and Escape keep working.
 - **Slider helpers**: double-click a range input to restore its current theme/default value; click the numeric readout to type an exact value with min/max validation.
 - **Safe CP editing**: map marker dragging is locked by default to prevent accidental moves; press `L` or use the lock button to unlock, and undo/redo checkpoint edits (drag, coordinate input, add/delete/reorder).
 - **Responsive map**: window resizing is debounced (180 ms), then the map re-fits the current track; virtual lists and the scale bar refresh at the same time.
@@ -136,7 +136,7 @@ See [`track.schema.json`](track.schema.json) for the full JSON Schema and [`samp
 ## Routing
 
 - The road graph comes from `data/nodes.json` (extracted from `NODES0.DAT`–`NODES63.DAT`: 30,587 vehicle nodes and about 63k directed connections).
-- Each CP looks for its nearest vehicle node within the **snap radius** (80 m by default); when `z` is available, height difference adds a penalty.
+- Each CP looks for a vehicle node within the **snap radius** (80 m by default); when `z` is available, height difference adds a penalty. Snapping prefers the main road component when every CP can join it, otherwise it stays on the nearest local component so short island routes are not detoured.
 - Adjacent CPs are connected with **A\***. Edge cost = 2D length × average of the two node weights:
 
   | Node type | Weight |

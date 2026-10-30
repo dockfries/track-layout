@@ -59,8 +59,16 @@
     let h = Math.max(20, bb.maxY - bb.minY);
     const cx = (bb.minX + bb.maxX) / 2;
     const cy = (bb.minY + bb.maxY) / 2;
-    if (w / h < aspect) w = h * aspect;
-    else h = w / aspect;
+    if (scope === 'view') {
+      // "Current view" should crop to the output aspect instead of pulling in
+      // content that was outside the visible map.
+      if (w / h < aspect) h = w / aspect;
+      else w = h * aspect;
+    } else if (w / h < aspect) {
+      w = h * aspect;
+    } else {
+      h = w / aspect;
+    }
     let view = { minX: cx - w / 2, maxX: cx + w / 2, minY: cy - h / 2, maxY: cy + h / 2 };
 
     // Keep a full-track crop inside the base map when there is room for it, so
@@ -159,7 +167,7 @@
     const tctx = tmp.getContext('2d');
     tctx.imageSmoothingEnabled = true;
     tctx.imageSmoothingQuality = 'high';
-    applyCanvasFilter(tctx, style.map);
+    applyCanvasFilter(tctx, style.map, layout.k);
     tctx.drawImage(image, src.sx, src.sy, src.sw, src.sh, 0, 0, tw, th);
     tctx.filter = 'none';
 
@@ -180,9 +188,9 @@
     ctx.restore();
   }
 
-  function applyCanvasFilter(ctx, mapStyle) {
+  function applyCanvasFilter(ctx, mapStyle, blurScale = 1) {
     if (typeof ctx.filter === 'undefined') return;
-    const filter = Style.cssFilter(mapStyle);
+    const filter = Style.cssFilter(mapStyle, blurScale);
     if (filter !== 'none') ctx.filter = filter;
   }
 
@@ -666,7 +674,7 @@
     const tmp = makeCanvas(rw, rh);
     const tctx = tmp.getContext('2d');
     tctx.imageSmoothingEnabled = true;
-    applyCanvasFilter(tctx, style.map);
+    applyCanvasFilter(tctx, style.map, layout.k);
     tctx.drawImage(image, src.sx, src.sy, src.sw, src.sh, 0, 0, rw, rh);
     tctx.filter = 'none';
     if (style.map.tintOpacity > 0.001) {

@@ -22,6 +22,7 @@ const TYPES = {
 };
 
 http.createServer((req, res) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
   let pathname;
   try {
     pathname = decodeURIComponent((req.url || '/').split('?')[0]);

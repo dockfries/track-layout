@@ -314,13 +314,13 @@
     return runs;
   }
 
-  function cssFilter(mapStyle) {
+  function cssFilter(mapStyle, blurScale = 1) {
     const parts = [];
     if (mapStyle.brightness !== 1) parts.push(`brightness(${mapStyle.brightness})`);
     if (mapStyle.contrast !== 1) parts.push(`contrast(${mapStyle.contrast})`);
     if (mapStyle.saturate !== 1) parts.push(`saturate(${mapStyle.saturate})`);
     if (mapStyle.hue) parts.push(`hue-rotate(${mapStyle.hue}deg)`);
-    if (mapStyle.blur > 0) parts.push(`blur(${mapStyle.blur}px)`);
+    if (mapStyle.blur > 0) parts.push(`blur(${mapStyle.blur * blurScale}px)`);
     return parts.length ? parts.join(' ') : 'none';
   }
 

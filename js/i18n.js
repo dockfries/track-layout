@@ -614,7 +614,12 @@
     '示例列表': 'Sample list',
     '在地图中心添加检查点': 'Add a checkpoint at the map center',
     '右下角水印': 'Bottom-right watermark',
+    '完整赛道会自动留白并适配画布比例；当前地图视图会按输出比例居中裁切。':
+      'Full track pads to the canvas aspect; the current map view is center-cropped to the output aspect.',
     'GitHub 源码': 'GitHub source',
+    '启用单键快捷键': 'Enable single-key shortcuts',
+    '关闭后仍可使用 Ctrl / Cmd 组合键、Delete 和 Esc。':
+      'Ctrl / Cmd shortcuts, Delete, and Esc still work when this is off.',
     'Theme / 主题': 'Theme',
     'Sections / 分区': 'Sections',
     '倍速只改变时间轴，帧率跟随浏览器刷新率；0.1× 时箭头位移很小是正常的。':

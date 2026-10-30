@@ -3,6 +3,7 @@
 
 const APP_KEY = 'track-layout:v1';
 const THEME_KEY = 'track-layout:theme';
+const SHORTCUT_KEY = 'track-layout:shortcuts';
 const THEME_MODES = ['system', 'dark', 'light'];
 const SA_BOUNDS = { minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 };
 const CP_ROW_HEIGHT = 78;
@@ -52,6 +53,7 @@ const state = {
   selected: -1,
   addMode: false,
   cpLocked: true,
+  singleKeyShortcuts: true,
   undoStack: [],
   redoStack: [],
   playback: { playing: false, progress: 0, speed: 1, follow: true, raf: 0, lastTs: 0, path: null },
@@ -2221,12 +2223,13 @@ function buildExportOptions(overrides = {}) {
   };
 }
 
-function ensureExportReady() {
+async function ensureExportReady() {
   if (!state.track || !state.track.checkpoints.length) {
     toast(t("error.loadTrackFirst"), 'error');
     return false;
   }
   if (state.exportOpts.includeMap !== false && state.style.map.visible !== false) {
+    await MapView.ensureBaseReady();
     const map = MapView.getExportMap();
     if (!map.image || !(map.image.naturalWidth || map.image.width)) {
       toast(t("warning.baseMapMissing"), 'error');
@@ -2239,7 +2242,7 @@ function ensureExportReady() {
 }
 
 async function openPreview() {
-  if (!ensureExportReady()) return;
+  if (!(await ensureExportReady())) return;
   setSideStatus('busy', t("status.renderingPreview"));
   await nextFrame();
   try {
@@ -2309,7 +2312,7 @@ function scheduleMiniPreview(delay = 600) {
 }
 
 async function downloadPNG() {
-  if (!ensureExportReady()) return;
+  if (!(await ensureExportReady())) return;
   setSideStatus('busy', t("status.renderingPng"));
   await nextFrame();
   try {
@@ -2329,7 +2332,7 @@ async function downloadPNG() {
 }
 
 async function downloadSVG() {
-  if (!ensureExportReady()) return;
+  if (!(await ensureExportReady())) return;
   setSideStatus('busy', t("status.renderingSvg"));
   await nextFrame();
   try {
@@ -2818,6 +2821,15 @@ function bindUi() {
   });
 
   // Keyboard shortcuts
+  const singleKeyToggle = $('shortcut-single-key');
+  if (singleKeyToggle) {
+    try { state.singleKeyShortcuts = localStorage.getItem(SHORTCUT_KEY) !== 'off'; } catch { /* storage unavailable */ }
+    singleKeyToggle.checked = state.singleKeyShortcuts;
+    singleKeyToggle.addEventListener('change', () => {
+      state.singleKeyShortcuts = singleKeyToggle.checked;
+      try { localStorage.setItem(SHORTCUT_KEY, state.singleKeyShortcuts ? 'on' : 'off'); } catch { /* storage unavailable */ }
+    });
+  }
   bindRangeInteractions();
   bindPlayback();
 
@@ -2862,6 +2874,8 @@ function bindUi() {
       return;
     }
     if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    const singleKey = ev.key.length === 1;
+    if (singleKey && !state.singleKeyShortcuts) return;
     if (ev.key === '?') {
       ev.preventDefault();
       openDialog($('shortcuts-dialog'));

@@ -98,11 +98,13 @@
     if (closed && checkpoints.length > 1) {
       const first = checkpoints[0];
       const last = checkpoints[checkpoints.length - 1];
-      if (Math.hypot(first.x - last.x, first.y - last.y) < 0.01) {
+      const lastIndex = checkpoints.length - 1;
+      if (Math.hypot(first.x - last.x, first.y - last.y) < 0.01 &&
+          !warnings.some((w) => w.code === 'duplicate' && w.index === lastIndex)) {
         warnings.push({
           code: 'duplicate-start',
-          index: checkpoints.length - 1,
-          text: `CP ${checkpoints.length - 1} 与起点位置重复`,
+          index: lastIndex,
+          text: `CP ${lastIndex} 与起点位置重复`,
         });
       }
     }
@@ -149,7 +151,12 @@
       } else {
         for (const key of ['pos', 'position', 'coords', 'coord', 'point', 'p', 'location', 'loc']) {
           const v = raw[key];
-          if (Array.isArray(v)) { coords = v; break; }
+          if (Array.isArray(v) && v.length >= 2 &&
+              typeof v[0] === 'number' && typeof v[1] === 'number' &&
+              Number.isFinite(v[0]) && Number.isFinite(v[1])) {
+            coords = v;
+            break;
+          }
           if (v && typeof v === 'object' && isFiniteNumber(v.x) && isFiniteNumber(v.y)) {
             coords = v.z !== undefined ? [v.x, v.y, v.z] : [v.x, v.y];
             break;
@@ -426,10 +433,12 @@
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
     if (!Number.isFinite(maxDist) || maxDist < 0) return null;
     const { cell, cols, grid, xs, ys, zs } = graph;
-    const reach = Math.max(1, Math.ceil(maxDist / cell));
     const zLimit = Number.isFinite(maxZ) ? maxZ : Infinity;
+    const useZActual = !!useZ && Number.isFinite(z);
+    const zz = useZActual ? z : 0;
     const gx = clampInt(Math.floor((x - SA_BOUNDS.minX) / cell), 0, cols - 1);
     const gy = clampInt(Math.floor((y - SA_BOUNDS.minY) / cell), 0, cols - 1);
+    const reach = Math.min(cols, Math.max(1, Math.ceil(maxDist / cell)));
     let best = -1;
     let bestScore = Infinity;
     let bestDist = Infinity;
@@ -448,8 +457,8 @@
           const dx = xs[i] - x, dy = ys[i] - y;
           const dist = Math.hypot(dx, dy);
           if (dist > maxDist) continue;
-          const dz = useZ ? Math.abs(zs[i] - z) : 0;
-          if (useZ && dz > zLimit) continue;
+          const dz = useZActual ? Math.abs(zs[i] - zz) : 0;
+          if (useZActual && dz > zLimit) continue;
           const score = dist + dz * 0.65;
           if (score < bestScore) {
             bestScore = score;
@@ -590,7 +599,7 @@
 
   // Ramer–Douglas–Peucker on x/y, keeping z of the surviving points.
   function simplify(points, tolerance) {
-    if (points.length <= 2 || tolerance <= 0) return points.slice();
+    if (points.length <= 2 || !Number.isFinite(tolerance) || tolerance <= 0) return points.slice();
     const sq = tolerance * tolerance;
     const keep = new Uint8Array(points.length);
     keep[0] = keep[points.length - 1] = 1;
@@ -627,9 +636,11 @@
 
   // Chaikin corner cutting. Endpoints stay put for open paths.
   function chaikin(points, iterations, closed) {
-    if (points.length < 3 || iterations <= 0) return points.slice();
+    const passes = Number(iterations);
+    if (points.length < 3 || !Number.isFinite(passes) || passes <= 0) return points.slice();
+    const n = Math.min(8, Math.floor(passes));
     let src = points;
-    for (let pass = 0; pass < iterations; pass++) {
+    for (let pass = 0; pass < n; pass++) {
       const out = [];
       if (!closed) out.push(src[0]);
       const count = closed ? src.length : src.length - 1;

@@ -26,6 +26,7 @@
   let coordsTimer = 0;
   let playbackMarker = null;
   let baseLoadToken = 0;
+  let baseReady = Promise.resolve(null);
 
   const state = {
     track: null,
@@ -141,9 +142,9 @@
     map.on('dragstart', hideCoords);
     map.getContainer().addEventListener('pointerleave', hideCoords);
     map.on('zoomend', () => {
-      // Arrow suppression is measured in screen pixels, so refresh it when
-      // the zoom level changes.
-      rebuildRoute();
+      // Arrow suppression is measured in screen pixels, so refresh only the
+      // arrow layer when the zoom level changes.
+      rebuildArrows();
     });
 
     const wrap = document.getElementById('map');
@@ -165,7 +166,7 @@
     applyBaseStyle();
     rebuildGrid();
 
-    return new Promise((resolve) => {
+    const promise = new Promise((resolve) => {
       let done = false;
       const finish = () => {
         if (done) return;
@@ -195,6 +196,8 @@
       }
       setTimeout(finish, 2500);
     });
+    baseReady = promise;
+    return promise;
   }
 
   function normalizeBounds(b) {
@@ -253,12 +256,14 @@
   }
 
   function rebuildRoute() {
-    if (!routeGroup || !arrowGroup || !state.style) return;
+    if (!routeGroup || !state.style) return;
     routeGroup.clearLayers();
-    arrowGroup.clearLayers();
     const route = state.route;
     const style = state.style;
-    if (!route || !route.points || route.points.length < 2) return;
+    if (!route || !route.points || route.points.length < 2) {
+      rebuildArrows();
+      return;
+    }
     const r = style.route;
     const latlngs = route.points.map((p) => [p.y, p.x]);
     const dash = r.dash > 0.1 ? `${r.dash} ${r.dash * 0.8}` : null;
@@ -312,44 +317,51 @@
         smoothFactor: 0.4,
       }));
     }
+    rebuildArrows();
+  }
 
-    if (r.arrows) {
-      const arrows = Track.sampleArrows(route.points, Math.max(20, r.arrowGap), false);
-      const size = clamp(r.width * 2.3, 7, 22) * r.arrowSize;
-      const cps = (style.cp.visible === false ? [] : (state.track ? state.track.checkpoints : []))
-        .map((cp) => map.latLngToContainerPoint([cp.y, cp.x]));
-      const safe = Math.max(12, style.cp.size * 1.15);
-      for (const arrow of arrows) {
-        const arrowPt = map.latLngToContainerPoint([arrow.y, arrow.x]);
-        let near = false;
-        for (const cp of cps) {
-          if ((cp.x - arrowPt.x) ** 2 + (cp.y - arrowPt.y) ** 2 < safe * safe) { near = true; break; }
-        }
-        if (near) continue;
-        const deg = -arrow.angle * 180 / Math.PI;
-        // The icon box must be larger than the arrow path: the path extends
-        // 0.7×size forward and 0.62×size sideways from its centre. A tight
-        // viewBox clipped the tip and rear corners, especially when rotated.
-        const box = Math.ceil(size * 1.9);
-        const center = box / 2;
-        const shape = `M ${(size * 0.7).toFixed(2)} 0 L ${(-size * 0.55).toFixed(2)} ${(size * 0.62).toFixed(2)} L ${(-size * 0.18).toFixed(2)} 0 L ${(-size * 0.55).toFixed(2)} ${(-size * 0.62).toFixed(2)} Z`;
-        const stroke = r.arrowOutline && r.arrowOutline !== 'transparent'
-          ? ` stroke="${r.arrowOutline}" stroke-width="0.9"` : '';
-        const html = `<svg width="${box}" height="${box}" viewBox="0 0 ${box} ${box}" xmlns="http://www.w3.org/2000/svg">` +
-          `<g transform="translate(${center} ${center}) rotate(${deg.toFixed(1)})"><path d="${shape}" fill="${r.arrowColor}"${stroke}/></g></svg>`;
-        const icon = L.divIcon({
-          className: 'tl-arrow',
-          html,
-          iconSize: [box, box],
-          iconAnchor: [center, center],
-        });
-        arrowGroup.addLayer(L.marker([arrow.y, arrow.x], {
-          icon,
-          interactive: false,
-          keyboard: false,
-          pane: 'markerPane',
-        }));
+  function rebuildArrows() {
+    if (!arrowGroup || !state.style) return;
+    arrowGroup.clearLayers();
+    const route = state.route;
+    const style = state.style;
+    const r = style.route;
+    if (!route || !route.points || route.points.length < 2 || !r.arrows) return;
+    const arrows = Track.sampleArrows(route.points, Math.max(20, r.arrowGap), false);
+    const size = clamp(r.width * 2.3, 7, 22) * r.arrowSize;
+    const cps = (style.cp.visible === false ? [] : (state.track ? state.track.checkpoints : []))
+      .map((cp) => map.latLngToContainerPoint([cp.y, cp.x]));
+    const safe = Math.max(12, style.cp.size * 1.15);
+    for (const arrow of arrows) {
+      const arrowPt = map.latLngToContainerPoint([arrow.y, arrow.x]);
+      let near = false;
+      for (const cp of cps) {
+        if ((cp.x - arrowPt.x) ** 2 + (cp.y - arrowPt.y) ** 2 < safe * safe) { near = true; break; }
       }
+      if (near) continue;
+      const deg = -arrow.angle * 180 / Math.PI;
+      // The icon box must be larger than the arrow path: the path extends
+      // 0.7×size forward and 0.62×size sideways from its centre. A tight
+      // viewBox clipped the tip and rear corners, especially when rotated.
+      const box = Math.ceil(size * 1.9);
+      const center = box / 2;
+      const shape = `M ${(size * 0.7).toFixed(2)} 0 L ${(-size * 0.55).toFixed(2)} ${(size * 0.62).toFixed(2)} L ${(-size * 0.18).toFixed(2)} 0 L ${(-size * 0.55).toFixed(2)} ${(-size * 0.62).toFixed(2)} Z`;
+      const stroke = r.arrowOutline && r.arrowOutline !== 'transparent'
+        ? ` stroke="${r.arrowOutline}" stroke-width="0.9"` : '';
+      const html = `<svg width="${box}" height="${box}" viewBox="0 0 ${box} ${box}" xmlns="http://www.w3.org/2000/svg">` +
+        `<g transform="translate(${center} ${center}) rotate(${deg.toFixed(1)})"><path d="${shape}" fill="${r.arrowColor}"${stroke}/></g></svg>`;
+      const icon = L.divIcon({
+        className: 'tl-arrow',
+        html,
+        iconSize: [box, box],
+        iconAnchor: [center, center],
+      });
+      arrowGroup.addLayer(L.marker([arrow.y, arrow.x], {
+        icon,
+        interactive: false,
+        keyboard: false,
+        pane: 'markerPane',
+      }));
     }
   }
 
@@ -627,6 +639,7 @@
     init, setBaseMap, setData, setRouteOnly, setStyleOnly, setSelected,
     fitRoute, fitBase, focusCp, setAddMode, setCpLocked, getExportMap, getViewBounds,
     setPlaybackMarker, clearPlaybackMarker, centerOn,
+    ensureBaseReady: () => baseReady,
     refreshOverlays: updateOverlays, getZoom, map: () => map,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

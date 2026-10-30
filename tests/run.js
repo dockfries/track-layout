@@ -75,6 +75,9 @@ test('top-level array and aliases', () => {
   const c = T.parseTrack(JSON.stringify({ track: { title: 'Wrapped', points: [{ x: 7, y: 8 }] } }), 'c.json');
   assert.strictEqual(c.name, 'Wrapped');
   assert.strictEqual(c.checkpoints.length, 1);
+  const alias = T.parseTrack(JSON.stringify({ checkpoints: [{ pos: [], position: [1, 2] }] }), 'alias.json');
+  assert.strictEqual(alias.checkpoints[0].x, 1);
+  assert.strictEqual(alias.checkpoints[0].y, 2);
 });
 
 test('closed roles', () => {
@@ -173,6 +176,9 @@ test('chaikin preserves endpoints and produces finite points', () => {
   assert.deepStrictEqual(out[0], pts[0]);
   assert.deepStrictEqual(out[out.length - 1], pts[pts.length - 1]);
   assert.ok(out.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y)));
+  const capped = T.chaikin(pts, Infinity, false);
+  assert.ok(capped.length < 100000, 'infinite iterations should be bounded');
+  assert.ok(capped.every((p) => Number.isFinite(p.z)));
 });
 
 test('catmull-rom open and closed', () => {
@@ -262,6 +268,17 @@ test('excluded map does not clamp the export view to map bounds', () => {
   assert.ok(Math.abs(withMap.maxX - withoutMap.maxX) > 1, 'framing should differ when map is excluded');
 });
 
+test('current-view scope crops to the output aspect', () => {
+  const view = E.computeView({
+    width: 1000,
+    height: 1000,
+    scope: 'view',
+    currentBounds: { minX: 0, maxX: 1600, minY: 0, maxY: 900 },
+  });
+  assert.ok(view.maxX - view.minX <= 1600);
+  approx((view.maxX - view.minX) / (view.maxY - view.minY), 1, 1e-9);
+});
+
 console.log('road graph');
 const raw = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/nodes.json'), 'utf8'));
 const graph = T.buildGraph(raw);
@@ -297,6 +314,10 @@ test('nearest node and A*', () => {
   const snap = graph.nearest(-2427.6, -2474.8, 35.8, 50, true);
   assert.ok(snap, 'no nearest node');
   assert.ok(snap.dist < 10, `snap distance ${snap.dist}`);
+  const huge = graph.nearest(-2427.6, -2474.8, 0, 1e9, false);
+  assert.ok(huge, 'huge finite radius should still terminate');
+  const noZ = graph.nearest(2287.4, -1605.9, NaN, 100, true);
+  assert.ok(noZ, 'invalid z should not poison the nearest query');
   const a = graph.nearest(2287.4, -1605.9, 0, 100, false);
   const b = graph.nearest(1617.6, -1205.8, 0, 100, false);
   const route = graph.routeNodes(a.index, b.index);

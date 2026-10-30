@@ -13,6 +13,7 @@
   --muted2: #7b879c;
   --accent: #f97316;
   --accent-2: #fb923c;
+  --accent-strong: #c2410c;
   --accent-dim: rgba(249, 115, 22, 0.14);
   --green: #34d399;
   --red: #f43f5e;
@@ -90,6 +91,7 @@
   --muted2: #647184;
   --accent: #ea580c;
   --accent-2: #c2410c;
+  --accent-strong: #9a3412;
   --accent-dim: rgba(234, 88, 12, 0.10);
   --green: #047857;
   --red: #dc2626;
@@ -229,15 +231,15 @@ html.i18n-pending #ui { visibility: hidden; }
 .btn:hover { background: var(--surface3); border-color: var(--border-strong); }
 .btn:active { transform: translateY(1px); }
 .btn.primary {
-  background: linear-gradient(180deg, #fb923c, #f97316);
+  background: linear-gradient(180deg, var(--accent-strong), #9a3412);
   border-color: #fdba74;
   color: #fff;
   font-weight: 700;
   text-shadow: 0 1px 2px rgba(80, 28, 0, .3);
-  box-shadow: 0 4px 16px rgba(249,115,22,.22);
+  box-shadow: 0 4px 16px rgba(154, 52, 18, .28);
 }
 .btn.primary .ico { filter: drop-shadow(0 1px 1px rgba(80, 28, 0, .3)); }
-.btn.primary:hover { background: linear-gradient(180deg, #fdba74, #fb923c); }
+.btn.primary:hover { background: linear-gradient(180deg, #b45309, var(--accent-strong)); }
 .btn.small { min-height: 26px; padding: 0 9px; font-size: 11.5px; border-radius: 6px; }
 .btn.icon-btn { min-width: 34px; padding: 0 9px; font-size: 14px; }
 .btn:disabled { opacity: .38; cursor: default; pointer-events: none; }
@@ -483,7 +485,7 @@ html.i18n-pending #ui { visibility: hidden; }
   box-shadow: var(--map-control-shadow, 0 6px 18px rgba(0,0,0,.28));
 }
 .map-btn:hover { border-color: var(--accent); color: var(--accent-2); }
-.map-btn.active { background: var(--accent); color: #fff; border-color: var(--accent-2); }
+.map-btn.active { background: var(--accent-strong); color: #fff; border-color: var(--accent-2); }
 .map-btn.active .ico { filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
 .map-btn .ico { width: 16px; height: 16px; }
 .map-btn-add { font-size: 9.5px; font-weight: 750; letter-spacing: .02em; }
@@ -497,7 +499,7 @@ html.i18n-pending #ui { visibility: hidden; }
   pointer-events: none;
   padding: 7px 13px;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--accent-strong);
   color: #fff;
   font-size: 12px;
   font-weight: 650;
