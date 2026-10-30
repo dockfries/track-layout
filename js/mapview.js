@@ -24,6 +24,7 @@
   let arrowGroup = null;
   let cpGroup = null;
   let handlers = {};
+  let coordsTimer = 0;
 
   const state = {
     track: null,
@@ -35,6 +36,12 @@
   };
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+  function hideCoords() {
+    clearTimeout(coordsTimer);
+    const el = document.getElementById('map-coords');
+    if (el) el.classList.remove('is-visible');
+  }
 
   function init(opts) {
     handlers = opts || {};
@@ -84,12 +91,15 @@
     });
     map.on('mousemove', (e) => {
       const el = document.getElementById('map-coords');
-      if (el) el.textContent = `x ${e.latlng.lng.toFixed(1)}  ·  y ${e.latlng.lat.toFixed(1)}`;
+      if (!el) return;
+      el.textContent = `x ${e.latlng.lng.toFixed(1)}  ·  y ${e.latlng.lat.toFixed(1)}`;
+      el.classList.add('is-visible');
+      clearTimeout(coordsTimer);
+      coordsTimer = setTimeout(hideCoords, 1500);
     });
-    map.on('mouseout', () => {
-      const el = document.getElementById('map-coords');
-      if (el) el.textContent = '';
-    });
+    map.on('mouseout', hideCoords);
+    map.on('dragstart', hideCoords);
+    map.getContainer().addEventListener('pointerleave', hideCoords);
     map.on('zoomend', () => {
       // Arrow size is fixed in screen pixels; nothing to redraw, but keep the
       // coordinate readout meaningful after a zoom.
