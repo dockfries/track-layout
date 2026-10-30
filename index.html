@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en" class="i18n-pending" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0c12">
+  <script>
+    (function () {
+      try {
+        var key = 'track-layout:theme';
+        var saved = localStorage.getItem(key);
+        var mode = saved === 'dark' || saved === 'light' || saved === 'system' ? saved : 'system';
+        var dark = mode === 'dark' || (mode === 'system' && !(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches));
+        var theme = dark ? 'dark' : 'light';
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.content = theme === 'light' ? '#f2f4f8' : '#0a0c12';
+      } catch (e) { /* keep the dark default */ }
+    })();
+  </script>
+  <title>Track Layout · Race Route Studio</title>
+  <meta name="description" content="Import GTA San Andreas track JSON, route CPs along the road graph, style the map, and export PNG / SVG.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0e15'/%3E%3Cpath d='M6 23c5 0 5-14 10-14s5 12 10 12' stroke='%23f97316' stroke-width='3.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="style.css?v=4">
+</head>
+<body>
+  <noscript><div style="padding:20px;font-family:sans-serif;color:#fff;background:#0b0e15">Track Layout requires JavaScript. / 需要启用 JavaScript。</div></noscript>
+  <div id="ui">
+    <header class="topbar">
+      <div class="brand">
+        <svg class="brand-mark" width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+          <path d="M3 16.5C6 16.5 6.5 6 10.5 6S14.5 15 18.5 15" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <circle cx="3" cy="16.5" r="2.2" fill="currentColor"/>
+          <circle cx="18.5" cy="15" r="2.2" fill="currentColor"/>
+        </svg>
+        <div class="brand-text">
+          <span class="brand-title">Track Layout</span>
+          <span class="brand-sub">赛道路线图工作台</span>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="btn" data-action="open-json">
+          <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-folder-open"></use></svg>
+          打开 JSON
+        </button>
+        <details class="menu" id="samples-menu">
+          <summary class="btn">
+            <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-layout-grid"></use></svg>
+            示例 <span class="caret"><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-chevron-down"></use></svg></span>
+          </summary>
+          <div class="menu-panel" id="sample-menu" data-no-i18n><div class="menu-loading">载入中…</div></div>
+        </details>
+        <div class="separator"></div>
+        <button class="btn icon-btn" data-action="fit" title="适配赛道 (F)">
+          <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-maximize"></use></svg>
+        </button>
+        <select id="lang-select" class="lang-select" title="Language / 语言" aria-label="Language / 语言" data-no-i18n>
+          <option value="en">EN</option>
+          <option value="zh">中文</option>
+        </select>
+        <select id="theme-select" class="lang-select theme-select" title="Theme / 主题" aria-label="Theme / 主题">
+          <option value="system">跟随系统</option>
+          <option value="dark">深色</option>
+          <option value="light">浅色</option>
+        </select>
+        <button class="btn icon-btn" data-action="help" title="赛道 JSON 格式">
+          <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-circle-help"></use></svg>
+        </button>
+      </div>
+    </header>
+
+    <main id="workspace">
+      <div id="map-wrap">
+        <div id="map"></div>
+
+        <div id="map-title" class="map-title hidden" data-no-i18n></div>
+        <div id="map-legend" class="map-legend hidden" data-no-i18n></div>
+        <div id="map-coords" class="map-coords"></div>
+        <div id="add-hint" class="add-hint hidden">点击地图放置检查点 <kbd>Esc</kbd> 取消</div>
+
+        <div id="map-toolbar" class="map-toolbar">
+          <button class="map-btn map-btn-add" data-action="add-cp" title="点击地图添加检查点" aria-pressed="false">
+            <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-map-pin-plus"></use></svg>
+          </button>
+          <button class="map-btn" data-action="toggle-cp" title="显示 / 隐藏检查点 (C)" aria-pressed="true">
+            <svg class="ico" aria-hidden="true" focusable="false"><use id="cp-visibility-use" href="assets/icons/sprite.svg#i-eye"></use></svg>
+          </button>
+          <button class="map-btn" data-action="fit" title="适配赛道 (F)">
+            <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-maximize"></use></svg>
+          </button>
+          <button class="map-btn" data-action="toggle-map" title="显示 / 隐藏底图 (M)" aria-pressed="true">
+            <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-map"></use></svg>
+          </button>
+          <button class="map-btn" data-action="toggle-grid" title="显示 / 隐藏网格 (G)" aria-pressed="false">
+            <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-grid-3x3"></use></svg>
+          </button>
+        </div>
+
+        <div id="empty-state" class="empty-state">
+          <div class="empty-card">
+            <div class="empty-kicker">TRACK LAYOUT</div>
+            <h1>把 CP 点变成一张赛道路线图</h1>
+            <p>拖入赛道 JSON，工具会沿 San Andreas 路网自动寻路，按你的风格渲染，并导出 PNG / SVG。</p>
+            <div class="empty-actions">
+              <button class="btn primary" data-action="open-json">
+                <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-folder-open"></use></svg>
+                打开赛道 JSON
+              </button>
+              <button class="btn" data-action="load-sample" data-sample="los-santos-loop">
+                <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-sparkles"></use></svg>
+                载入示例
+              </button>
+            </div>
+            <div class="empty-hint">格式：<code>{ "checkpoints": [{ "x": 0, "y": 0, "z": 0 }] }</code> · <button class="link-btn" data-action="help">查看说明</button></div>
+          </div>
+        </div>
+      </div>
+
+      <aside id="side">
+        <nav class="tabs" id="tabs" role="tablist" aria-label="Sections / 分区">
+          <button class="tab active" data-tab="track" id="tab-track" role="tab" aria-selected="true" aria-controls="pane-track"><span class="tab-ico"><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-map-pin"></use></svg></span>赛道</button>
+          <button class="tab" data-tab="route" id="tab-route" role="tab" aria-selected="false" aria-controls="pane-route" tabindex="-1"><span class="tab-ico"><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-route"></use></svg></span>路线</button>
+          <button class="tab" data-tab="style" id="tab-style" role="tab" aria-selected="false" aria-controls="pane-style" tabindex="-1"><span class="tab-ico"><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-palette"></use></svg></span>样式</button>
+          <button class="tab" data-tab="export" id="tab-export" role="tab" aria-selected="false" aria-controls="pane-export" tabindex="-1"><span class="tab-ico"><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-image-down"></use></svg></span>导出</button>
+        </nav>
+
+        <!-- 赛道 -->
+        <section class="pane active" data-pane="track" id="pane-track" role="tabpanel" aria-labelledby="tab-track">
+          <div class="pane-head">
+            <div>
+              <h2>赛道</h2>
+              <p class="pane-sub">上传 JSON，按顺序连接检查点</p>
+            </div>
+            <span id="net-status" class="chip chip-muted" data-no-i18n>路网载入中…</span>
+          </div>
+
+          <div class="meta-grid">
+            <label class="field"><span>赛道名称</span><input id="track-name" class="text" type="text" placeholder="未命名赛道" spellcheck="false"></label>
+            <label class="field"><span>作者</span><input id="track-author" class="text" type="text" placeholder="可选" spellcheck="false"></label>
+          </div>
+
+          <div class="row row-tight">
+            <button class="btn primary" data-action="open-json">打开 JSON</button>
+            <button class="btn" data-action="save-json">保存 JSON</button>
+            <button class="btn" data-action="new-track">新建</button>
+            <button class="btn" data-action="help">格式说明</button>
+          </div>
+
+          <div class="group">
+            <div class="group-title">示例赛道</div>
+            <div id="sample-chips" class="chips" data-no-i18n><span class="muted">载入中…</span></div>
+          </div>
+
+          <div class="summary-grid" id="track-summary" data-no-i18n></div>
+
+          <div class="group cp-group">
+            <div class="cp-head">
+              <div class="group-title">检查点 <span id="cp-count" class="count">0</span></div>
+              <button class="btn small" data-action="add-cp" id="btn-add-cp">
+                <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-map-pin-plus"></use></svg>
+                地图添加
+              </button>
+            </div>
+            <div id="cp-list" class="cp-list" data-no-i18n></div>
+            <div class="hint">首点为起点，末点为终点。拖动地图上的编号可微调位置，↑↓ 调整顺序；点击侧栏中的检查点行可在地图上高亮。</div>
+          </div>
+
+          <div class="group">
+            <div class="group-title">提示</div>
+            <div id="track-warnings" class="warn-list" data-no-i18n></div>
+          </div>
+
+          <div class="pane-note">自动保存在本浏览器 · 赛道数据不会上传</div>
+        </section>
+
+        <!-- 路线 -->
+        <section class="pane" data-pane="route" id="pane-route" role="tabpanel" aria-labelledby="tab-route">
+          <div class="pane-head">
+            <div>
+              <h2>路线</h2>
+              <p class="pane-sub">从 CP 自动生成可驾驶路径</p>
+            </div>
+            <span id="route-mode-chip" class="chip chip-muted" data-no-i18n>–</span>
+          </div>
+
+          <div class="group">
+            <div class="group-title">计算方式</div>
+            <div class="seg seg-4" data-bind="routing.mode">
+              <button data-value="auto" class="active">自动</button>
+              <button data-value="road">路网</button>
+              <button data-value="spline">平滑</button>
+              <button data-value="straight">直线</button>
+            </div>
+            <div class="hint" id="mode-hint" data-no-i18n>自动：优先全程走 A*；无法全程吸附时尽量沿路网连接，缺口用直线补齐。</div>
+          </div>
+
+          <div class="group">
+            <div class="group-title">路线参数</div>
+            <div class="field-line"><label for="snap-radius">路网吸附半径</label><output data-out="routing.snapRadius">80 m</output></div>
+            <input id="snap-radius" type="range" min="20" max="200" step="5" data-bind="routing.snapRadius">
+            <div class="field-line"><label for="smooth-value">平滑度</label><output data-out="routing.smooth">45</output></div>
+            <input id="smooth-value" type="range" min="0" max="100" step="1" data-bind="routing.smooth">
+            <label class="toggle"><input id="closed-toggle" type="checkbox" data-bind="routing.closed"> 闭环赛道（末点回到起点）</label>
+            <div class="row">
+              <button class="btn" data-action="recalc">重新计算</button>
+              <span id="route-time" class="mono muted" data-no-i18n></span>
+            </div>
+          </div>
+
+          <div class="stats" id="route-stats" data-no-i18n></div>
+
+          <div class="group">
+            <div class="group-title">路网覆盖</div>
+            <div class="coverage"><div class="coverage-bar"><span id="coverage-fill"></span></div><span id="coverage-text" data-no-i18n>–</span></div>
+            <div id="route-warnings" class="warn-list" data-no-i18n></div>
+          </div>
+
+          <div class="pane-note">路网来自 GTA SA 的 NODES0–63 车辆节点；寻路权重会避开水上与应急道路。</div>
+        </section>
+
+        <!-- 样式 -->
+        <section class="pane" data-pane="style" id="pane-style" role="tabpanel" aria-labelledby="tab-style">
+          <div class="pane-head">
+            <div>
+              <h2>样式</h2>
+              <p class="pane-sub">路线、检查点与底图的视觉风格</p>
+            </div>
+            <button class="btn small" data-action="reset-style">重置</button>
+          </div>
+
+          <div class="group">
+            <div class="group-title">主题预设</div>
+            <div id="theme-grid" class="theme-grid" data-no-i18n></div>
+          </div>
+
+          <details class="section" open>
+            <summary><span>路线</span><span class="chev"><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-chevron-down"></use></svg></span></summary>
+            <div class="section-body">
+              <div class="field-block">
+                <div class="field-line"><label>渐变方式</label></div>
+                <div class="seg seg-4" data-bind="style.route.paint">
+                  <button data-value="solid">纯色</button>
+                  <button data-value="along">沿线</button>
+                  <button data-value="linear">线性</button>
+                  <button data-value="elevation">高程</button>
+                </div>
+              </div>
+              <div class="color-grid">
+                <label class="color-field"><span>主色</span><span class="color-input"><input type="color" data-style="route.color"><em data-hex="route.color">#ff2d75</em></span></label>
+                <label class="color-field" data-when="route-color2"><span>渐变终点色</span><span class="color-input"><input type="color" data-style="route.color2"><em data-hex="route.color2">#22d3ee</em></span></label>
+              </div>
+              <div class="field-block" data-when="route-angle">
+                <div class="field-line"><label>线性渐变角度</label><output data-out="style.route.angle">45°</output></div>
+                <input type="range" min="0" max="360" step="1" data-style="route.angle">
+              </div>
+              <div class="field-block">
+                <div class="field-line"><label>线宽</label><output data-out="style.route.width">5</output></div>
+                <input type="range" min="1" max="18" step="0.5" data-style="route.width">
+              </div>
+              <div class="field-block">
+                <div class="field-line"><label>不透明度</label><output data-out="style.route.opacity">100%</output></div>
+                <input type="range" min="0.1" max="1" step="0.01" data-style="route.opacity">
+              </div>
+              <label class="toggle"><input type="checkbox" data-style="route.outline"> 描边 / 边框</label>
+              <div data-when="route-outline">
+                <div class="color-grid">
+                  <label class="color-field"><span>描边颜色</span><span class="color-input"><input type="color" data-style="route.outlineColor"><em data-hex="route.outlineColor">#04060d</em></span></label>
+                </div>
+                <div class="field-block">
+                  <div class="field-line"><label>描边宽度</label><output data-out="style.route.outlineWidth">3</output></div>
+                  <input type="range" min="0.5" max="8" step="0.5" data-style="route.outlineWidth">
+                </div>
+              </div>
+              <label class="toggle"><input type="checkbox" data-style="route.glow"> 辉光</label>
+              <div data-when="route-glow">
+                <div class="color-grid">
+                  <label class="color-field"><span>辉光颜色</span><span class="color-input"><input type="color" data-style="route.glowColor"><em data-hex="route.glowColor">#ff2d75</em></span></label>
+                </div>
+                <div class="field-block">
+                  <div class="field-line"><label>辉光范围</label><output data-out="style.route.glowSize">18</output></div>
+                  <input type="range" min="0" max="48" step="1" data-style="route.glowSize">
+                </div>
+              </div>
+              <div class="field-block">
+                <div class="field-line"><label>虚线</label><output data-out="style.route.dash">0</output></div>
+                <input type="range" min="0" max="30" step="1" data-style="route.dash">
+              </div>
+              <label class="toggle"><input type="checkbox" data-style="route.arrows"> 方向箭头</label>
+              <div data-when="route-arrows">
+                <div class="field-block">
+                  <div class="field-line"><label>箭头间距</label><output data-out="style.route.arrowGap">260 m</output></div>
+                  <input type="range" min="80" max="800" step="20" data-style="route.arrowGap">
+                </div>
+                <div class="field-block">
+                  <div class="field-line"><label>箭头大小</label><output data-out="style.route.arrowSize">1.0×</output></div>
+                  <input type="range" min="0.5" max="1.8" step="0.1" data-style="route.arrowSize">
+                </div>
+                <div class="color-grid">
+                  <label class="color-field"><span>箭头颜色</span><span class="color-input"><input type="color" data-style="route.arrowColor"><em data-hex="route.arrowColor">#ffffff</em></span></label>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details class="section">
+            <summary><span>检查点</span><span class="chev"><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-chevron-down"></use></svg></span></summary>
+            <div class="section-body">
+              <label class="toggle"><input type="checkbox" data-style="cp.visible"> 显示检查点</label>
+              <div class="field-block">
+                <div class="field-line"><label>形状</label></div>
+                <div class="seg seg-3" data-bind="style.cp.shape">
+                  <button data-value="circle">圆形</button>
+                  <button data-value="square">方形</button>
+                  <button data-value="diamond">菱形</button>
+                </div>
+              </div>
+              <div class="field-block">
+                <div class="field-line"><label>大小</label><output data-out="style.cp.size">22</output></div>
+                <input type="range" min="12" max="44" step="1" data-style="cp.size">
+              </div>
+              <div class="color-grid">
+                <label class="color-field"><span>填充</span><span class="color-input"><input type="color" data-style="cp.fill"><em data-hex="cp.fill">#070b14</em></span></label>
+                <label class="color-field"><span>边框</span><span class="color-input"><input type="color" data-style="cp.border"><em data-hex="cp.border">#ffffff</em></span></label>
+                <label class="color-field"><span>数字</span><span class="color-input"><input type="color" data-style="cp.textColor"><em data-hex="cp.textColor">#ffffff</em></span></label>
+                <label class="color-field"><span>起点</span><span class="color-input"><input type="color" data-style="cp.startColor"><em data-hex="cp.startColor">#22c55e</em></span></label>
+                <label class="color-field"><span>终点</span><span class="color-input"><input type="color" data-style="cp.finishColor"><em data-hex="cp.finishColor">#ff2d75</em></span></label>
+              </div>
+              <div class="field-block">
+                <div class="field-line"><label>边框粗细</label><output data-out="style.cp.borderWidth">2.5</output></div>
+                <input type="range" min="0.5" max="6" step="0.5" data-style="cp.borderWidth">
+              </div>
+              <label class="toggle"><input type="checkbox" data-style="cp.showNumbers"> 显示编号</label>
+              <label class="toggle"><input type="checkbox" data-style="cp.showLabels"> 显示名称</label>
+              <div data-when="cp-labels">
+                <div class="color-grid">
+                  <label class="color-field"><span>名称颜色</span><span class="color-input"><input type="color" data-style="cp.labelColor"><em data-hex="cp.labelColor">#ffffff</em></span></label>
+                </div>
+              </div>
+              <label class="toggle"><input type="checkbox" data-style="cp.halo"> 外圈光晕</label>
+              <div data-when="cp-halo">
+                <div class="color-grid">
+                  <label class="color-field"><span>光晕颜色</span><span class="color-input"><input type="color" data-style="cp.haloColor"><em data-hex="cp.haloColor">#ffffff</em></span></label>
+                </div>
+                <div class="field-block">
+                  <div class="field-line"><label>光晕强度</label><output data-out="style.cp.haloOpacity">16%</output></div>
+                  <input type="range" min="0" max="0.6" step="0.01" data-style="cp.haloOpacity">
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details class="section">
+            <summary><span>底图</span><span class="chev"><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-chevron-down"></use></svg></span></summary>
+            <div class="section-body">
+              <div class="field-block">
+                <div class="field-line"><label>底图来源</label></div>
+                <div class="seg seg-2" data-bind="style.map.source">
+                  <button data-value="builtin">内置 SA 地图</button>
+                  <button data-value="custom">自定义图片</button>
+                </div>
+              </div>
+              <div data-when="map-custom">
+                <div class="row">
+                  <button class="btn" data-action="upload-map">
+                    <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-image-plus"></use></svg>
+                    选择图片…
+                  </button>
+                  <span id="custom-map-name" class="muted small" data-no-i18n>未选择</span>
+                </div>
+                <div class="bounds-grid">
+                  <label class="field"><span>min X</span><input id="base-minx" class="num" type="number" step="1" value="-3000"></label>
+                  <label class="field"><span>max X</span><input id="base-maxx" class="num" type="number" step="1" value="3000"></label>
+                  <label class="field"><span>min Y</span><input id="base-miny" class="num" type="number" step="1" value="-3000"></label>
+                  <label class="field"><span>max Y</span><input id="base-maxy" class="num" type="number" step="1" value="3000"></label>
+                </div>
+                <div class="row"><button class="btn small" data-action="apply-bounds">应用范围</button></div>
+                <div class="hint">自定义底图用于其他游戏或自制地图；路网寻路仍使用 GTA SA 坐标系。刷新后需重新选择图片。</div>
+              </div>
+              <label class="toggle"><input type="checkbox" data-style="map.visible"> 显示底图</label>
+              <div class="field-block">
+                <div class="field-line"><label>底图透明度</label><output data-out="style.map.opacity">100%</output></div>
+                <input type="range" min="0" max="1" step="0.01" data-style="map.opacity">
+              </div>
+              <div class="field-block">
+                <div class="field-line"><label>亮度</label><output data-out="style.map.brightness">0.55</output></div>
+                <input type="range" min="0.2" max="1.6" step="0.01" data-style="map.brightness">
+              </div>
+              <div class="field-block">
+                <div class="field-line"><label>对比度</label><output data-out="style.map.contrast">1.08</output></div>
+                <input type="range" min="0.5" max="1.8" step="0.01" data-style="map.contrast">
+              </div>
+              <div class="field-block">
+                <div class="field-line"><label>饱和度</label><output data-out="style.map.saturate">0.50</output></div>
+                <input type="range" min="0" max="1.8" step="0.01" data-style="map.saturate">
+              </div>
+              <div class="field-block">
+                <div class="field-line"><label>色相偏移</label><output data-out="style.map.hue">0°</output></div>
+                <input type="range" min="-180" max="180" step="1" data-style="map.hue">
+              </div>
+              <div class="field-block">
+                <div class="field-line"><label>模糊</label><output data-out="style.map.blur">0</output></div>
+                <input type="range" min="0" max="8" step="0.5" data-style="map.blur">
+              </div>
+              <div class="color-grid">
+                <label class="color-field"><span>染色</span><span class="color-input"><input type="color" data-style="map.tint"><em data-hex="map.tint">#0b1b3a</em></span></label>
+                <label class="color-field"><span>背景</span><span class="color-input"><input type="color" data-style="map.background"><em data-hex="map.background">#050811</em></span></label>
+              </div>
+              <div class="field-block">
+                <div class="field-line"><label>染色强度</label><output data-out="style.map.tintOpacity">22%</output></div>
+                <input type="range" min="0" max="0.8" step="0.01" data-style="map.tintOpacity">
+              </div>
+              <label class="toggle"><input type="checkbox" data-style="map.grid"> 网格</label>
+              <div data-when="map-grid">
+                <div class="color-grid">
+                  <label class="color-field"><span>网格颜色</span><span class="color-input"><input type="color" data-style="map.gridColor"><em data-hex="map.gridColor">#ffffff</em></span></label>
+                </div>
+                <div class="field-block">
+                  <div class="field-line"><label>网格透明度</label><output data-out="style.map.gridOpacity">8%</output></div>
+                  <input type="range" min="0" max="0.4" step="0.01" data-style="map.gridOpacity">
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details class="section">
+            <summary><span>标题与图例</span><span class="chev"><svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-chevron-down"></use></svg></span></summary>
+            <div class="section-body">
+              <label class="toggle"><input type="checkbox" data-style="title.show"> 显示标题</label>
+              <div data-when="title">
+                <label class="field"><span>眉题</span><input class="text" type="text" data-style="title.eyebrow" placeholder="TRACK LAYOUT"></label>
+                <label class="field"><span>标题（留空使用赛道名称）</span><input class="text" type="text" data-style="title.text" placeholder="留空 = 赛道名称"></label>
+                <label class="field"><span>副标题（留空自动生成）</span><input class="text" type="text" data-style="title.sub" placeholder="留空 = CP 数量 · 长度"></label>
+                <div class="color-grid">
+                  <label class="color-field"><span>文字</span><span class="color-input"><input type="color" data-style="title.color"><em data-hex="title.color">#ffffff</em></span></label>
+                  <label class="color-field"><span>强调</span><span class="color-input"><input type="color" data-style="title.accent"><em data-hex="title.accent">#ff2d75</em></span></label>
+                  <label class="color-field"><span>背景</span><span class="color-input"><input type="color" data-style="title.bgColor"><em data-hex="title.bgColor">#050811</em></span></label>
+                </div>
+                <div class="field-block">
+                  <div class="field-line"><label>背景不透明度</label><output data-out="style.title.bgOpacity">55%</output></div>
+                  <input type="range" min="0" max="1" step="0.01" data-style="title.bgOpacity">
+                </div>
+                <div class="field-block">
+                  <div class="field-line"><label>标题缩放</label><output data-out="style.title.size">1.0×</output></div>
+                  <input type="range" min="0.7" max="1.5" step="0.05" data-style="title.size">
+                </div>
+              </div>
+              <label class="toggle"><input type="checkbox" data-style="legend.show"> 显示图例</label>
+              <div data-when="legend">
+                <div class="color-grid">
+                  <label class="color-field"><span>图例文字</span><span class="color-input"><input type="color" data-style="legend.color"><em data-hex="legend.color">#dbe7f5</em></span></label>
+                  <label class="color-field"><span>图例底色</span><span class="color-input"><input type="color" data-style="legend.background"><em data-hex="legend.background">#050811</em></span></label>
+                </div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <!-- 导出 -->
+        <section class="pane" data-pane="export" id="pane-export" role="tabpanel" aria-labelledby="tab-export">
+          <div class="pane-head">
+            <div>
+              <h2>导出</h2>
+              <p class="pane-sub">按输出分辨率重新渲染，所见即所得</p>
+            </div>
+          </div>
+
+          <div class="group">
+            <div class="group-title">格式</div>
+            <div class="seg seg-2" data-bind="export.format">
+              <button data-value="png">PNG 位图</button>
+              <button data-value="svg">SVG 矢量</button>
+            </div>
+            <div class="hint" id="format-hint" data-no-i18n>PNG：适合直接分享；支持透明背景与 2× / 4K 输出。</div>
+          </div>
+
+          <div class="group">
+            <div class="group-title">画布尺寸</div>
+            <select id="export-preset" class="select">
+              <option value="1920x1080">16:9 · 1920 × 1080</option>
+              <option value="2560x1440">16:9 · 2560 × 1440</option>
+              <option value="1600x1200">4:3 · 1600 × 1200</option>
+              <option value="1600x1600">1:1 · 1600 × 1600</option>
+              <option value="1080x1920">9:16 · 1080 × 1920</option>
+              <option value="3840x2160">4K · 3840 × 2160</option>
+              <option value="custom">自定义…</option>
+            </select>
+            <div class="bounds-grid" id="export-size-custom">
+              <label class="field"><span>宽</span><input id="export-width" class="num" type="number" min="320" max="4096" step="10" value="1920"></label>
+              <label class="field"><span>高</span><input id="export-height" class="num" type="number" min="320" max="4096" step="10" value="1080"></label>
+            </div>
+          </div>
+
+          <div class="group">
+            <div class="group-title">取景范围</div>
+            <div class="seg seg-2" data-bind="export.scope">
+              <button data-value="track">完整赛道</button>
+              <button data-value="view">当前地图视图</button>
+            </div>
+            <div class="hint">完整赛道会自动留白并适配画布比例。</div>
+          </div>
+
+          <div class="group">
+            <div class="group-title">背景</div>
+            <div class="seg seg-3" data-bind="export.background">
+              <button data-value="style">跟随主题</button>
+              <button data-value="transparent">透明</button>
+              <button data-value="custom">自定义</button>
+            </div>
+            <div class="color-grid" data-when="export-bg">
+              <label class="color-field"><span>背景色</span><span class="color-input"><input type="color" data-export="bgColor"><em data-hex="export.bgColor">#050811</em></span></label>
+            </div>
+            <label class="toggle"><input type="checkbox" data-export="includeMap"> 包含底图</label>
+          </div>
+
+          <div class="group">
+            <div class="group-title">输出</div>
+            <div class="row">
+              <button class="btn primary" data-action="preview">
+                <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-eye"></use></svg>
+                预览导出
+              </button>
+              <button class="btn" data-action="download-png">
+                <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-download"></use></svg>
+                下载 PNG
+              </button>
+              <button class="btn" data-action="download-svg">
+                <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-file-code"></use></svg>
+                下载 SVG
+              </button>
+            </div>
+            <div class="hint" id="export-note" data-no-i18n>SVG 会把底图作为嵌入位图，路线、CP、标题与图例保持矢量。</div>
+          </div>
+
+          <div class="export-preview-mini" id="export-mini" data-no-i18n>
+            <div class="mini-empty">点击「预览导出」查看最终画面</div>
+          </div>
+        </section>
+
+        <footer class="side-footer">
+          <span class="dot-live"></span>
+          <span id="side-status" data-no-i18n>准备就绪</span>
+        </footer>
+      </aside>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite" aria-atomic="true" data-no-i18n></div>
+  <div id="drop-overlay" class="drop-overlay hidden"><div><strong>松开以载入</strong><span>赛道 JSON 或底图图片</span></div></div>
+
+  <dialog id="help-dialog" class="dialog help-dialog" aria-labelledby="help-dialog-title">
+    <div class="dialog-head">
+      <h2 id="help-dialog-title">赛道 JSON 格式</h2>
+      <button class="icon-x" data-close-dialog="help-dialog" aria-label="关闭">
+        <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-x"></use></svg>
+      </button>
+    </div>
+    <div class="dialog-body prose">
+      <p data-i18n-html="help.intro">工具只需要一个有序的检查点数组。每个点必填 <code>x</code>、<code>y</code>，<code>z</code> 可选；顺序即赛道顺序，首点为起点、末点为终点（闭环时首点为起终点）。</p>
+      <pre><code>{
+  "name": "Los Santos Loop",
+  "author": "your name",
+  "closed": false,
+  "checkpoints": [
+    { "x": 2287.4, "y": -1605.9, "z": 2.6 },
+    { "x": 1617.6, "y": -1205.8, "z": 51.8 },
+    { "x": 1599.0, "y": -2378.2, "z": 12.4 }
+  ]
+}</code></pre>
+      <h3>兼容写法</h3>
+      <ul>
+        <li data-i18n-html="help.v1">顶层直接放数组：<code>[{ "x": 0, "y": 0 }, ...]</code></li>
+        <li data-i18n-html="help.v2">数组键名可用 <code>checkpoints</code>、<code>cps</code>、<code>points</code>、<code>cp</code>、<code>waypoints</code>。</li>
+        <li data-i18n-html="help.v3">点位可用 <code>[x, y, z]</code>、<code>{ "pos": [x, y, z] }</code>、<code>{ "position": { "x": … } }</code>。</li>
+        <li data-i18n-html="help.v4"><code>type</code> 可写 <code>start</code> / <code>cp</code> / <code>finish</code>，但最终角色由顺序决定。</li>
+        <li data-i18n-html="help.v5">可选字段：<code>label</code>（显示名称）、<code>radius</code>（保留字段）。</li>
+      </ul>
+      <h3>坐标系</h3>
+      <p data-i18n-html="help.coords">GTA San Andreas：<code>x</code> 向东，<code>y</code> 向北，<code>z</code> 向上，地图范围约 −3000…3000。路网寻路使用 SA 的车辆节点；自定义底图只改变显示，不改变坐标系。</p>
+      <h3>路网计算</h3>
+      <p data-i18n-html="help.routing">每个 CP 会吸附到最近的车辆道路节点（默认 80 m），然后用 A* 逐段寻路；找不到路网时按设置回退到平滑曲线或直线，并在「路线」页列出原因。</p>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn" data-action="copy-spec">复制示例 JSON</button>
+      <button class="btn primary" data-action="load-sample" data-sample="los-santos-loop">载入示例赛道</button>
+    </div>
+  </dialog>
+
+  <dialog id="preview-dialog" class="dialog preview-dialog" aria-labelledby="preview-dialog-title">
+    <div class="dialog-head">
+      <h2 id="preview-dialog-title">导出预览 <span id="preview-meta" class="mono muted" data-no-i18n></span></h2>
+      <button class="icon-x" data-close-dialog="preview-dialog" aria-label="关闭">
+        <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-x"></use></svg>
+      </button>
+    </div>
+    <div class="dialog-body preview-body">
+      <div id="preview-frame" class="preview-frame"><img id="preview-img" alt="导出预览"></div>
+    </div>
+    <div class="dialog-foot">
+      <span id="preview-note" class="muted small" data-no-i18n></span>
+      <span class="spacer"></span>
+      <button class="btn" data-action="download-png">下载 PNG</button>
+      <button class="btn primary" data-action="download-svg">下载 SVG</button>
+    </div>
+  </dialog>
+
+  <input id="file-input" type="file" accept=".json,application/json" hidden>
+  <input id="map-input" type="file" accept="image/*" hidden>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="js/track.js?v=4"></script>
+  <script src="js/style.js?v=4"></script>
+  <script src="js/i18n.js?v=4"></script>
+  <script src="js/mapview.js?v=4"></script>
+  <script src="js/export.js?v=4"></script>
+  <script src="js/app.js?v=4"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "track-layout",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "GTA San Andreas race track CP -> road-routed map, styled and exported as PNG/SVG.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js 8173",
+    "serve": "npx --yes serve . -l 8173",
+    "samples": "node tools/make-samples.js",
+    "test": "node tests/run.js"
+  }
+}

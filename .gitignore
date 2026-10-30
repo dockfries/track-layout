@@ -1,0 +1,86 @@
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+.npmrc
+
+# Build output and caches
+dist/
+build/
+out/
+coverage/
+.nyc_output/
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.svelte-kit/
+*.tsbuildinfo
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+.history/
+*.swp
+*.swo
+*~
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+
+# Local AI / coding-agent files
+.claude/
+.cursor/
+.codex/
+.aider*
+.continue/
+.windsurf/
+.zed/
+.fleet/
+.specstory/
+.dsh/
+
+# Caches
+.eslintcache
+.stylelintcache
+.node_repl_history
+
+# Temporary / local backup files
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+*.pid
+*.seed
+*.zip
+*.7z
+*.rar
+*.tgz
+*.tar.gz
+
+# Local dev / headless-browser artifacts
+tools/debug/
+tools/edge-*/
+tools/*-profile/
+screenshots/
+test-results/
+playwright-report/
+.playwright/
+.puppeteer/
+*.har

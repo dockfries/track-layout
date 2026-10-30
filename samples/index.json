@@ -1,0 +1,29 @@
+[
+  {
+    "file": "los-santos-loop.json",
+    "name": "Los Santos 环城",
+    "nameEn": "Los Santos Loop",
+    "note": "海滩 → 东岸 → 市中心 → 南城 → 西城 → 北环，再回到海滩。",
+    "noteEn": "Beach → east coast → downtown → south LS → west side → north loop, then back to the beach.",
+    "cps": 12,
+    "length": "10.1 km"
+  },
+  {
+    "file": "san-fierro-hills.json",
+    "name": "San Fierro 山路",
+    "nameEn": "San Fierro Hills",
+    "note": "市中心出发，绕西城、南城与东湾，穿过多段起伏山路。",
+    "noteEn": "From downtown, around the west side, south city, and east bay over rolling hills.",
+    "cps": 12,
+    "length": "4.48 km"
+  },
+  {
+    "file": "las-venturas-strip.json",
+    "name": "Las Venturas 大道",
+    "nameEn": "Las Venturas Strip",
+    "note": "机场 → 南大道 → 东环 → 赌城大道，再回到机场。",
+    "noteEn": "Airport → south strip → east loop → the Strip, then back to the airport.",
+    "cps": 8,
+    "length": "6.34 km"
+  }
+]
