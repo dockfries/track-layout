@@ -69,6 +69,8 @@
       bgColor: '#050811',
       bgOpacity: 0.55,
       size: 1,
+      titleSize: 1,
+      subSize: 1,
     },
     legend: {
       show: true,

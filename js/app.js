@@ -8,6 +8,10 @@ const SA_BOUNDS = { minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 };
 const CP_ROW_HEIGHT = 78;
 const CP_ROW_STEP = 84;
 const CP_ROW_OVERSCAN = 3;
+const WARN_ROW_HEIGHT = 48;
+const WARN_ROW_STEP = 54;
+const WARN_ROW_OVERSCAN = 3;
+const WARN_VIRTUAL_THRESHOLD = 24;
 const t = (text, ...args) => I18n.t(text, ...args);
 let themeMode = 'system';
 let themeMedia = null;
@@ -54,6 +58,7 @@ const state = {
   cpListCollapsed: false,
   cpWindow: null,
   cpScrollRaf: 0,
+  warnListCollapsed: false,
 };
 
 // ── Utilities ───────────────────────────────────────────────────────────
@@ -705,6 +710,84 @@ function renderRouteStats() {
   }
 }
 
+function warningItemHtml(w, index, total, virtual) {
+  const text = I18n.warningText(w, state.track);
+  const focus = Number.isInteger(w.index) ? ` data-focus="${w.index}"` : '';
+  const interactive = focus ? ' role="button" tabindex="0"' : '';
+  const style = virtual ? ` style="top:${index * WARN_ROW_STEP + 3}px;height:${WARN_ROW_HEIGHT}px"` : '';
+  const position = virtual ? ` aria-posinset="${index + 1}" aria-setsize="${total}"` : '';
+  return `<div class="warn-item ${w.level || 'warn'}"${style}${focus}${interactive}${position} title="${escapeHtml(text)}" aria-label="${escapeHtml(text)}"><span class="wi-ico">${w.level === 'info' ? 'i' : '!'}</span><span>${escapeHtml(text)}</span></div>`;
+}
+
+function renderWarnWindow(el, force = false) {
+  if (!el || !el.classList.contains('virtual')) return;
+  const items = el._warnItems || [];
+  if (!items.length) return;
+  const total = items.length;
+  const viewport = el.clientHeight || Math.min(280, Math.max(160, window.innerHeight * 0.38));
+  const scrollTop = el.scrollTop;
+  const start = Math.max(0, Math.floor(scrollTop / WARN_ROW_STEP) - WARN_ROW_OVERSCAN);
+  const end = Math.min(total, Math.ceil((scrollTop + viewport) / WARN_ROW_STEP) + WARN_ROW_OVERSCAN);
+  if (!force && el._warnWindow &&
+      el._warnWindow.start === start && el._warnWindow.end === end && el._warnWindow.total === total) {
+    return;
+  }
+  const rows = [];
+  for (let i = start; i < end; i++) rows.push(warningItemHtml(items[i], i, total, true));
+  el.innerHTML = `<div class="warn-list-spacer" style="height:${total * WARN_ROW_STEP}px">${rows.join('')}</div>`;
+  el.scrollTop = scrollTop;
+  el._warnWindow = { start, end, total };
+}
+
+function renderWarnList(el, items) {
+  if (!el) return;
+  const oldScroll = el.scrollTop;
+  el._warnItems = items;
+  el._warnWindow = null;
+  const virtual = items.length > WARN_VIRTUAL_THRESHOLD;
+  el.classList.toggle('virtual', virtual);
+  if (!virtual) {
+    el.innerHTML = items.map((w) => warningItemHtml(w, 0, items.length, false)).join('');
+    el.scrollTop = 0;
+    return;
+  }
+  renderWarnWindow(el, true);
+  el.scrollTop = oldScroll;
+}
+
+function syncWarnCollapseButton() {
+  const btn = $('warn-collapse');
+  if (!btn) return;
+  const label = t(state.warnListCollapsed ? '展开提示' : '折叠提示');
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+  btn.setAttribute('aria-expanded', String(!state.warnListCollapsed));
+  btn.classList.toggle('is-collapsed', state.warnListCollapsed);
+}
+
+function setWarnListCollapsed(collapsed) {
+  state.warnListCollapsed = !!collapsed;
+  syncWarnCollapseButton();
+  if (state.warnListCollapsed) {
+    const el = $('track-warnings');
+    if (el) {
+      el.classList.add('hidden');
+      el.classList.remove('virtual');
+      el._warnItems = [];
+      el._warnWindow = null;
+      el.innerHTML = '';
+    }
+  } else {
+    const el = $('track-warnings');
+    if (el) el.classList.remove('hidden');
+    renderWarnings();
+  }
+}
+
+function toggleWarnList() {
+  setWarnListCollapsed(!state.warnListCollapsed);
+}
+
 function renderWarnings() {
   const trackEl = $('track-warnings');
   const routeEl = $('route-warnings');
@@ -723,25 +806,45 @@ function renderWarnings() {
     all.push({ ...w, level: w.code === 'fallback' || w.code === 'partial-road' || w.code === 'unreachable' ? 'warn' : 'info' });
   }
 
-  const warnHtml = (list) => list.map((w) => {
-    const focus = Number.isInteger(w.index) ? ` data-focus="${w.index}"` : '';
-    const interactive = focus ? ' role="button" tabindex="0"' : '';
-    return `<div class="warn-item ${w.level || 'warn'}"${focus}${interactive}><span class="wi-ico">${w.level === 'info' ? 'i' : '!'}</span><span>${escapeHtml(I18n.warningText(w, state.track))}</span></div>`;
-  }).join('');
+  const empty = (el, text) => {
+    el.classList.remove('virtual');
+    el._warnItems = [];
+    el._warnWindow = null;
+    el.innerHTML = `<div class="warn-empty">${escapeHtml(text)}</div>`;
+  };
 
   if (!state.track) {
-    trackEl.innerHTML = `<div class="warn-empty">${escapeHtml(t('载入赛道后，这里会列出检查点与路网吸附的提示。'))}</div>`;
-    routeEl.innerHTML = `<div class="warn-empty">${escapeHtml(t('载入赛道后，这里会列出无法寻路的路段。'))}</div>`;
+    if (state.warnListCollapsed) {
+      trackEl.classList.add('hidden');
+      trackEl.classList.remove('virtual');
+      trackEl._warnItems = [];
+      trackEl._warnWindow = null;
+      trackEl.innerHTML = '';
+    } else {
+      trackEl.classList.remove('hidden');
+      empty(trackEl, t('载入赛道后，这里会列出检查点与路网吸附的提示。'));
+    }
+    empty(routeEl, t('载入赛道后，这里会列出无法寻路的路段。'));
     return;
   }
-  trackEl.innerHTML = all.length ? warnHtml(all) : `<div class="warn-empty">${escapeHtml(t('没有发现明显问题。'))}</div>`;
+  if (state.warnListCollapsed) {
+    trackEl.classList.add('hidden');
+    trackEl.classList.remove('virtual');
+    trackEl._warnItems = [];
+    trackEl._warnWindow = null;
+    trackEl.innerHTML = '';
+  } else {
+    trackEl.classList.remove('hidden');
+    if (all.length) renderWarnList(trackEl, all);
+    else empty(trackEl, t('没有发现明显问题。'));
+  }
   const routeOnly = (state.route && state.route.warnings) || [];
   if (routeOnly.length) {
-    routeEl.innerHTML = warnHtml(routeOnly);
+    renderWarnList(routeEl, routeOnly);
   } else if (state.route && state.route.modeUsed === 'road') {
-    routeEl.innerHTML = `<div class="warn-empty">${escapeHtml(t('所有路段都已使用路网。'))}</div>`;
+    empty(routeEl, t('所有路段都已使用路网。'));
   } else {
-    routeEl.innerHTML = `<div class="warn-empty">${escapeHtml(t('当前使用{0}，不依赖路网吸附。', modeLabel(state.route ? state.route.modeUsed : 'spline')))}</div>`;
+    empty(routeEl, t('当前使用{0}，不依赖路网吸附。', modeLabel(state.route ? state.route.modeUsed : 'spline')));
   }
 }
 
@@ -885,7 +988,8 @@ function formatOutput(path, v) {
   if (path.endsWith('opacity') || path.endsWith('Opacity')) return `${Math.round(Number(v) * 100)}%`;
   if (path.endsWith('angle') || path.endsWith('hue')) return `${Math.round(Number(v))}°`;
   if (path.endsWith('arrowGap') || path === 'routing.snapRadius') return `${Math.round(Number(v))} m`;
-  if (path === 'style.route.arrowSize' || path === 'style.title.size') return `${Number(v).toFixed(1)}×`;
+  if (path === 'style.route.arrowSize' || path === 'style.title.size' ||
+      path === 'style.title.titleSize' || path === 'style.title.subSize') return `${Number(v).toFixed(1)}×`;
   if (path === 'style.map.brightness' || path === 'style.map.contrast' || path === 'style.map.saturate') {
     return Number(v).toFixed(2);
   }
@@ -943,6 +1047,7 @@ function updateConditional() {
 function syncAll() {
   renderThemes();
   syncCpCollapseButton();
+  syncWarnCollapseButton();
   syncTrackMeta();
   syncStyleInputs();
   syncRoutingInputs();
@@ -988,6 +1093,9 @@ function setTheme(key) {
     titleText: state.style.title.text,
     titleSub: state.style.title.sub,
     titleShow: state.style.title.show,
+    titleSize: state.style.title.size,
+    titleScale: state.style.title.titleSize,
+    subScale: state.style.title.subSize,
     legendShow: state.style.legend.show,
     mapSource: state.style.map.source,
     mapVisible: state.style.map.visible,
@@ -998,6 +1106,9 @@ function setTheme(key) {
   state.style.title.text = keep.titleText;
   state.style.title.sub = keep.titleSub;
   state.style.title.show = keep.titleShow;
+  state.style.title.size = keep.titleSize;
+  state.style.title.titleSize = keep.titleScale;
+  state.style.title.subSize = keep.subScale;
   state.style.legend.show = keep.legendShow;
   state.style.map.visible = keep.mapVisible;
   state.style.cp.visible = keep.cpVisible !== false;
@@ -1619,7 +1730,11 @@ function bindUi() {
       renderCpWindow();
     });
   });
-  window.addEventListener('resize', () => renderCpWindow(true));
+  window.addEventListener('resize', () => {
+    renderCpWindow(true);
+    renderWarnWindow($('track-warnings'), true);
+    renderWarnWindow($('route-warnings'), true);
+  });
 
   // CP list delegation
   $('cp-list').addEventListener('click', (ev) => {
@@ -1670,7 +1785,15 @@ function bindUi() {
 
   // Warning focus
   for (const id of ['track-warnings', 'route-warnings']) {
-    $(id).addEventListener('click', (ev) => {
+    const warnEl = $(id);
+    warnEl.addEventListener('scroll', () => {
+      if (warnEl._warnRaf) return;
+      warnEl._warnRaf = requestAnimationFrame(() => {
+        warnEl._warnRaf = 0;
+        renderWarnWindow(warnEl);
+      });
+    });
+    warnEl.addEventListener('click', (ev) => {
       const item = ev.target.closest('[data-focus]');
       if (!item) return;
       const i = Number(item.dataset.focus);
@@ -1679,7 +1802,7 @@ function bindUi() {
         selectCp(i, { focus: true, scroll: true });
       }
     });
-    $(id).addEventListener('keydown', (ev) => {
+    warnEl.addEventListener('keydown', (ev) => {
       if (ev.key !== 'Enter' && ev.key !== ' ') return;
       const item = ev.target.closest('[data-focus]');
       if (!item) return;
@@ -1867,6 +1990,7 @@ function runAction(action) {
     case 'fit': MapView.fitRoute(); break;
     case 'add-cp': toggleAddMode(); break;
     case 'toggle-cp-list': toggleCpList(); break;
+    case 'toggle-warn-list': toggleWarnList(); break;
     case 'toggle-cp': toggleCpVisible(); break;
     case 'toggle-map': toggleMapVisible(); break;
     case 'toggle-grid': toggleGrid(); break;
@@ -2034,6 +2158,7 @@ function refreshLanguage() {
   refreshNetStatus();
   updatePreviewLabels();
   syncCpCollapseButton();
+  syncWarnCollapseButton();
   renderThemes();
   renderSampleMenu();
   renderSampleChips();

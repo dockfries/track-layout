@@ -61,6 +61,8 @@
     '地图添加': 'Add on map',
     '折叠检查点': 'Collapse checkpoints',
     '展开检查点': 'Expand checkpoints',
+    '折叠提示': 'Collapse notes',
+    '展开提示': 'Expand notes',
     '还没有检查点。打开 JSON，或点「地图添加」。':
       'No checkpoints yet. Open a JSON file or use "Add on map".',
     '首点为起点，末点为终点。拖动地图上的编号可微调位置，↑↓ 调整顺序；点击侧栏中的检查点行可在地图上高亮。':
@@ -183,6 +185,9 @@
     '文字': 'Text',
     '强调': 'Accent',
     '标题缩放': 'Title scale',
+    '整体缩放': 'Overall scale',
+    '标题字号': 'Title size',
+    '副标题字号': 'Subtitle size',
     '显示图例': 'Show legend',
     '图例文字': 'Legend text',
     '图例底色': 'Legend background',

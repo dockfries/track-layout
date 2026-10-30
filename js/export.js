@@ -430,8 +430,10 @@
     const color = style.title.bgColor || bg || style.map.background;
     const k = layout.k;
     const ts = clamp(Number(style.title.size) || 1, 0.5, 2);
+    const titleScale = clamp(Number(style.title.titleSize) || 1, 0.5, 2);
+    const subScale = clamp(Number(style.title.subSize) || 1, 0.5, 2);
     const scrimW = Math.min(layout.width * 0.78, 780 * k * ts);
-    const scrimH = 150 * k * ts;
+    const scrimH = 150 * k * ts + Math.max(0, titleScale - 1) * 18 * k + Math.max(0, subScale - 1) * 8 * k;
     const g = ctx.createLinearGradient(0, 0, scrimW, 0);
     g.addColorStop(0, Style.withAlpha(color, opacity));
     g.addColorStop(0.62, Style.withAlpha(color, opacity * 0.55));
@@ -445,9 +447,13 @@
     const { title, sub, eyebrow } = titleContent(track, route, style);
     const k = layout.k;
     const ts = clamp(Number(style.title.size) || 1, 0.5, 2);
+    const titleScale = clamp(Number(style.title.titleSize) || 1, 0.5, 2);
+    const subScale = clamp(Number(style.title.subSize) || 1, 0.5, 2);
     const margin = 40 * k;
     const maxW = layout.width - margin * 2 - 30 * k;
-    let titleSize = 32 * k * ts;
+    const titleShift = Math.max(0, titleScale - 1) * 16 * k * ts;
+    const subShift = Math.max(0, subScale - 1) * 6 * k * ts;
+    let titleSize = 32 * k * ts * titleScale;
     const titleFont = (size) => `700 ${size}px ${FONT}`;
     while (titleSize > 16 * k && measureText(title, titleFont(titleSize)) > maxW) titleSize -= 1 * k;
 
@@ -456,7 +462,7 @@
     const x = margin;
     const y = margin;
     ctx.fillStyle = style.title.accent;
-    ctx.fillRect(x, y + 4 * k, 4 * k, (56 * k * ts));
+    ctx.fillRect(x, y + 4 * k, 4 * k, (56 * k * ts + titleShift * 0.7));
 
     if (eyebrow) {
       ctx.fillStyle = Style.withAlpha(style.title.accent, 0.92);
@@ -468,11 +474,11 @@
 
     ctx.fillStyle = style.title.color;
     ctx.font = titleFont(titleSize);
-    ctx.fillText(title, x + 16 * k, y + 48 * k * ts);
+    ctx.fillText(title, x + 16 * k, y + 48 * k * ts + titleShift);
 
     ctx.fillStyle = Style.withAlpha(style.title.color, 0.7);
-    ctx.font = `500 ${12.5 * k * ts}px ${FONT}`;
-    ctx.fillText(sub, x + 16 * k, y + 70 * k * ts);
+    ctx.font = `500 ${12.5 * k * ts * subScale}px ${FONT}`;
+    ctx.fillText(sub, x + 16 * k, y + 70 * k * ts + titleShift + subShift);
   }
 
   function legendRows(track, style) {
@@ -767,12 +773,18 @@
     const { title, sub, eyebrow } = titleContent(track, route, style);
     const k = layout.k;
     const ts = clamp(Number(style.title.size) || 1, 0.5, 2);
+    const titleScale = clamp(Number(style.title.titleSize) || 1, 0.5, 2);
+    const subScale = clamp(Number(style.title.subSize) || 1, 0.5, 2);
     const margin = 40 * k;
     const maxW = layout.width - margin * 2 - 30 * k;
-    let titleSize = 32 * k * ts;
+    const titleShift = Math.max(0, titleScale - 1) * 16 * k * ts;
+    const subShift = Math.max(0, subScale - 1) * 6 * k * ts;
+    let titleSize = 32 * k * ts * titleScale;
     while (titleSize > 16 * k && measureText(title, `700 ${titleSize}px ${FONT}`) > maxW) titleSize -= 1 * k;
+    const subSize = 12.5 * k * ts * subScale;
+    const accentH = 56 * k * ts + titleShift * 0.7;
     const scrimW = Math.min(layout.width * 0.78, 780 * k * ts);
-    const scrimH = 150 * k * ts;
+    const scrimH = 150 * k * ts + Math.max(0, titleScale - 1) * 18 * k + Math.max(0, subScale - 1) * 8 * k;
     const parts = [];
     let defs = '';
     let scrim = '';
@@ -787,12 +799,12 @@
       scrim = `<rect x="0" y="0" width="${r2(scrimW)}" height="${r2(scrimH)}" fill="url(#titleScrim)"/>`;
     }
     const x = margin, y = margin;
-    parts.push(`<rect x="${r2(x)}" y="${r2(y + 4 * k)}" width="${r2(4 * k)}" height="${r2(56 * k * ts)}" fill="${style.title.accent}"/>`);
+    parts.push(`<rect x="${r2(x)}" y="${r2(y + 4 * k)}" width="${r2(4 * k)}" height="${r2(accentH)}" fill="${style.title.accent}"/>`);
     if (eyebrow) {
       parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + 15 * k * ts)}" fill="${style.title.accent}" font-family="${FONT_SVG}" font-size="${r2(10.5 * k * ts)}" font-weight="700" letter-spacing="${r2(1.5 * k)}">${Style.escapeXml(eyebrow.toUpperCase())}</text>`);
     }
-    parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + 48 * k * ts)}" fill="${style.title.color}" font-family="${FONT_SVG}" font-size="${r2(titleSize)}" font-weight="700">${Style.escapeXml(title)}</text>`);
-    parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + 70 * k * ts)}" fill="${style.title.color}" fill-opacity="0.7" font-family="${FONT_SVG}" font-size="${r2(12.5 * k * ts)}" font-weight="500">${Style.escapeXml(sub)}</text>`);
+    parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + 48 * k * ts + titleShift)}" fill="${style.title.color}" font-family="${FONT_SVG}" font-size="${r2(titleSize)}" font-weight="700">${Style.escapeXml(title)}</text>`);
+    parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + 70 * k * ts + titleShift + subShift)}" fill="${style.title.color}" fill-opacity="0.7" font-family="${FONT_SVG}" font-size="${r2(subSize)}" font-weight="500">${Style.escapeXml(sub)}</text>`);
     return { defs, scrim, body: parts.join('') };
   }
 

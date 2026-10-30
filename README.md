@@ -16,6 +16,7 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **Automatic road routing**: the default **Auto** mode prefers a full A* route over SA vehicle nodes. If some CPs cannot snap, it still keeps as much of the road network as possible, fills gaps with straight lines, and explains this under **Route**. You can also force **Road / Spline / Straight**.
 - **Closed loops**: when **Closed loop** is enabled, the last point returns to the start and the first point becomes both start and finish.
 - **CP editing**: drag on the map, edit coordinates, move up/down, delete, or add CPs by clicking the map. Show or hide checkpoints in both the map and the export; the sidebar list is collapsible and virtualized for tracks with hundreds of CPs.
+- **Large warning sets**: the notes/warnings panel is collapsible too, and both warning lists virtualize their rows so large tracks stay responsive.
 - **Visual customization**: 6 theme presets; solid / along-route / linear / elevation route gradients; outline, glow, dashes, direction arrows; CP shape, size, colors, numbering and labels; base-map brightness / contrast / saturation / hue / blur / tint / grid; title and legend.
 - **PNG export**: 16:9, 4:3, 1:1, 9:16, 4K, transparent background, and **full track / current view** framing.
 - **SVG export**: route, CPs, title and legend stay vector; the base map is embedded as a raster image, or turn it off for a pure-vector route map.
@@ -153,7 +154,7 @@ Limitation: a custom base map only changes the display, not the coordinate syste
 - **Route layer**: outline, glow, dashes, direction arrows (spacing / size / color).
 - **Checkpoints**: show / hide, circle / square / diamond, size, fill, border, numbering, labels, halo, start color, finish color.
 - **Base map**: brightness, contrast, saturation, hue, blur, tint strength, grid, background color, visibility; upload a custom image and set `minX/maxX/minY/maxY`. Custom images are not written to `localStorage` (too large); re-select them after reload, while bounds are saved.
-- **Title & legend**: show switches, eyebrow, title, subtitle, text/accent/background colors, background opacity, scale, legend background.
+- **Title & legend**: show switches, eyebrow, title, subtitle, text/accent/background colors, background opacity, overall scale, title font size, subtitle font size, legend background.
 
 Can visual styles be saved to JSON? Currently they are autosaved in `localStorage` only; **Save JSON** contains track data, not visual styles.
 
@@ -164,7 +165,7 @@ Can visual styles be saved to JSON? Currently they are autosaved in `localStorag
 - **PNG**: raster output, transparent background, full track / current map view, 16:9 / 4:3 / 1:1 / 9:16 / 4K or custom sizes (up to 4096).
 - **SVG**: route, CPs, arrows, title and legend stay vector; the base map is embedded as a cropped raster with current filters/tint. Turn off **Include base map** for a pure-vector route map.
 - Exports crop to the track bounds with padding; near map edges the viewport is pushed back inside the map where possible to avoid blank strips.
-- Title scale, theme colors and map filters are re-rendered for export, not screenshotted.
+- Title scale, title/subtitle font sizes, theme colors and map filters are re-rendered for export, not screenshotted.
 
 ## Keyboard Shortcuts
 

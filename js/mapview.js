@@ -403,6 +403,8 @@
         titleEl.style.setProperty('--mt-bg', Style.withAlpha(titleBgColor, titleBgOpacity));
         titleEl.style.setProperty('--mt-bg-soft', Style.withAlpha(titleBgColor, titleBgOpacity * 0.55));
         titleEl.style.setProperty('--mt-scale', String(style.title.size || 1));
+        titleEl.style.setProperty('--mt-title-scale', String(style.title.titleSize || 1));
+        titleEl.style.setProperty('--mt-sub-scale', String(style.title.subSize || 1));
         titleEl.classList.toggle('is-light', !isDark(style.map.background));
       } else {
         titleEl.innerHTML = '';
