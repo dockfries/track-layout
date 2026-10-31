@@ -304,10 +304,10 @@
 
   function drawArrows(ctx, route, track, style, layout) {
     if (!style.route.arrows || !route || route.points.length < 2) return;
-    const arrows = Track.sampleArrows(route.points, Math.max(20, style.route.arrowGap), false);
+    const arrows = Track.sampleArrows(route.points, Math.max(20, Style.effectiveArrowGap(route, style)), false);
     if (!arrows.length) return;
     const size = clamp(style.route.width * 2.3, 7, 22) * layout.k * style.route.arrowSize;
-    const cpsPx = Style.visibleCheckpoints(track, style)
+    const cpsPx = Style.visibleCheckpoints(track, style, route.length)
       .map((cp) => [layout.xToPx(cp.x), layout.yToPx(cp.y)]);
     const safe = Math.max(12, style.cp.size * layout.k * 1.15);
 
@@ -365,7 +365,7 @@
     }
   }
 
-  function drawMarkers(ctx, track, style, layout) {
+  function drawMarkers(ctx, track, route, style, layout) {
     const cps = track.checkpoints || [];
     if (!cps.length) return;
     const s = style.cp;
@@ -375,7 +375,7 @@
 
     for (let i = 0; i < cps.length; i++) {
       const cp = cps[i];
-      if (!Style.cpVisibleAt(cp, i, track, style)) continue;
+      if (!Style.cpVisibleAt(cp, i, track, style, route ? route.length : 0)) continue;
       const x = layout.xToPx(cp.x);
       const y = layout.yToPx(cp.y);
       const fill = Style.markerFill(cp, style);
@@ -582,7 +582,7 @@
   function drawLegend(ctx, track, route, style, layout) {
     if (!style.legend.show) return;
     const k = layout.overlayK || layout.k;
-    const legend = Style.cpLegend(track, style, I18n.t);
+    const legend = Style.cpLegend(track, style, I18n.t, route ? route.length : 0);
     const rows = legend.rows;
     const pad = 14 * k;
     const rowH = 20 * k;
@@ -667,7 +667,7 @@
     drawTitleScrim(ctx, track, route, style, layout, bg);
     drawRoute(ctx, route, style, layout);
     drawArrows(ctx, route, track, style, layout);
-    drawMarkers(ctx, track, style, layout);
+    drawMarkers(ctx, track, route, style, layout);
     drawTitle(ctx, track, route, style, layout);
     drawLegend(ctx, track, route, style, layout);
     if (opts.watermark !== false) drawCredits(ctx, style, layout);
@@ -800,11 +800,11 @@
 
   function arrowsSvg(route, track, style, layout) {
     if (!style.route.arrows || !route || route.points.length < 2) return '';
-    const arrows = Track.sampleArrows(route.points, Math.max(20, style.route.arrowGap), false);
+    const arrows = Track.sampleArrows(route.points, Math.max(20, Style.effectiveArrowGap(route, style)), false);
     if (!arrows.length) return '';
     const size = clamp(style.route.width * 2.3, 7, 22) * layout.k * style.route.arrowSize;
     const safe = Math.max(12, style.cp.size * layout.k * 1.15);
-    const cps = Style.visibleCheckpoints(track, style)
+    const cps = Style.visibleCheckpoints(track, style, route.length)
       .map((cp) => [layout.xToPx(cp.x), layout.yToPx(cp.y)]);
     const outline = style.route.arrowOutline && style.route.arrowOutline !== 'transparent'
       ? ` stroke="${style.route.arrowOutline}" stroke-width="${r2(Math.max(0.5, layout.k * 0.9))}"`
@@ -822,7 +822,7 @@
     return out.join('');
   }
 
-  function markersSvg(track, style, layout) {
+  function markersSvg(track, route, style, layout) {
     const s = style.cp;
     const size = s.size * layout.k;
     const r = size / 2;
@@ -832,7 +832,7 @@
     const cps = track.checkpoints || [];
     for (let i = 0; i < cps.length; i++) {
       const cp = cps[i];
-      if (!Style.cpVisibleAt(cp, i, track, style)) continue;
+      if (!Style.cpVisibleAt(cp, i, track, style, route ? route.length : 0)) continue;
       const x = layout.xToPx(cp.x), y = layout.yToPx(cp.y);
       const fill = Style.markerFill(cp, style);
       const textColor = Style.markerTextColor(cp, style);
@@ -897,7 +897,7 @@
   function legendSvg(track, route, style, layout) {
     if (!style.legend.show) return '';
     const k = layout.overlayK || layout.k;
-    const legend = Style.cpLegend(track, style, I18n.t);
+    const legend = Style.cpLegend(track, style, I18n.t, route ? route.length : 0);
     const rows = legend.rows;
     const pad = 14 * k;
     const rowH = 20 * k;
@@ -927,7 +927,7 @@
     const bg = resolveBackground(opts, style);
     const defs = [];
     const body = [];
-    if (track && Style.visibleCheckpoints(track, style).length) {
+    if (track && Style.visibleCheckpoints(track, style, route ? route.length : 0).length) {
       defs.push(
         `<filter id="cpShadow" x="-50%" y="-50%" width="200%" height="200%">` +
         `<feDropShadow dx="0" dy="${r2(2 * layout.k)}" stdDeviation="${r2(3.5 * layout.k)}" flood-color="#000000" flood-opacity="0.35"/>` +
@@ -948,7 +948,7 @@
     }
     body.push(routeSvg(route, style, layout));
     body.push(arrowsSvg(route, track, style, layout));
-    body.push(markersSvg(track, style, layout));
+    body.push(markersSvg(track, route, style, layout));
     if (title) body.push(title.body);
     body.push(legendSvg(track, route, style, layout));
     if (opts.watermark !== false) body.push(creditsSvg(style, layout));

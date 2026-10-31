@@ -569,10 +569,14 @@ function recomputeRoute(opts = {}) {
     renderRouteStats();
     renderWarnings();
     syncPlaybackUI();
+    updateCpDensityHint();
+    updateArrowAutoHint();
     setSideStatus('error', t("status.routeFailed"));
     return;
   }
   state.route = route;
+  updateCpDensityHint();
+  updateArrowAutoHint();
   if (markers) {
     MapView.setData({ track: state.track, route, style: state.style, selected: state.selected });
   } else {
@@ -1915,6 +1919,7 @@ function syncStyleInputs() {
   syncMapControlButtons();
   updateHexLabels();
   updateCpDensityHint();
+  updateArrowAutoHint();
 }
 
 function updateCpDensityHint() {
@@ -1925,10 +1930,28 @@ function updateCpDensityHint() {
     el.textContent = t("cp.densityIdle");
     return;
   }
-  const count = Style.visibleCheckpoints(state.track, state.style).length;
-  el.textContent = count === total
+  const routeLength = state.route ? state.route.length : 0;
+  const count = Style.visibleCheckpoints(state.track, state.style, routeLength).length;
+  const auto = state.style.cp.interval === 'auto';
+  const interval = Style.cpInterval(state.style, state.track, routeLength);
+  const autoText = auto
+    ? `${t(interval <= 1 ? "cp.densityAutoOne" : "cp.densityAuto", interval)} `
+    : '';
+  el.textContent = autoText + (count === total
     ? t("cp.densityAll", total)
-    : t("cp.densitySome", count, total);
+    : t("cp.densitySome", count, total));
+}
+
+function updateArrowAutoHint() {
+  const el = $('arrow-auto-hint');
+  if (!el) return;
+  if (!state.route) {
+    el.textContent = t("route.arrowAutoIdle");
+    return;
+  }
+  const gap = Style.effectiveArrowGap(state.route, state.style);
+  const count = gap > 0 ? Math.round(state.route.length / gap) : 0;
+  el.textContent = t("route.arrowAutoHint", Math.round(gap), count);
 }
 
 function syncMapControlButtons() {
@@ -2262,6 +2285,8 @@ function updateConditional() {
     'route-outline': !!style.route.outline,
     'route-glow': !!style.route.glow,
     'route-arrows': !!style.route.arrows,
+    'route-arrow-auto': style.route.arrowAuto !== false,
+    'route-arrow-manual': style.route.arrowAuto === false,
     'cp-labels': !!style.cp.showLabels,
     'cp-halo': !!style.cp.halo,
     'map-custom': style.map.source === 'custom',
@@ -2317,6 +2342,7 @@ function applyStyleChange(path) {
   syncCpToggleButton();
   syncMapControlButtons();
   updateCpDensityHint();
+  updateArrowAutoHint();
   const overlayOnly = path.startsWith('title.') || path.startsWith('legend.');
   clearTimeout(state.styleTimer);
   state.styleTimer = setTimeout(() => {

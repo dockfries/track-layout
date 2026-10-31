@@ -377,6 +377,7 @@ test('checkpoint display density thins markers without renumbering', () => {
       role: i === 0 ? 'start' : i === 299 ? 'finish' : 'cp',
     })),
   };
+  style.cp.interval = 1;
   assert.strictEqual(S.visibleCheckpoints(track, style).length, 300);
   style.cp.interval = 10;
   const visible = S.visibleCheckpoints(track, style);
@@ -395,6 +396,29 @@ test('checkpoint display density thins markers without renumbering', () => {
   assert.strictEqual(S.visibleCheckpoints(track, style).length, 16);
   style.cp.interval = 7;
   assert.strictEqual(S.cpInterval(style), 1);
+});
+
+test('automatic CP density and arrow spacing use route length', () => {
+  const style = S.defaultVisual();
+  const track = {
+    closed: false,
+    checkpoints: Array.from({ length: 300 }, (_, i) => ({
+      role: i === 0 ? 'start' : i === 299 ? 'finish' : 'cp',
+    })),
+  };
+  style.cp.interval = 'auto';
+  assert.strictEqual(S.cpInterval(style, track, 10000), 18);
+  assert.strictEqual(S.visibleCheckpoints(track, style, 10000).length, 18);
+  assert.strictEqual(S.cpInterval(style, track, 60000), 5);
+  assert.strictEqual(S.visibleCheckpoints(track, style, 60000).length, 61);
+  assert.strictEqual(S.cpInterval(style, track, 1000), 25);
+  assert.strictEqual(S.cpInterval(style, track, 0), 5);
+  assert.ok(S.effectiveArrowGap({ length: 10000 }, style) > 200);
+  assert.ok(S.effectiveArrowGap({ length: 10000 }, style) < 220);
+  assert.strictEqual(S.effectiveArrowGap({ length: 1000 }, style), 140);
+  style.route.arrowAuto = false;
+  style.route.arrowGap = 320;
+  assert.strictEqual(S.effectiveArrowGap({ length: 10000 }, style), 320);
 });
 
 test('new theme presets and rainbow/invert modes', () => {

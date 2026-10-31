@@ -22,15 +22,16 @@
       glowSize: 18,
       dash: 0,               // 0 = solid; otherwise dash length in px
       arrows: true,
-      arrowGap: 260,         // metres between direction arrows
+      arrowAuto: true,       // compute spacing from route length
+      arrowGap: 260,         // metres between direction arrows (manual)
       arrowColor: '#ffffff',
       arrowOutline: 'rgba(0,0,0,0.55)',
       arrowSize: 1,
     },
     cp: {
       visible: true,
-      filter: 'all',          // all | endpoints | start | finish
-      interval: 1,            // 1 = every CP; 2 / 5 / 10 / 20 = marker thinning
+      filter: 'all',          // all | endpoints | start | finish | checkpoints
+      interval: 'auto',       // auto | 1 | 2 | 5 | 10 | 20
       distinguish: true,
       shape: 'circle',       // circle | square | diamond
       size: 22,
@@ -246,8 +247,18 @@
     return CP_FILTERS.includes(value) ? value : 'all';
   }
 
-  function cpInterval(style) {
-    const value = Number(style && style.cp ? style.cp.interval : 1);
+  function cpInterval(style, track, routeLength) {
+    const raw = style && style.cp ? style.cp.interval : 1;
+    if (raw === 'auto') {
+      const total = track && Array.isArray(track.checkpoints) ? track.checkpoints.length : 0;
+      if (total <= 1) return 1;
+      const length = Number(routeLength);
+      const target = length > 0
+        ? Math.max(12, Math.min(72, Math.round(length / 600)))
+        : 72;
+      return Math.max(1, Math.ceil(total / target));
+    }
+    const value = Number(raw);
     return CP_INTERVALS.includes(value) ? value : 1;
   }
 
@@ -261,30 +272,33 @@
     return cp.role === 'finish' || cp.role === 'loop';
   }
 
-  // Marker thinning is a render-only concern. `index` is always the original
-  // checkpoint index, so labels, editing and routing never get renumbered.
-  function cpVisibleAt(cp, index, track, style) {
+  // Typical case is ~600 m between displayed CP markers, with 12..72 markers.
+  // The interval is still index-based so labels and routing keep their original
+  // checkpoint indices; long routes simply skip more intermediate markers.
+  function cpVisibleAt(cp, index, track, style, routeLength) {
     if (!cpVisible(cp, style)) return false;
-    const interval = cpInterval(style);
+    const interval = cpInterval(style, track, routeLength);
     if (interval <= 1) return true;
     if (cp.role === 'start' || cp.role === 'finish' || cp.role === 'loop') return true;
     return Number.isInteger(index) && index > 0 && index % interval === 0;
   }
 
-  function visibleCheckpoints(track, style) {
-    return track ? track.checkpoints.filter((cp, index) => cpVisibleAt(cp, index, track, style)) : [];
+  function visibleCheckpoints(track, style, routeLength) {
+    return track
+      ? track.checkpoints.filter((cp, index) => cpVisibleAt(cp, index, track, style, routeLength))
+      : [];
   }
 
-  function cpLegend(track, style, t) {
-    const legend = buildCpLegend(track, style, t);
+  function cpLegend(track, style, t, routeLength) {
+    const legend = buildCpLegend(track, style, t, routeLength);
     legend.total = track && Array.isArray(track.checkpoints) ? track.checkpoints.length : 0;
     return legend;
   }
 
-  function buildCpLegend(track, style, t) {
+  function buildCpLegend(track, style, t, routeLength) {
     const routeRow = [t('label.route'), style.route.color];
     if (!track) return { rows: [routeRow], count: 0 };
-    const visible = visibleCheckpoints(track, style);
+    const visible = visibleCheckpoints(track, style, routeLength);
     if (!visible.length) return { rows: [routeRow], count: 0 };
     const filter = cpFilter(style);
     if (filter === 'checkpoints') {
@@ -520,8 +534,17 @@
     return runs;
   }
 
-  function cssFilter(mapStyle, blurScale = 1) {
-    const parts = [];
+  // Keep direction arrows readable and bounded: ~48 arrows for a long route,
+  // with a 140 m floor so short routes do not become dotted with arrows.
+  function effectiveArrowGap(route, style) {
+    const length = Number(route && route.length);
+    if (style.route.arrowAuto !== false && Number.isFinite(length) && length > 0) {
+      return Math.max(140, length / 48);
+    }
+    return Math.max(20, Number(style.route.arrowGap) || 260);
+  }
+
+  function cssFilter(mapStyle, blurScale = 1) {    const parts = [];
     if (Number(mapStyle.invert) > 0.001) parts.push(`invert(${Math.min(1, Math.max(0, Number(mapStyle.invert)))})`);
     if (mapStyle.brightness !== 1) parts.push(`brightness(${mapStyle.brightness})`);
     if (mapStyle.contrast !== 1) parts.push(`contrast(${mapStyle.contrast})`);
@@ -649,6 +672,7 @@
     CP_INTERVALS, cpInterval, cpVisibleAt,
     visibleCheckpoints, cpLegend,
     parseColor, toHex, mixColor, withAlpha, contrastText, routeColor, routeRuns, cssFilter,
+    effectiveArrowGap,
     gridStep,
     gridCells, gridNumberAlpha,
     markerLabel, markerFill, markerTextColor, markerSvg, markerTotalSize, escapeXml,

@@ -348,9 +348,9 @@
     const style = state.style;
     const r = style.route;
     if (!route || !route.points || route.points.length < 2 || !r.arrows) return;
-    const arrows = Track.sampleArrows(route.points, Math.max(20, r.arrowGap), false);
+    const arrows = Track.sampleArrows(route.points, Math.max(20, Style.effectiveArrowGap(route, style)), false);
     const size = clamp(r.width * 2.3, 7, 22) * r.arrowSize;
-    const cps = Style.visibleCheckpoints(state.track, style)
+    const cps = Style.visibleCheckpoints(state.track, style, route.length)
       .map((cp) => map.latLngToContainerPoint([cp.y, cp.x]));
     const safe = Math.max(12, style.cp.size * 1.15);
     for (const arrow of arrows) {
@@ -403,7 +403,7 @@
     const total = Style.markerTotalSize(style);
     track.checkpoints.forEach((cp, i) => {
       if (!Style.cpVisible(cp, style)) return;
-      if (!Style.cpVisibleAt(cp, i, track, style) && i !== state.selected) return;
+      if (!Style.cpVisibleAt(cp, i, track, style, state.route ? state.route.length : 0) && i !== state.selected) return;
       const icon = L.divIcon({
         className: `tl-cp${i === state.selected ? ' is-selected' : ''}${state.cpLocked ? ' is-locked' : ''}`,
         html: cpMarkerHtml(cp, i, style),
@@ -467,7 +467,8 @@
     const isDensityExtra = (i) => {
       if (i < 0 || !track || !style || !track.checkpoints[i]) return false;
       const cp = track.checkpoints[i];
-      return Style.cpVisible(cp, style) && !Style.cpVisibleAt(cp, i, track, style);
+      return Style.cpVisible(cp, style) &&
+        !Style.cpVisibleAt(cp, i, track, style, state.route ? state.route.length : 0);
     };
     state.selected = next;
     // A selected checkpoint is exposed even when density thinned its marker.
@@ -532,7 +533,7 @@
       const show = !!track && style.legend.show;
       legendEl.classList.toggle('hidden', !show);
       if (show) {
-        const legend = Style.cpLegend(track, style, I18n.t);
+        const legend = Style.cpLegend(track, style, I18n.t, route ? route.length : 0);
         legendEl.style.background = style.legend.background;
         legendEl.style.color = style.legend.color;
         legendEl.dataset.pos = Style.overlayPosition(style.legend.position, 'bl');
