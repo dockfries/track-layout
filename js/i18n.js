@@ -179,7 +179,7 @@
     "toast.cpHidden": { en: "Checkpoints hidden", zh: "已隐藏检查点" },
     "label.route": { en: "Route", zh: "路线" },
     "label.startFinish": { en: "Start / Finish", zh: "起点 / 终点" },
-    "label.endpoints": { en: "Endpoints", zh: "端点" },
+    "label.endpoints": { en: "Both ends", zh: "起终点" },
     "cp.snapDistanceLong": { en: "Snap {0} m", zh: "吸附 {0} m" },
     "playback.playing": { en: "Playing", zh: "播放中" },
     "playback.paused": { en: "Paused", zh: "已暂停" },
@@ -401,14 +401,13 @@
     '终点': 'Finish',
     '显示范围': 'Display range',
     '全部': 'All',
-    '端点': 'Endpoints',
     '区分起终点配色': 'Distinguish start / finish colors',
     '彩虹': 'Rainbow',
     '反色': 'Invert',
     '彩虹模式使用连续光谱光轨，主色 / 渐变终点色不参与。':
       'Rainbow uses a continuous spectrum; primary and gradient-end colours are ignored.',
-    '仅影响地图与导出中的 CP 标记，侧栏列表仍保留全部检查点。':
-      'Affects map and export markers only; the sidebar list still shows every checkpoint.',
+    '全部＝起点、终点和中间 CP；起终点＝只显示首尾；起点 / 终点＝只显示各自。仅影响地图与导出标记，侧栏仍保留全部检查点。':
+      'All = start, finish and intermediate CPs; Both ends = start and finish only; Start / Finish = that end only. Affects map and export markers; the sidebar still lists every checkpoint.',
     '边框粗细': 'Border width',
     '显示编号': 'Show numbers',
     '显示名称': 'Show labels',
@@ -583,7 +582,7 @@
     '下移': 'Move down',
     '删除': 'Delete',
     '起点 / 终点': 'Start / Finish',
-    '起终点': 'Start / Finish',
+    '起终点': 'Both ends',
     '吸附 {0} m': 'Snap {0} m',
 
     // ── warnings ──
