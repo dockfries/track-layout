@@ -1728,7 +1728,18 @@ dialog.preview-lightbox { width: 100vw; height: 100vh; height: 100dvh; max-heigh
   .pane { padding: 13px 12px 18px; }
   .mt-title { font-size: calc(20px * var(--mt-scale, 1) * var(--mt-title-scale, 1)); }
   .mt-sub { font-size: calc(10.5px * var(--mt-scale, 1) * var(--mt-sub-scale, 1)); }
-  .map-legend { display: none; }
+  .map-legend {
+    display: block;
+    left: 12px;
+    min-width: 0;
+    max-width: min(180px, calc(100vw - 96px));
+    padding: 7px 9px;
+    border-radius: 8px;
+    font-size: 10px;
+  }
+  .ml-row { gap: 6px; margin: 2px 0; }
+  .ml-dot { width: 7px; height: 7px; }
+  .ml-foot { margin-top: 4px; padding-top: 4px; font-size: 8.5px; }
   .map-coords { display: none; }
   .map-btn { font-size: 13px; }
   .cp-list { max-height: min(330px, 48vh); }
