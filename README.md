@@ -192,7 +192,6 @@ Can visual styles be saved to JSON? Currently they are autosaved in `localStorag
 | `Ctrl/Cmd + Z` | Undo last checkpoint edit |
 | `Ctrl/Cmd + Shift + Z` | Redo checkpoint edit |
 | `+` / `=` | Enter / leave map add-CP mode |
-| `A` | Add a checkpoint at the map center |
 | `Esc` | Cancel add mode / clear selection / close dialog |
 | `Delete` | Delete the selected checkpoint |
 | `Ctrl/Cmd + O` | Open JSON |

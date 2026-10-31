@@ -2391,6 +2391,7 @@ function bindLightbox() {
 
   if (preview) {
     preview.addEventListener('click', openLightbox);
+    preview.addEventListener('dragstart', (ev) => ev.preventDefault());
     preview.addEventListener('keydown', (ev) => {
       if (ev.key !== 'Enter' && ev.key !== ' ') return;
       ev.preventDefault();
@@ -3098,8 +3099,10 @@ function bindUi() {
     ev.preventDefault();
     dragDepth = 0;
     $('drop-overlay').classList.add('hidden');
-    const file = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
-    if (!file) return;
+    const dt = ev.dataTransfer;
+    if (!dt || !Array.from(dt.types || []).includes('Files')) return;
+    const file = dt.files && dt.files[0];
+    if (!file || !file.size) return;
     if (/^image\//.test(file.type)) loadCustomMap(file).catch(() => {});
     else readTrackFile(file);
   });
@@ -3173,11 +3176,6 @@ function bindUi() {
     else if (k === 'm') { ev.preventDefault(); toggleMapVisible(); }
     else if (k === 'c') { ev.preventDefault(); toggleCpVisible(); }
     else if (k === 'l') { ev.preventDefault(); toggleCpLock(); }
-    else if (k === 'a') {
-      ev.preventDefault();
-      const center = MapView.map() && MapView.map().getCenter();
-      if (center) addCpAt(center.lng, center.lat);
-    }
     else if ((k === '+' || k === '=') && !(ev.target instanceof Element && ev.target.closest('#map'))) {
       ev.preventDefault();
       toggleAddMode();

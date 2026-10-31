@@ -1404,7 +1404,7 @@ html:has(dialog[open]), body:has(dialog[open]) { overflow: hidden; }
     var(--preview-bg-2);
   overflow: hidden;
 }
-.preview-frame img { display: block; max-width: 100%; max-height: calc(88vh - 200px); object-fit: contain; cursor: zoom-in; }
+.preview-frame img { display: block; max-width: 100%; max-height: calc(88vh - 200px); object-fit: contain; cursor: zoom-in; -webkit-user-drag: none; user-select: none; }
 .preview-frame img:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 
 .preview-lightbox {

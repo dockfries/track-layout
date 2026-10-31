@@ -614,7 +614,6 @@
     '选择自定义底图': 'Choose a custom base map',
     '赛道地图': 'Track map',
     '示例列表': 'Sample list',
-    '在地图中心添加检查点': 'Add a checkpoint at the map center',
     '右下角水印': 'Bottom-right watermark',
     '完整赛道会自动留白并适配画布比例；当前地图视图会按输出比例居中裁切。':
       'Full track pads to the canvas aspect; the current map view is center-cropped to the output aspect.',
