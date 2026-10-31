@@ -177,14 +177,14 @@
       },
     },
     {
-      key: 'inverted', name: '黑白反转', en: 'Inverted Mono',
-      note: '白色底图，黑色路线，纸图反相', noteEn: 'White base map, black route, inverted paper', swatch: ['#111111', '#f7f7f2', '#ffffff'],
+      key: 'inverted', name: '白巧地图', en: 'White Chocolate',
+      note: '奶油白底图，黑色路线，柔和低对比', noteEn: 'Cream-white base map, black route, soft low contrast', swatch: ['#1a1712', '#f6f1e6', '#ffffff'],
       patch: {
         route: { paint: 'solid', color: '#050505', color2: '#050505', width: 4.5, outline: true, outlineColor: '#ffffff', outlineWidth: 2.5, glow: false, glowColor: '#ffffff', glowSize: 0, arrows: true, arrowColor: '#050505', arrowOutline: 'rgba(255,255,255,0.8)', arrowGap: 260 },
-        cp: { shape: 'circle', size: 21, fill: '#ffffff', border: '#050505', borderWidth: 2.5, textColor: '#050505', startColor: '#050505', finishColor: '#050505', halo: false },
-        map: { invert: 1, brightness: 1.5, contrast: 0.8, saturate: 0, hue: 0, opacity: 0.82, tint: '#ffffff', tintOpacity: 0, grid: true, gridColor: '#111111', gridOpacity: 0.07, background: '#f7f7f2' },
-        title: { accent: '#050505', eyebrow: 'INVERTED', color: '#050505', bgColor: '#ffffff', bgOpacity: 0.72 },
-        legend: { color: '#050505', background: 'rgba(255,255,255,0.88)' },
+        cp: { shape: 'circle', size: 21, fill: '#fffdf8', border: '#1a1712', borderWidth: 2.5, textColor: '#1a1712', startColor: '#1a1712', finishColor: '#1a1712', halo: false },
+        map: { invert: 1, brightness: 1.85, contrast: 0.45, saturate: 0, hue: 0, opacity: 0.45, tint: '#f4ead8', tintOpacity: 0.12, grid: true, gridColor: '#3a3126', gridOpacity: 0.06, background: '#f6f1e6' },
+        title: { accent: '#1a1712', eyebrow: 'WHITE CHOC', color: '#1a1712', bgColor: '#fbf7ee', bgOpacity: 0.78 },
+        legend: { color: '#1a1712', background: 'rgba(251,247,238,0.92)' },
       },
     },
     {

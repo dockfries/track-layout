@@ -844,6 +844,7 @@
     'SUNSET RUN': '落日竞速',
     'BLUEPRINT': '赛道蓝图',
     'CONTRAST': '高对比',
+    'WHITE CHOC': '白巧地图',
   };
 
   function localizeEyebrow(text) {

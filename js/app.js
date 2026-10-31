@@ -416,6 +416,7 @@ function restorePrefs() {
   if (!Style.THEMES.some((theme) => theme.key === state.style.baseTheme)) {
     state.style.baseTheme = state.style.theme === 'custom' ? 'neon' : state.style.theme;
   }
+  migrateWhiteChocolateTheme();
   if (saved.exportOpts && typeof saved.exportOpts === 'object') {
     state.exportOpts = Style.deepMerge(Style.defaultExport(), saved.exportOpts);
   }
@@ -442,6 +443,20 @@ function restorePrefs() {
   state.exportOpts.width = clamp(Math.round(Number(state.exportOpts.width) || 1920), 320, 4096);
   state.exportOpts.height = clamp(Math.round(Number(state.exportOpts.height) || 1080), 320, 4096);
   return saved;
+}
+
+// The old `inverted` preset was a harsh inverse. Lift an untouched saved copy
+// into the new cream-white palette without touching content or display filters.
+function migrateWhiteChocolateTheme() {
+  const style = state.style;
+  if (!style || style.theme !== 'inverted' || style.baseTheme !== 'inverted' || !style.map) return;
+  if (style.map.invert !== 1 || style.map.brightness !== 1.5 ||
+      style.map.contrast !== 0.8 || style.map.opacity !== 0.82) return;
+  const theme = Style.THEMES.find((item) => item.key === 'inverted');
+  if (!theme) return;
+  for (const group of ['route', 'cp', 'map', 'title', 'legend']) {
+    if (theme.patch[group]) Object.assign(style[group], theme.patch[group]);
+  }
 }
 
 function saveSessionSoon() {

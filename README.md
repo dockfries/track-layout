@@ -166,7 +166,7 @@ Limitation: a custom base map only changes the display, not the coordinate syste
 
 ## Visual Styling
 
-- **Theme presets**: Neon Night, Tactical Radar, Paper Map, Miami Sunset, Blueprint, Mono, Cyberpunk 2077, Inverted Mono, Rainbow Flow.
+- **Theme presets**: Neon Night, Tactical Radar, Paper Map, Miami Sunset, Blueprint, Mono, Cyberpunk 2077, White Chocolate, Rainbow Flow.
 - **Route gradients**:
   - Solid
   - Along route: start color → finish color over route length
