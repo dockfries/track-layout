@@ -152,11 +152,108 @@ function openDialog(dlg) {
   clearTimeout(dlg._closeTimer);
   dlg._closeTimer = 0;
   dlg.classList.remove('is-closing');
+  resetDialogPosition(dlg);
   if (!dlg.open) dlg.showModal();
 }
 
 function closeOpenDialogs() {
   for (const dlg of qsa('dialog[open]')) closeDialog(dlg);
+}
+
+function resetDialogPosition(dlg) {
+  if (!dlg || !dlg.classList.contains('dialog-draggable')) return;
+  dlg._dragX = 0;
+  dlg._dragY = 0;
+  dlg.style.translate = '';
+  dlg.classList.remove('is-dragging');
+}
+
+function clampDialogPosition(dlg) {
+  if (!dlg || !dlg.open || !dlg.classList.contains('dialog-draggable')) return;
+  const rect = dlg.getBoundingClientRect();
+  const margin = 8;
+  let dx = 0;
+  let dy = 0;
+  if (rect.left < margin) dx = margin - rect.left;
+  else if (rect.right > window.innerWidth - margin) dx = window.innerWidth - margin - rect.right;
+  if (rect.top < margin) dy = margin - rect.top;
+  else if (rect.bottom > window.innerHeight - margin) dy = window.innerHeight - margin - rect.bottom;
+  if (!dx && !dy) return;
+  dlg._dragX = (dlg._dragX || 0) + dx;
+  dlg._dragY = (dlg._dragY || 0) + dy;
+  dlg.style.translate = `${dlg._dragX}px ${dlg._dragY}px`;
+}
+
+function bindDialogDrag() {
+  let resizeRaf = 0;
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(() => {
+      for (const dlg of qsa('.dialog-draggable[open]')) clampDialogPosition(dlg);
+    });
+  });
+
+  for (const dlg of qsa('.dialog.dialog-draggable')) {
+    const head = qs('.dialog-head', dlg);
+    if (!head) continue;
+    let drag = null;
+
+    const endDrag = (ev) => {
+      if (!drag || ev.pointerId !== drag.pointerId) return;
+      drag = null;
+      dlg.classList.remove('is-dragging');
+      try { head.releasePointerCapture(ev.pointerId); } catch { /* ignore */ }
+    };
+
+    head.addEventListener('pointerdown', (ev) => {
+      if (ev.button !== undefined && ev.button !== 0) return;
+      if (ev.target.closest('button, a, input, select, textarea, [role="button"]')) return;
+      ev.preventDefault();
+      const rect = dlg.getBoundingClientRect();
+      drag = {
+        pointerId: ev.pointerId,
+        startX: ev.clientX,
+        startY: ev.clientY,
+        startLeft: rect.left,
+        startTop: rect.top,
+        width: rect.width,
+        height: rect.height,
+        baseX: dlg._dragX || 0,
+        baseY: dlg._dragY || 0,
+      };
+      dlg.classList.add('is-dragging');
+      try { head.setPointerCapture(ev.pointerId); } catch { /* ignore */ }
+    });
+
+    head.addEventListener('pointermove', (ev) => {
+      if (!drag || ev.pointerId !== drag.pointerId) return;
+      ev.preventDefault();
+      const margin = 8;
+      const maxLeft = Math.max(margin, window.innerWidth - drag.width - margin);
+      const maxTop = Math.max(margin, window.innerHeight - drag.height - margin);
+      const left = clamp(drag.startLeft + ev.clientX - drag.startX, margin, maxLeft);
+      const top = clamp(drag.startTop + ev.clientY - drag.startY, margin, maxTop);
+      dlg._dragX = drag.baseX + left - drag.startLeft;
+      dlg._dragY = drag.baseY + top - drag.startTop;
+      dlg.style.translate = `${dlg._dragX}px ${dlg._dragY}px`;
+    });
+
+    head.addEventListener('pointerup', endDrag);
+    head.addEventListener('pointercancel', endDrag);
+    head.addEventListener('lostpointercapture', (ev) => {
+      if (drag && drag.pointerId === ev.pointerId) endDrag(ev);
+    });
+
+    head.addEventListener('dblclick', (ev) => {
+      if (ev.target.closest('button, a, input, select, textarea, [role="button"]')) return;
+      resetDialogPosition(dlg);
+    });
+
+    dlg.addEventListener('close', () => {
+      drag = null;
+      dlg.classList.remove('is-dragging');
+    });
+  }
 }
 
 function modeLabel(mode) {
@@ -3438,6 +3535,7 @@ function bindUi() {
       if (dlg) closeDialog(dlg);
     });
   }
+  bindDialogDrag();
 
   // Drag & drop
   let dragDepth = 0;

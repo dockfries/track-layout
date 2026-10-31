@@ -33,6 +33,7 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **Clear local cache**: the sidebar footer has a cache reset action that removes this app's `localStorage` and Cache Storage data, then reloads.
 - **Responsive workspace**: below 980px the sidebar becomes a bottom sheet with peek / half / full snap points. Drag the handle, tap it, use the chevron, or use `↑` / `↓` / `Home` / `End` while the handle is focused. On desktop the sidebar can be collapsed from the top bar.
 - **Compact action menu**: below 720px the top-bar actions collapse into a hamburger panel containing file, sample, fit, language, theme, help and shortcut controls. It closes on outside click, selection, or `Esc`.
+- **Movable help dialogs**: drag the title bar of the JSON-format or keyboard-shortcut dialogs to reposition them. Positions are clamped to the viewport, reset when reopened, and double-clicking the title bar recenters.
 - **Small-screen controls**: below 480px the section tabs show icons only. Checkpoint, track-note and route-note headers are full-width collapse toggles, not just the chevron.
 - **Live export preview**: the thumbnail in the Export pane re-renders after style, route, or size changes and shows a loading spinner while the next frame is being prepared.
 - **Export watermark**: the bottom-right `GTA: SAN ANDREAS · TRACK LAYOUT` credit can be enabled or disabled in the Export pane.
