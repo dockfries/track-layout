@@ -74,6 +74,7 @@ const state = {
   saveTimer: 0,
   metaTimer: 0,
   miniTimer: 0,
+  miniPreviewSeq: 0,
   activeTab: 'track',
   sheetSnap: 'half',
   sideCollapsed: false,
@@ -2561,6 +2562,9 @@ async function ensureExportReady() {
 
 async function openPreview() {
   if (!(await ensureExportReady())) return;
+  clearTimeout(state.miniTimer);
+  const seq = ++state.miniPreviewSeq;
+  setMiniPreviewLoading(true);
   setSideStatus('busy', t("status.renderingPreview"));
   await nextFrame();
   try {
@@ -2575,12 +2579,14 @@ async function openPreview() {
     };
     updatePreviewLabels();
     openDialog($('preview-dialog'));
-    updateMiniPreview(canvas);
+    await updateMiniPreview(canvas);
     setSideStatus('ready', t("status.previewReady"));
   } catch (err) {
     console.error(err);
     setSideStatus('error', t("status.previewFailed"));
     toast(t("error.preview", I18n.errorText(err)), 'error');
+  } finally {
+    if (seq === state.miniPreviewSeq) setMiniPreviewLoading(false);
   }
 }
 
@@ -2876,8 +2882,23 @@ function bindLightbox() {
   syncLightboxFullscreen();
 }
 
+function setMiniPreviewLoading(loading) {
+  const host = $('export-mini');
+  const overlay = $('export-mini-loading');
+  if (!host) return;
+  host.classList.toggle('is-loading', loading);
+  host.setAttribute('aria-busy', String(loading));
+  if (overlay) {
+    overlay.classList.toggle('hidden', !loading);
+    if (loading) {
+      const label = overlay.querySelector('span:last-child');
+      if (label) label.textContent = t("preview.updating");
+    }
+  }
+}
+
 function updateMiniPreview(canvas) {
-  if (!canvas) return;
+  if (!canvas) return Promise.resolve();
   const tw = 720;
   const th = Math.max(1, Math.round((canvas.height / canvas.width) * tw));
   const mini = document.createElement('canvas');
@@ -2889,25 +2910,43 @@ function updateMiniPreview(canvas) {
     ctx.fillRect(0, 0, tw, th);
   }
   ctx.drawImage(canvas, 0, 0, tw, th);
-  const el = $('export-mini');
-  if (el) {
-    const type = state.exportOpts.background === 'transparent' ? 'image/png' : 'image/jpeg';
-    el.innerHTML = `<img src="${mini.toDataURL(type, 0.84)}" alt="${escapeHtml(t("label.exportPreview"))}" draggable="false">`;
-  }
+  const content = $('export-mini-content');
+  if (!content) return Promise.resolve();
+  const type = state.exportOpts.background === 'transparent' ? 'image/png' : 'image/jpeg';
+  content.innerHTML = `<img src="${mini.toDataURL(type, 0.84)}" alt="${escapeHtml(t("label.exportPreview"))}" draggable="false">`;
+  const img = content.querySelector('img');
+  if (!img) return Promise.resolve();
+  return new Promise((resolve) => {
+    if (img.complete && img.naturalWidth) { resolve(); return; }
+    const done = () => resolve();
+    img.addEventListener('load', done, { once: true });
+    img.addEventListener('error', done, { once: true });
+  });
 }
 
 function scheduleMiniPreview(delay = 600) {
-  if (state.activeTab !== 'export' || !state.track || !state.route) return;
   clearTimeout(state.miniTimer);
+  if (state.activeTab !== 'export' || !state.track || !state.route) {
+    state.miniPreviewSeq++;
+    setMiniPreviewLoading(false);
+    return;
+  }
+  const seq = ++state.miniPreviewSeq;
+  setMiniPreviewLoading(true);
   state.miniTimer = setTimeout(async () => {
-    if (state.activeTab !== 'export' || !state.track || !state.route) return;
+    if (state.activeTab !== 'export' || !state.track || !state.route) {
+      if (seq === state.miniPreviewSeq) setMiniPreviewLoading(false);
+      return;
+    }
     try {
       const w = 720;
       const h = Math.max(1, Math.round(720 * (state.exportOpts.height / state.exportOpts.width)));
       const { canvas } = Exporter.renderCanvas(buildExportOptions({ width: w, height: h }));
-      updateMiniPreview(canvas);
+      await updateMiniPreview(canvas);
     } catch (err) {
       console.warn('mini preview failed', err);
+    } finally {
+      if (seq === state.miniPreviewSeq) setMiniPreviewLoading(false);
     }
   }, delay);
 }
