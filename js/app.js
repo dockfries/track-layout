@@ -380,7 +380,12 @@ function restorePrefs() {
   if (saved.style && typeof saved.style === 'object') {
     state.style = Style.deepMerge(Style.defaultVisual(), saved.style);
   }
-  if (!Style.THEMES.some((theme) => theme.key === state.style.theme)) state.style.theme = 'neon';
+  const validTheme = state.style.theme === 'custom' ||
+    Style.THEMES.some((theme) => theme.key === state.style.theme);
+  if (!validTheme) state.style.theme = 'neon';
+  if (!Style.THEMES.some((theme) => theme.key === state.style.baseTheme)) {
+    state.style.baseTheme = state.style.theme === 'custom' ? 'neon' : state.style.theme;
+  }
   if (saved.exportOpts && typeof saved.exportOpts === 'object') {
     state.exportOpts = Style.deepMerge(Style.defaultExport(), saved.exportOpts);
   }
@@ -1783,10 +1788,41 @@ function renderWarnings() {
 }
 
 // ── Style / controls sync ──────────────────────────────────────────────
+function themeBaseKey() {
+  if (Style.THEMES.some((theme) => theme.key === state.style.baseTheme)) return state.style.baseTheme;
+  if (Style.THEMES.some((theme) => theme.key === state.style.theme)) return state.style.theme;
+  return 'neon';
+}
+
+function syncThemeResetButton() {
+  const btn = $('reset-style');
+  if (!btn) return;
+  const base = themeBaseKey();
+  const theme = Style.THEMES.find((item) => item.key === base);
+  const name = I18n.themeName(theme) || base;
+  const custom = state.style.theme === 'custom';
+  const label = t(custom ? 'theme.restore' : 'theme.reset');
+  btn.textContent = label;
+  btn.setAttribute('aria-label', label);
+  btn.title = t(custom ? 'theme.restoreHint' : 'theme.resetHint', name);
+}
+
+function syncThemeState() {
+  const base = themeBaseKey();
+  state.style.baseTheme = base;
+  const matches = Style.sameTheme(state.style, base);
+  const next = matches ? base : 'custom';
+  if (state.style.theme !== next) {
+    state.style.theme = next;
+    renderThemes();
+  }
+  syncThemeResetButton();
+}
+
 function renderThemes() {
   const grid = $('theme-grid');
   if (!grid) return;
-  grid.innerHTML = Style.THEMES.map((theme) => {
+  let html = Style.THEMES.map((theme) => {
     const active = state.style.theme === theme.key ? ' active' : '';
     return `<button class="theme-card${active}" data-theme="${theme.key}" type="button" aria-pressed="${active ? 'true' : 'false'}">
       <span class="theme-swatches">${theme.swatch.map((c) => `<i style="background:${c}"></i>`).join('')}</span>
@@ -1794,6 +1830,20 @@ function renderThemes() {
       <span class="theme-note">${escapeHtml(I18n.themeNote(theme))}</span>
     </button>`;
   }).join('');
+  if (state.style.theme === 'custom') {
+    const base = themeBaseKey();
+    const baseTheme = Style.THEMES.find((theme) => theme.key === base);
+    const baseName = I18n.themeName(baseTheme) || base;
+    const swatch = [state.style.route.color, state.style.cp.border, state.style.map.background]
+      .map((color) => `<i style="background:${escapeHtml(color)}"></i>`).join('');
+    html += `<div class="theme-card theme-card-custom active" role="status" aria-label="${escapeHtml(`${t("theme.custom")} · ${t("theme.basedOn", baseName)}`)}">
+      <span class="theme-swatches">${swatch}</span>
+      <span class="theme-name">${escapeHtml(t("theme.custom"))}</span>
+      <span class="theme-note">${escapeHtml(t("theme.basedOn", baseName))}</span>
+    </div>`;
+  }
+  grid.innerHTML = html;
+  syncThemeResetButton();
 }
 
 function syncStyleInputs() {
@@ -1925,6 +1975,10 @@ function syncBoundsInputs() {
 
 function syncThemeCards() {
   for (const card of qsa('.theme-card')) {
+    if (!card.dataset.theme) {
+      card.classList.toggle('active', state.style.theme === 'custom');
+      continue;
+    }
     const active = card.dataset.theme === state.style.theme;
     card.classList.toggle('active', active);
     card.setAttribute('aria-pressed', String(active));
@@ -1997,7 +2051,7 @@ function defaultRangeValue(path) {
   if (path === 'playback.speed') return 1;
   if (path.startsWith('routing.')) return ROUTING_DEFAULTS[path.slice(8)];
   if (path.startsWith('style.')) {
-    const defaults = Style.applyTheme(state.style.theme);
+    const defaults = Style.applyTheme(themeBaseKey());
     return getPath(defaults, path.slice(6));
   }
   return undefined;
@@ -2156,6 +2210,7 @@ function updateConditional() {
 }
 
 function syncAll() {
+  syncThemeState();
   renderThemes();
   const mapEl = $('map');
   if (mapEl) mapEl.setAttribute('aria-label', t("ui.mapLabel"));
@@ -2187,6 +2242,7 @@ function syncAll() {
 
 // ── Style changes ──────────────────────────────────────────────────────
 function applyStyleChange(path) {
+  syncThemeState();
   updateOutputs();
   updateHexLabels();
   updateConditional();
@@ -2213,9 +2269,6 @@ function setTheme(key) {
     titleText: state.style.title.text,
     titleSub: state.style.title.sub,
     titleShow: state.style.title.show,
-    titleSize: state.style.title.size,
-    titleScale: state.style.title.titleSize,
-    subScale: state.style.title.subSize,
     legendShow: state.style.legend.show,
     mapSource: state.style.map.source,
     mapVisible: state.style.map.visible,
@@ -2223,12 +2276,10 @@ function setTheme(key) {
   };
   state.style = Style.applyTheme(key);
   state.style.theme = key;
+  state.style.baseTheme = key;
   state.style.title.text = keep.titleText;
   state.style.title.sub = keep.titleSub;
   state.style.title.show = keep.titleShow;
-  state.style.title.size = keep.titleSize;
-  state.style.title.titleSize = keep.titleScale;
-  state.style.title.subSize = keep.subScale;
   state.style.legend.show = keep.legendShow;
   state.style.map.visible = keep.mapVisible;
   state.style.cp.visible = keep.cpVisible !== false;
@@ -2247,15 +2298,31 @@ function setTheme(key) {
 }
 
 function resetStyle() {
-  state.style = Style.defaultVisual();
-  state.base.bounds = { ...SA_BOUNDS };
-  state.style.map.source = 'builtin';
-  state.base.source = 'builtin';
-  MapView.setBaseMap('assets/samap.png', SA_BOUNDS, false);
+  const base = themeBaseKey();
+  const keep = {
+    titleText: state.style.title.text,
+    titleSub: state.style.title.sub,
+    titleShow: state.style.title.show,
+    legendShow: state.style.legend.show,
+    mapSource: state.style.map.source,
+    mapVisible: state.style.map.visible,
+    cpVisible: state.style.cp.visible,
+  };
+  state.style = Style.applyTheme(base);
+  state.style.theme = base;
+  state.style.baseTheme = base;
+  state.style.title.text = keep.titleText;
+  state.style.title.sub = keep.titleSub;
+  state.style.title.show = keep.titleShow;
+  state.style.legend.show = keep.legendShow;
+  state.style.map.visible = keep.mapVisible;
+  state.style.cp.visible = keep.cpVisible !== false;
+  state.style.map.source = keep.mapSource === 'custom' && state.base.customUrl ? 'custom' : 'builtin';
   syncAll();
   MapView.setStyleOnly(state.style);
   saveSessionSoon();
-  toast(t("toast.styleReset"), 'ok');
+  const theme = Style.THEMES.find((item) => item.key === base);
+  toast(t("toast.themeRestored", I18n.themeName(theme) || base), 'ok');
 }
 
 function toggleMapVisible() {
@@ -2269,6 +2336,7 @@ function toggleMapVisible() {
 
 function toggleGrid() {
   state.style.map.grid = !state.style.map.grid;
+  syncThemeState();
   syncStyleInputs();
   updateConditional();
   MapView.setStyleOnly(state.style);

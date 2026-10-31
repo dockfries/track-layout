@@ -6,6 +6,7 @@
 
   const DEFAULT_VISUAL = {
     theme: 'neon',
+    baseTheme: 'neon',
     route: {
       paint: 'along',        // solid | along | linear | elevation
       color: '#ff2d75',
@@ -203,14 +204,62 @@
   function applyTheme(key) {
     const theme = THEMES.find((t) => t.key === key);
     if (!theme) return defaultVisual();
-    return deepMerge(defaultVisual(), theme.patch);
+    const next = deepMerge(defaultVisual(), theme.patch);
+    next.theme = key;
+    next.baseTheme = key;
+    return next;
   }
 
   // Fill a theme patch into an existing style without dropping export prefs.
   function themeStyle(key, current) {
     const next = applyTheme(key);
     next.theme = key;
+    next.baseTheme = key;
     return next;
+  }
+
+  // Theme comparison intentionally ignores content, map source and visibility
+  // toggles: editing a track title should not mean "custom theme".
+  const THEME_IGNORED_PATHS = [
+    'theme',
+    'baseTheme',
+    'title.text',
+    'title.sub',
+    'title.show',
+    'legend.show',
+    'map.source',
+    'map.visible',
+    'cp.visible',
+  ];
+
+  function deletePath(obj, path) {
+    const parts = path.split('.');
+    let node = obj;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!node || typeof node !== 'object') return;
+      node = node[parts[i]];
+    }
+    if (node && typeof node === 'object') delete node[parts[parts.length - 1]];
+  }
+
+  function stableValue(value) {
+    if (Array.isArray(value)) return value.map(stableValue);
+    if (!value || typeof value !== 'object') return value;
+    const out = {};
+    for (const key of Object.keys(value).sort()) out[key] = stableValue(value[key]);
+    return out;
+  }
+
+  function comparableThemeStyle(style) {
+    const out = clone(style);
+    for (const path of THEME_IGNORED_PATHS) deletePath(out, path);
+    return stableValue(out);
+  }
+
+  function sameTheme(style, baseTheme) {
+    const base = THEMES.some((t) => t.key === baseTheme) ? baseTheme : 'neon';
+    return JSON.stringify(comparableThemeStyle(style)) ===
+      JSON.stringify(comparableThemeStyle(applyTheme(base)));
   }
 
   // ── Colour helpers ─────────────────────────────────────────────────────
@@ -421,6 +470,7 @@
   root.Style = {
     DEFAULT_VISUAL, DEFAULT_EXPORT, THEMES, EXPORT_PRESETS,
     clone, deepMerge, defaultVisual, defaultExport, applyTheme, themeStyle,
+    sameTheme,
     OVERLAY_POSITIONS, overlayPosition, overlayOffset,
     parseColor, toHex, mixColor, withAlpha, contrastText, routeColor, routeRuns, cssFilter,
     gridStep,

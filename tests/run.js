@@ -259,6 +259,27 @@ test('overlay positions accept presets and clamp fine offsets', () => {
   assert.strictEqual(S.overlayOffset('bad'), 0);
 });
 
+test('theme comparison ignores content/toggles and detects visual overrides', () => {
+  const style = S.defaultVisual();
+  assert.strictEqual(style.baseTheme, 'neon');
+  assert.ok(S.sameTheme(style, 'neon'));
+  style.title.text = 'Custom title';
+  style.title.sub = 'Custom subtitle';
+  style.title.show = false;
+  style.legend.show = false;
+  style.map.visible = false;
+  style.cp.visible = false;
+  style.map.source = 'custom';
+  assert.ok(S.sameTheme(style, 'neon'), 'content and visibility are not theme overrides');
+  style.title.position = 'br';
+  assert.ok(!S.sameTheme(style, 'neon'), 'placement is a visual override');
+  const tactical = S.applyTheme('tactical');
+  assert.strictEqual(tactical.baseTheme, 'tactical');
+  assert.ok(S.sameTheme(tactical, 'tactical'));
+  tactical.title.size = 1.2;
+  assert.ok(!S.sameTheme(tactical, 'tactical'), 'scale is a visual override');
+});
+
 test('short wide exports scale overlay chrome down to fit', () => {
   const track = T.parseTrack(JSON.stringify({ checkpoints: [[0, 0], [100, 100]] }), 'x.json');
   const route = T.computeRoute(track, null, { mode: 'straight' });

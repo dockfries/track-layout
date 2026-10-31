@@ -18,6 +18,7 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **CP editing**: drag on the map, edit coordinates, move up/down, delete, or add CPs by clicking the map. Show or hide checkpoints in both the map and the export; the sidebar list is collapsible and virtualized for tracks with hundreds of CPs.
 - **Large warning sets**: the notes/warnings panel is collapsible too, and both warning lists virtualize their rows so large tracks stay responsive.
 - **Visual customization**: 6 theme presets; solid / along-route / linear / elevation route gradients; outline, glow, dashes, direction arrows; CP shape, size, colors, numbering and labels; base-map brightness / contrast / saturation / hue / blur / tint / grid; title and legend.
+- **Custom theme state**: any visual override switches the active theme to **Custom** while remembering the base preset. Changing it back exactly restores the preset automatically; **Restore preset** resets visuals to that base without losing title text, visibility toggles, or a custom base map.
 - **PNG export**: 16:9, 4:3, 1:1, 9:16, 4K, transparent background, and **full track / current view** framing.
 - **SVG export**: route, CPs, title and legend stay vector; the base map is embedded as a raster image, or turn it off for a pure-vector route map.
 - **Custom base maps**: upload an image and set its coordinate bounds for other games or hand-made maps.
