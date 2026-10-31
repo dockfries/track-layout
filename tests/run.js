@@ -222,6 +222,18 @@ test('grid step grows for very large custom bounds', () => {
   assert.ok(S.gridStep({ minX: -10000000, maxX: 10000000, minY: -10000000, maxY: 10000000 }) > 500);
 });
 
+test('grid numbering starts at zero and runs top-left to bottom-right', () => {
+  const bounds = { minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 };
+  const cells = S.gridCells(bounds, 500);
+  assert.strictEqual(cells.length, 144);
+  assert.deepStrictEqual(cells[0], { x: -2750, y: 2750, index: 0 });
+  assert.deepStrictEqual(cells[11], { x: 2750, y: 2750, index: 11 });
+  assert.deepStrictEqual(cells[12], { x: -2750, y: 2250, index: 12 });
+  assert.deepStrictEqual(cells[143], { x: 2750, y: -2750, index: 143 });
+  assert.strictEqual(S.defaultVisual().map.gridNumbers, false);
+  assert.ok(S.gridNumberAlpha({ gridOpacity: 0.08 }) > 0.28);
+});
+
 test('deepMerge ignores prototype-pollution keys', () => {
   const patch = JSON.parse('{"__proto__":{"polluted":"yes"},"constructor":{"x":1},"safe":2}');
   const out = S.deepMerge({ a: 1 }, patch);

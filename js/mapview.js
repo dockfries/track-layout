@@ -19,6 +19,7 @@
   let gridRenderer = null;
   let routeRenderer = null;
   let gridGroup = null;
+  let gridLabelGroup = null;
   let routeGroup = null;
   let arrowGroup = null;
   let cpGroup = null;
@@ -77,8 +78,9 @@
 
     map.createPane('tintPane').style.zIndex = 410;
     map.createPane('gridPane').style.zIndex = 420;
+    map.createPane('gridLabelPane').style.zIndex = 425;
     map.createPane('routePane').style.zIndex = 430;
-    for (const name of ['tintPane', 'gridPane', 'routePane']) {
+    for (const name of ['tintPane', 'gridPane', 'gridLabelPane', 'routePane']) {
       map.getPane(name).style.pointerEvents = 'none';
     }
 
@@ -96,6 +98,7 @@
     }).addTo(map);
 
     gridGroup = L.layerGroup().addTo(map);
+    gridLabelGroup = L.layerGroup().addTo(map);
     routeGroup = L.layerGroup().addTo(map);
     arrowGroup = L.layerGroup().addTo(map);
     cpGroup = L.layerGroup().addTo(map);
@@ -229,6 +232,7 @@
   function rebuildGrid() {
     if (!gridGroup || !state.style) return;
     gridGroup.clearLayers();
+    if (gridLabelGroup) gridLabelGroup.clearLayers();
     const ms = state.style.map;
     if (!ms.grid) return;
     const b = baseBounds;
@@ -252,6 +256,23 @@
         opacity,
         interactive: false,
       }));
+    }
+    if (ms.gridNumbers && gridLabelGroup) {
+      const alpha = Style.gridNumberAlpha(ms);
+      for (const cell of Style.gridCells(b, step)) {
+        const icon = L.divIcon({
+          className: 'tl-grid-num',
+          html: `<span style="color:${color};opacity:${alpha}">${cell.index}</span>`,
+          iconSize: [38, 16],
+          iconAnchor: [19, 8],
+        });
+        gridLabelGroup.addLayer(L.marker([cell.y, cell.x], {
+          icon,
+          interactive: false,
+          keyboard: false,
+          pane: 'gridLabelPane',
+        }));
+      }
     }
   }
 

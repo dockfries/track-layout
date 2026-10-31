@@ -62,6 +62,7 @@
       grid: false,
       gridColor: '#ffffff',
       gridOpacity: 0.08,
+      gridNumbers: false,
       background: '#050811',
     },
     title: {
@@ -540,6 +541,35 @@
     return step;
   }
 
+  // Stable, row-major grid-cell numbers starting at 0 (top-left to bottom-right).
+  function gridCells(bounds, step) {
+    if (!bounds || !Number.isFinite(step) || step <= 0) return [];
+    const minX = Number(bounds.minX), maxX = Number(bounds.maxX);
+    const minY = Number(bounds.minY), maxY = Number(bounds.maxY);
+    if (![minX, maxX, minY, maxY].every(Number.isFinite) || maxX <= minX || maxY <= minY) return [];
+    const x0 = Math.ceil(minX / step) * step;
+    const x1 = Math.floor(maxX / step) * step;
+    const y0 = Math.ceil(minY / step) * step;
+    const y1 = Math.floor(maxY / step) * step;
+    const cols = Math.max(0, Math.round((x1 - x0) / step));
+    const rows = Math.max(0, Math.round((y1 - y0) / step));
+    const cells = [];
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const x = x0 + (col + 0.5) * step;
+        const y = y1 - (row + 0.5) * step;
+        if (x < minX || x > maxX || y < minY || y > maxY) continue;
+        cells.push({ x, y });
+      }
+    }
+    return cells.map((cell, index) => ({ ...cell, index }));
+  }
+
+  function gridNumberAlpha(mapStyle) {
+    const value = Number(mapStyle && mapStyle.gridOpacity) || 0;
+    return Math.min(0.8, Math.max(0.34, value * 4 + 0.2));
+  }
+
   function markerLabel(cp, index, style) {
     if (style && cpFilter(style) === 'checkpoints') return String(index);
     if (cp.role === 'start') return 'S';
@@ -620,6 +650,7 @@
     visibleCheckpoints, cpLegend,
     parseColor, toHex, mixColor, withAlpha, contrastText, routeColor, routeRuns, cssFilter,
     gridStep,
+    gridCells, gridNumberAlpha,
     markerLabel, markerFill, markerTextColor, markerSvg, markerTotalSize, escapeXml,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

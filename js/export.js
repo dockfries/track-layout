@@ -197,8 +197,8 @@
   function drawGrid(ctx, map, style, layout, includeMap = true) {
     if (!style.map.grid) return;
     const view = layout.view;
-    const gridBounds = includeMap && map && mapImageReady(map.image) ? map.bounds : view;
-    const step = Style.gridStep(gridBounds);
+    const gridReference = map && map.bounds ? map.bounds : view;
+    const step = Style.gridStep(gridReference);
     const startX = Math.ceil(view.minX / step) * step;
     const startY = Math.ceil(view.minY / step) * step;
     ctx.save();
@@ -225,6 +225,17 @@
       ctx.lineTo(layout.width, py);
     }
     ctx.stroke();
+    if (style.map.gridNumbers) {
+      const alpha = Style.gridNumberAlpha(style.map);
+      ctx.fillStyle = Style.withAlpha(style.map.gridColor, alpha);
+      ctx.font = `600 ${Math.max(8, 9 * layout.k)}px ${FONT}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const cell of Style.gridCells(gridReference, step)) {
+        if (cell.x < view.minX || cell.x > view.maxX || cell.y < view.minY || cell.y > view.maxY) continue;
+        ctx.fillText(String(cell.index), layout.xToPx(cell.x), layout.yToPx(cell.y));
+      }
+    }
     ctx.restore();
   }
 
@@ -723,8 +734,8 @@
     if (!style.map.grid) return '';
     const k = layout.k;
     const view = layout.view;
-    const gridBounds = includeMap && map && mapImageReady(map.image) ? map.bounds : view;
-    const step = Style.gridStep(gridBounds);
+    const gridReference = map && map.bounds ? map.bounds : view;
+    const step = Style.gridStep(gridReference);
     let d = '';
     for (let x = Math.ceil(view.minX / step) * step; x <= view.maxX; x += step) {
       const px = r2(layout.xToPx(x));
@@ -745,7 +756,17 @@
         close = ' clip-path="url(#gridClip)"';
       }
     }
-    return `${clip}<path d="${d.trim()}" fill="none" stroke="${Style.withAlpha(style.map.gridColor, style.map.gridOpacity)}" stroke-width="${r2(Math.max(0.5, k * 0.85))}"${close}/>`;
+    let labels = '';
+    if (style.map.gridNumbers) {
+      const alpha = Style.gridNumberAlpha(style.map);
+      const parts = [];
+      for (const cell of Style.gridCells(gridReference, step)) {
+        if (cell.x < view.minX || cell.x > view.maxX || cell.y < view.minY || cell.y > view.maxY) continue;
+        parts.push(`<text x="${r2(layout.xToPx(cell.x))}" y="${r2(layout.yToPx(cell.y))}" text-anchor="middle" dominant-baseline="central" fill="${style.map.gridColor}" fill-opacity="${r2(alpha)}" font-family="${FONT_SVG}" font-size="${r2(Math.max(8, 9 * k))}" font-weight="600">${cell.index}</text>`);
+      }
+      if (parts.length) labels = `<g${close}>${parts.join('')}</g>`;
+    }
+    return `${clip}<path d="${d.trim()}" fill="none" stroke="${Style.withAlpha(style.map.gridColor, style.map.gridOpacity)}" stroke-width="${r2(Math.max(0.5, k * 0.85))}"${close}/>${labels}`;
   }
 
   function routeSvg(route, style, layout) {

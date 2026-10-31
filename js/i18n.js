@@ -421,6 +421,9 @@
       'Rainbow uses a continuous spectrum; primary and gradient-end colours are ignored.',
     '边框粗细': 'Border width',
     '显示编号': 'Show numbers',
+    '显示网格编号': 'Show grid numbers',
+    '编号从底图左上角的 0 开始，按左上到右下排列；当前视图可能只显示中间一段。':
+      'Numbers start at 0 at the base map top-left, left-to-right and top-to-bottom; the current view may show only a middle range.',
     '显示名称': 'Show labels',
     '名称颜色': 'Label color',
     '外圈光晕': 'Halo',
