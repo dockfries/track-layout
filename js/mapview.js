@@ -381,7 +381,8 @@
     const style = state.style;
     const total = Style.markerTotalSize(style);
     track.checkpoints.forEach((cp, i) => {
-      if (!Style.cpVisibleAt(cp, i, track, style)) return;
+      if (!Style.cpVisible(cp, style)) return;
+      if (!Style.cpVisibleAt(cp, i, track, style) && i !== state.selected) return;
       const icon = L.divIcon({
         className: `tl-cp${i === state.selected ? ' is-selected' : ''}${state.cpLocked ? ' is-locked' : ''}`,
         html: cpMarkerHtml(cp, i, style),
@@ -437,7 +438,23 @@
     });
   }
 
-  function setSelected(index) {    state.selected = Number.isInteger(index) ? index : -1;
+  function setSelected(index) {
+    const previous = state.selected;
+    const next = Number.isInteger(index) ? index : -1;
+    const track = state.track;
+    const style = state.style;
+    const isDensityExtra = (i) => {
+      if (i < 0 || !track || !style || !track.checkpoints[i]) return false;
+      const cp = track.checkpoints[i];
+      return Style.cpVisible(cp, style) && !Style.cpVisibleAt(cp, i, track, style);
+    };
+    state.selected = next;
+    // A selected checkpoint is exposed even when density thinned its marker.
+    // Export rendering stays pure, so selection never leaks into the output.
+    if (isDensityExtra(previous) || isDensityExtra(next)) {
+      rebuildMarkers();
+      return;
+    }
     if (!cpGroup) return;
     cpGroup.eachLayer((marker) => {
       const el = marker.getElement();
