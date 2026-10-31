@@ -1284,7 +1284,9 @@ function bindActionsMenu() {
 
   document.addEventListener('click', (ev) => {
     if (!menu.classList.contains('is-open')) return;
-    if (ev.target.closest('#top-actions, #actions-toggle')) return;
+    // The sidebar's "all samples" chip intentionally opens this panel; its
+    // original click must not then be treated as an outside click.
+    if (ev.target.closest('#top-actions, #actions-toggle, [data-action="open-samples-menu"]')) return;
     setActionsOpen(false);
   });
 
