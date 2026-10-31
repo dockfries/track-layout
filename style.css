@@ -1674,10 +1674,23 @@ dialog.preview-lightbox { width: 100vw; height: 100vh; height: 100dvh; max-heigh
   .side-toggle { display: none !important; }
   .brand-sub { display: none; }
   .map-title { left: 16px; top: 14px; max-width: 62%; }
-  .map-legend { left: 16px; bottom: 14px; }
+  .map-legend {
+    left: 16px;
+    bottom: calc(var(--sheet-height, 71px) + 16px);
+    transition: bottom .24s cubic-bezier(.2,.8,.2,1), opacity .18s ease;
+  }
+  .map-coords { bottom: calc(var(--sheet-height, 71px) + 16px); }
+  .leaflet-bottom.leaflet-right { bottom: calc(var(--sheet-height, 71px) + 8px); }
   .playback-hud {
     bottom: calc(var(--sheet-height, 71px) + 14px);
     transition: bottom .24s cubic-bezier(.2,.8,.2,1), opacity .18s ease;
+  }
+  #workspace.sheet-full .map-legend,
+  #workspace.sheet-full .map-coords,
+  #workspace.sheet-full .leaflet-bottom {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
   }
   #workspace.sheet-full .playback-hud { opacity: 0; visibility: hidden; pointer-events: none; }
   .empty-card { padding: 26px 22px 22px; }
