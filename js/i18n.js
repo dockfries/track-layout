@@ -14,6 +14,11 @@
     "action.moveDown": { en: "Move down", zh: "下移" },
     "action.moveUp": { en: "Move up", zh: "上移" },
     "app.title": { en: "Track Layout · Race Route Studio", zh: "Track Layout · 赛道路线图工作台" },
+    "appearance.language": { en: "Language", zh: "语言" },
+    "appearance.theme": { en: "Theme", zh: "主题" },
+    "appearance.system": { en: "System", zh: "跟随系统" },
+    "appearance.dark": { en: "Dark", zh: "深色" },
+    "appearance.light": { en: "Light", zh: "浅色" },
     "aria.numericInput": { en: "Enter a numeric value", zh: "手动输入数值" },
     "common.loading": { en: "Loading…", zh: "载入中…" },
     "cp.added": { en: "Added {0}", zh: "已添加 {0}" },
@@ -289,6 +294,7 @@
     '显示 / 隐藏底图 (M)': 'Show / hide base map (M)',
     '显示 / 隐藏网格 (G)': 'Show / hide grid (G)',
     '语言': 'Language',
+    '主题': 'Theme',
 
     // ── empty state ──
     '把 CP 点变成一张赛道路线图': 'Turn checkpoint data into a race route map',

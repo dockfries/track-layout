@@ -9,6 +9,7 @@
   const I18n = root.I18n;
 
   const SA_BOUNDS = { minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 };
+  const FOCUS_ZOOM = 2;
 
   let map = null;
   let baseOverlay = null;
@@ -602,7 +603,7 @@
 
   function focusCp(cp) {
     if (!map || !cp) return;
-    map.setView([cp.y, cp.x], Math.max(map.getZoom(), 2.5), { animate: true });
+    map.setView([cp.y, cp.x], Math.max(map.getZoom(), FOCUS_ZOOM), { animate: true });
   }
 
   function setAddMode(on) {

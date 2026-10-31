@@ -978,20 +978,24 @@ function setActionsOpen(open) {
   const icon = $('actions-toggle-icon');
   if (!menu || !btn) return;
   if (!actionsMenuMode()) open = false;
+  if (open) {
+    clearTimeout(menu._sampleCloseTimer);
+    menu._sampleCloseTimer = 0;
+  }
   menu.classList.toggle('is-open', open);
   menu.classList.remove('is-sample-open');
   btn.setAttribute('aria-expanded', String(open));
   if (icon) icon.setAttribute('href', `assets/icons/sprite.svg#i-${open ? 'x' : 'menu'}`);
   if (open) {
-    if ($('samples-menu') && $('samples-menu').open) closeMenus();
+    if (qsa('details.menu[open]').length) closeMenus();
     menu.scrollTop = 0;
     requestAnimationFrame(() => {
       const first = menu.querySelector('.btn:not(.side-toggle), select');
       if (first) first.focus({ preventScroll: true });
     });
   } else {
-    if (menu.contains(document.activeElement)) btn.focus({ preventScroll: true });
-    if ($('samples-menu') && $('samples-menu').open) closeMenus();
+    if (actionsMenuMode() && menu.contains(document.activeElement)) btn.focus({ preventScroll: true });
+    closeMenus();
   }
 }
 
@@ -1006,7 +1010,17 @@ function bindActionsMenu() {
   });
 
   menu.addEventListener('click', (ev) => {
-    if (ev.target.closest('[data-action], .sample-item')) setActionsOpen(false);
+    if (ev.target.closest('.sample-item')) {
+      if (actionsMenuMode()) {
+        clearTimeout(menu._sampleCloseTimer);
+        menu._sampleCloseTimer = setTimeout(() => setActionsOpen(false), 170);
+      }
+      return;
+    }
+    if (ev.target.closest('[data-action]') ||
+        (actionsMenuMode() && ev.target.closest('.icon-option'))) {
+      setActionsOpen(false);
+    }
   });
   menu.addEventListener('change', (ev) => {
     if (ev.target instanceof HTMLSelectElement) setActionsOpen(false);
@@ -2780,6 +2794,7 @@ function openSamplesMenu() {
   const wasOpen = actions ? actions.classList.contains('is-open') : false;
   if (actionsMenuMode()) setActionsOpen(true);
   menu._autoOpenedActions = actionsMenuMode() && !wasOpen;
+  cancelMenuClose(menu);
   menu.open = true;
   renderSampleMenu();
   requestAnimationFrame(() => {
@@ -3467,19 +3482,8 @@ function bindUi() {
     });
   }
 
-  // Language picker
-  const langSel = $('lang-select');
-  if (langSel) {
-    langSel.value = I18n.getLanguage();
-    langSel.addEventListener('change', (ev) => switchLanguage(ev.target.value));
-  }
-
-  // Appearance picker
-  const themeSel = $('theme-select');
-  if (themeSel) {
-    themeSel.value = themeMode;
-    themeSel.addEventListener('change', (ev) => setThemeMode(ev.target.value));
-  }
+  // Language / appearance icon menus
+  bindAppearanceMenus();
 
   // Action buttons (delegated so sample buttons / dialogs work too)
   document.addEventListener('click', (ev) => {
@@ -3807,7 +3811,7 @@ function bindUi() {
       return;
     }
     if (ev.key === 'Escape') {
-      if ($('samples-menu') && $('samples-menu').open) { closeMenus(); return; }
+      if (qsa('details.menu[open]').length) { closeMenus(); return; }
       if ($('top-actions') && $('top-actions').classList.contains('is-open')) { setActionsOpen(false); return; }
       if (state.addMode) {
         setAddMode(false);
@@ -3992,9 +3996,43 @@ function runAction(action) {
   }
 }
 
+function hideMenuNow(details) {
+  if (!details) return;
+  if (details._closeTimer) clearTimeout(details._closeTimer);
+  details._closeTimer = 0;
+  details._closing = false;
+  details.classList.remove('is-closing');
+  if (details.open) details.removeAttribute('open');
+  if (details.id === 'samples-menu') resetSampleSearch();
+}
+
+function cancelMenuClose(details) {
+  if (!details) return;
+  if (details._closeTimer) clearTimeout(details._closeTimer);
+  details._closeTimer = 0;
+  details._closing = false;
+  details.classList.remove('is-closing');
+}
+
+function closeMenu(details) {
+  if (!details || !details.open || details._closing) return;
+  details._closing = true;
+  details.classList.add('is-closing');
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const delay = reduce ? 0 : 160;
+  details._closeTimer = setTimeout(() => {
+    details.removeAttribute('open');
+    details.classList.remove('is-closing');
+    details._closing = false;
+    details._closeTimer = 0;
+    if (details.id === 'samples-menu') resetSampleSearch();
+  }, delay);
+}
+
 function closeMenus() {
-  for (const d of qsa('details.menu[open]')) d.removeAttribute('open');
-  resetSampleSearch();
+  const samplesMenu = $('samples-menu');
+  for (const details of qsa('details.menu[open]')) closeMenu(details);
+  if (!samplesMenu || !samplesMenu.open) resetSampleSearch();
 }
 
 async function copyText(text) {
@@ -4092,10 +4130,100 @@ function applyThemeMode(mode, opts = {}) {
   document.documentElement.style.colorScheme = theme;
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = theme === 'light' ? '#f2f4f8' : '#0a0c12';
-  const select = $('theme-select');
-  if (select) select.value = themeMode;
+  syncAppearanceMenus();
   if (opts.persist) {
     try { localStorage.setItem(THEME_KEY, themeMode); } catch { /* storage may be unavailable */ }
+  }
+}
+
+function syncAppearanceMenus() {
+  const lang = I18n.getLanguage();
+  const langMenu = $('lang-menu');
+  if (langMenu) {
+    const summary = qs('summary', langMenu);
+    const label = `${t("appearance.language")} · ${lang === 'zh' ? '中文' : 'English'}`;
+    if (summary) {
+      summary.title = label;
+      summary.setAttribute('aria-label', label);
+    }
+    for (const btn of qsa('[data-lang]', langMenu)) {
+      const active = btn.dataset.lang === lang;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-checked', String(active));
+    }
+  }
+
+  const themeMenu = $('theme-menu');
+  if (themeMenu) {
+    const mode = normalizeThemeMode(themeMode);
+    const label = `${t("appearance.theme")} · ${t(`appearance.${mode}`)}`;
+    const summary = qs('summary', themeMenu);
+    if (summary) {
+      summary.title = label;
+      summary.setAttribute('aria-label', label);
+    }
+    const icon = $('theme-menu-icon');
+    if (icon) {
+      const iconName = mode === 'light' ? 'sun' : mode === 'dark' ? 'moon' : 'monitor';
+      icon.setAttribute('href', `assets/icons/sprite.svg#i-${iconName}`);
+    }
+    for (const btn of qsa('[data-theme-mode]', themeMenu)) {
+      const value = normalizeThemeMode(btn.dataset.themeMode);
+      const name = qs('.mi-name', btn);
+      if (name) name.textContent = t(`appearance.${value}`);
+      const active = value === mode;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-checked', String(active));
+    }
+  }
+}
+
+function bindAppearanceMenus() {
+  const langMenu = $('lang-menu');
+  if (langMenu) {
+    langMenu.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-lang]');
+      if (!btn) return;
+      switchLanguage(btn.dataset.lang);
+      closeMenu(langMenu);
+      if (!actionsMenuMode()) {
+        const summary = qs('summary', langMenu);
+        if (summary) summary.focus({ preventScroll: true });
+      }
+    });
+  }
+  const themeMenu = $('theme-menu');
+  if (themeMenu) {
+    themeMenu.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-theme-mode]');
+      if (!btn) return;
+      setThemeMode(btn.dataset.themeMode);
+      closeMenu(themeMenu);
+      if (!actionsMenuMode()) {
+        const summary = qs('summary', themeMenu);
+        if (summary) summary.focus({ preventScroll: true });
+      }
+    });
+  }
+
+  for (const details of qsa('details.menu')) {
+    details.addEventListener('toggle', () => {
+      if (!details.open) return;
+      cancelMenuClose(details);
+      for (const other of qsa('details.menu[open]')) {
+        if (other !== details) hideMenuNow(other);
+      }
+    });
+  }
+
+  for (const summary of qsa('details.menu > summary')) {
+    summary.addEventListener('click', (ev) => {
+      const details = summary.parentElement;
+      if (!details || !details.open) return;
+      ev.preventDefault();
+      if (details._closing) cancelMenuClose(details);
+      else closeMenu(details);
+    });
   }
 }
 
@@ -4155,6 +4283,7 @@ function refreshLanguage() {
   syncRouteWarnCollapseButton();
   syncRangeHelperLabels();
   syncPlaybackUI();
+  syncAppearanceMenus();
   renderThemes();
   renderSampleMenu();
   renderSampleChips();
@@ -4173,8 +4302,6 @@ function refreshLanguage() {
 
 function switchLanguage(lang) {
   I18n.setLanguage(lang, () => {
-    const select = $('lang-select');
-    if (select) select.value = I18n.getLanguage();
     refreshLanguage();
   });
 }

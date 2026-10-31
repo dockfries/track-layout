@@ -23,7 +23,7 @@
   <meta name="description" content="Import GTA San Andreas track JSON, route CPs along the road graph, style the map, and export PNG / SVG.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0e15'/%3E%3Cpath d='M6 23c5 0 5-14 10-14s5 12 10 12' stroke='%23f97316' stroke-width='3.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=58">
+  <link rel="stylesheet" href="style.css?v=59">
 </head>
 <body>
   <noscript><div style="padding:20px;font-family:sans-serif;color:#fff;background:#0b0e15">Track Layout requires JavaScript. / 需要启用 JavaScript。</div></noscript>
@@ -61,19 +61,45 @@
           </div>
         </details>
         <div class="separator"></div>
-        <button class="btn icon-btn" data-action="fit" title="适配赛道 (F)">
-          <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-maximize"></use></svg>
-          <span class="action-label">适配</span>
-        </button>
-        <select id="lang-select" class="lang-select" title="Language / 语言" aria-label="Language / 语言" data-no-i18n>
-          <option value="en">EN</option>
-          <option value="zh">中文</option>
-        </select>
-        <select id="theme-select" class="lang-select theme-select" title="Theme / 主题" aria-label="Theme / 主题">
-          <option value="system">跟随系统</option>
-          <option value="dark">深色</option>
-          <option value="light">浅色</option>
-        </select>
+        <details class="menu icon-menu" id="lang-menu">
+          <summary class="btn icon-btn" aria-label="语言" title="语言" aria-haspopup="menu">
+            <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-globe"></use></svg>
+            <span class="action-label">语言</span>
+          </summary>
+          <div class="menu-panel icon-menu-panel" role="menu" aria-label="语言">
+            <button class="menu-item icon-option" type="button" data-lang="zh" role="menuitemradio" aria-checked="false">
+              <span class="mi-text"><span class="mi-name">中文</span></span>
+              <svg class="ico mi-check" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-check"></use></svg>
+            </button>
+            <button class="menu-item icon-option" type="button" data-lang="en" role="menuitemradio" aria-checked="false">
+              <span class="mi-text"><span class="mi-name">English</span></span>
+              <svg class="ico mi-check" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-check"></use></svg>
+            </button>
+          </div>
+        </details>
+        <details class="menu icon-menu" id="theme-menu">
+          <summary class="btn icon-btn" aria-label="主题" title="主题" aria-haspopup="menu">
+            <svg class="ico" aria-hidden="true" focusable="false"><use id="theme-menu-icon" href="assets/icons/sprite.svg#i-monitor"></use></svg>
+            <span class="action-label">主题</span>
+          </summary>
+          <div class="menu-panel icon-menu-panel" role="menu" aria-label="主题">
+            <button class="menu-item icon-option" type="button" data-theme-mode="system" role="menuitemradio" aria-checked="false">
+              <svg class="ico mi-leading" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-monitor"></use></svg>
+              <span class="mi-text"><span class="mi-name">跟随系统</span></span>
+              <svg class="ico mi-check" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-check"></use></svg>
+            </button>
+            <button class="menu-item icon-option" type="button" data-theme-mode="light" role="menuitemradio" aria-checked="false">
+              <svg class="ico mi-leading" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-sun"></use></svg>
+              <span class="mi-text"><span class="mi-name">浅色</span></span>
+              <svg class="ico mi-check" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-check"></use></svg>
+            </button>
+            <button class="menu-item icon-option" type="button" data-theme-mode="dark" role="menuitemradio" aria-checked="false">
+              <svg class="ico mi-leading" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-moon"></use></svg>
+              <span class="mi-text"><span class="mi-name">深色</span></span>
+              <svg class="ico mi-check" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-check"></use></svg>
+            </button>
+          </div>
+        </details>
         <button class="btn icon-btn side-toggle" id="side-toggle" data-action="toggle-side" title="收起侧栏" aria-label="收起侧栏" aria-controls="side" aria-expanded="true">
           <svg class="ico" aria-hidden="true" focusable="false"><use id="side-toggle-icon" href="assets/icons/sprite.svg#i-panel-right-close"></use></svg>
         </button>
@@ -882,11 +908,11 @@
   <input id="map-input" type="file" accept="image/*" aria-label="选择自定义底图" hidden>
 
   <script src="vendor/leaflet/leaflet.js"></script>
-  <script src="js/track.js?v=58"></script>
-  <script src="js/style.js?v=58"></script>
-  <script src="js/i18n.js?v=58"></script>
-  <script src="js/mapview.js?v=58"></script>
-  <script src="js/export.js?v=58"></script>
-  <script src="js/app.js?v=58"></script>
+  <script src="js/track.js?v=59"></script>
+  <script src="js/style.js?v=59"></script>
+  <script src="js/i18n.js?v=59"></script>
+  <script src="js/mapview.js?v=59"></script>
+  <script src="js/export.js?v=59"></script>
+  <script src="js/app.js?v=59"></script>
 </body>
 </html>

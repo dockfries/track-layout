@@ -34,7 +34,7 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **Collapsible route notes**: route warnings can be folded away and use the same virtualized list rendering for long runs.
 - **Clear local cache**: the sidebar footer has a cache reset action that removes this app's `localStorage` and Cache Storage data, then reloads.
 - **Responsive workspace**: below 980px the sidebar becomes a bottom sheet with peek / half / full snap points. Drag the handle, tap it, use the chevron, or use `↑` / `↓` / `Home` / `End` while the handle is focused. On desktop the sidebar can be collapsed from the top bar.
-- **Compact action menu**: below 720px the top-bar actions collapse into a hamburger panel containing file, sample, fit, language, theme, help and shortcut controls. It closes on outside click, selection, or `Esc`.
+- **Compact action menu**: below 720px the top-bar actions collapse into a hamburger panel containing file, sample, language, theme, help and shortcut controls. It closes on outside click, selection, or `Esc`.
 - **Movable help dialogs**: drag the title bar of the JSON-format or keyboard-shortcut dialogs to reposition them. Positions are clamped to the viewport, reset when reopened, and double-clicking the title bar recenters.
 - **Small-screen controls**: below 480px the section tabs show icons only. Checkpoint, track-note and route-note headers are full-width collapse toggles, not just the chevron.
 - **Toast feedback**: Ant-Design-style elevated notices with success/error/info icons, soft shadows, top-center stacking and slide-fade motion.
@@ -43,8 +43,8 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **Export watermark**: the bottom-right `GTA: SAN ANDREAS · TRACK LAYOUT` credit can be enabled or disabled in the Export pane.
 - **Fullscreen preview**: click the preview image to open a full-viewport lightbox with wheel/trackpad zoom, pinch zoom on touch screens, drag-to-pan, double-click reset, and an optional native Fullscreen API button. Keyboard: `+`/`-` zoom, arrows pan, `0` reset, `Esc` close.
 - **Source link**: the sidebar footer GitHub icon opens the source repository.
-- **Internationalization**: first visit follows the browser locale (`zh*` → Simplified Chinese, everything else → English); the `EN / 中文` picker in the top bar overrides it. UI, map title/legend, CP list, notices, help and PNG/SVG export text all follow the active language.
-- **Dark / light UI**: choose **System / Dark / Light** in the top bar. **System** follows `prefers-color-scheme` live, and the choice is remembered in this browser. This only affects the app chrome, not the route-map artwork itself.
+- **Internationalization**: first visit follows the browser locale (`zh*` → Simplified Chinese, everything else → English); the globe menu in the top bar overrides it. UI, map title/legend, CP list, notices, help and PNG/SVG export text all follow the active language.
+- **Dark / light UI**: the sun / moon / monitor menu in the top bar switches **Light / Dark / System**. **System** follows `prefers-color-scheme` live, and the choice is remembered in this browser. This only affects the app chrome, not the route-map artwork itself.
 
 ## Quick Start
 
@@ -80,7 +80,7 @@ npm test
 ## Language / Internationalization
 
 - **Default language**: the first visit reads `navigator.languages`. Chinese locales such as `zh`, `zh-CN` and `zh-Hans` get Simplified Chinese; every other locale gets English.
-- **Switch and remember**: use the `EN / 中文` picker in the top bar. The choice is stored in `localStorage` under `track-layout:lang`.
+- **Switch and remember**: use the globe menu in the top bar. The choice is stored in `localStorage` under `track-layout:lang`.
 - **Coverage**: static UI, tabs, help dialog, map title/legend, CP list, route notices, toasts, sample names, theme names, and PNG/SVG title, legend and CP labels all follow the active language.
 - **Adding strings**: UI copy uses semantic English keys in the `MESSAGES` table in `js/i18n.js` (`key: { en, zh }`); legacy Chinese text in static HTML is mapped through `STATIC_TEXT`, and rich help HTML lives in `RICH`. Add entries when you add UI copy.
 - `html.i18n-pending` hides the UI until a language is applied, so English users do not see a flash of Chinese text.
