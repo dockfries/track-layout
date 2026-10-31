@@ -21,6 +21,7 @@ const ROUTING_DEFAULTS = { snapRadius: 80, smooth: 45 };
 const HISTORY_LIMIT = 50;
 const PLAYBACK_BASE_MS = 14000;
 const MAX_COORD = 100000;
+const SHEET_MQ = '(max-width: 980px)';
 const t = (text, ...args) => I18n.t(text, ...args);
 let themeMode = 'system';
 let themeMedia = null;
@@ -74,6 +75,8 @@ const state = {
   metaTimer: 0,
   miniTimer: 0,
   activeTab: 'track',
+  sheetSnap: 'half',
+  sideCollapsed: false,
   cpListCollapsed: false,
   cpWindow: null,
   cpScrollRaf: 0,
@@ -288,6 +291,8 @@ function restorePrefs() {
   }
   state.cpLocked = typeof saved.cpLocked === 'boolean' ? saved.cpLocked : true;
   state.playback.follow = saved.playbackFollow !== false;
+  state.sideCollapsed = !!saved.sideCollapsed;
+  if (['peek', 'half', 'full'].includes(saved.sheetSnap)) state.sheetSnap = saved.sheetSnap;
   if (saved.base && saved.base.bounds) {
     const b = saved.base.bounds;
     if ([b.minX, b.maxX, b.minY, b.maxY].every(Number.isFinite) && b.maxX > b.minX && b.maxY > b.minY) {
@@ -315,6 +320,8 @@ function saveSession() {
       empty: !state.track || !state.track.checkpoints.length,
       cpLocked: state.cpLocked,
       playbackFollow: state.playback.follow,
+      sideCollapsed: state.sideCollapsed,
+      sheetSnap: state.sheetSnap,
       routing: state.routing,
       style: state.style,
       exportOpts: state.exportOpts,
@@ -656,6 +663,246 @@ function bindPlaybackFollowGuard() {
     saveSessionSoon();
   };
   map.on('dragstart zoomstart', release);
+}
+
+// ── Responsive workspace: desktop sidebar collapse / mobile bottom sheet ──
+const sheetState = {
+  dragging: false,
+  startY: 0,
+  startHeight: 0,
+  moved: false,
+  pointerId: null,
+};
+
+function sheetMode() {
+  return window.matchMedia && window.matchMedia(SHEET_MQ).matches;
+}
+
+function sheetMetrics() {
+  const workspace = $('workspace');
+  const head = qs('.sheet-head');
+  const tabs = $('tabs');
+  const total = workspace ? workspace.clientHeight : 0;
+  const peek = (head ? head.offsetHeight : 0) + (tabs ? tabs.offsetHeight : 0);
+  const full = Math.max(peek, total - 64);
+  const half = Math.min(full, Math.max(peek, Math.round(total * 0.55)));
+  return { total, peek, half, full };
+}
+
+function syncSheetA11y() {
+  const handle = $('sheet-handle');
+  const toggle = $('sheet-toggle');
+  const peek = state.sheetSnap === 'peek';
+  const m = sheetMetrics();
+  if (handle) {
+    handle.setAttribute('aria-valuemin', String(m.peek));
+    handle.setAttribute('aria-valuemax', String(m.full));
+    handle.setAttribute('aria-valuenow', String(Math.round(sheetState.height || m[state.sheetSnap] || m.half)));
+    handle.setAttribute('aria-label', t("sheet.resize"));
+  }
+  if (toggle) {
+    const label = t(peek ? 'sheet.expand' : 'sheet.collapse');
+    toggle.title = label;
+    toggle.setAttribute('aria-label', label);
+    toggle.setAttribute('aria-expanded', String(!peek));
+  }
+  const side = $('side');
+  if (side) side.classList.toggle('is-peek', peek);
+}
+
+function syncSideCollapseUi() {
+  const btn = $('side-toggle');
+  const icon = $('side-toggle-icon');
+  const collapsed = !!state.sideCollapsed && !sheetMode();
+  if (btn) {
+    const label = t(collapsed ? 'side.expand' : 'side.collapse');
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+    btn.setAttribute('aria-expanded', String(!collapsed));
+  }
+  if (icon) icon.setAttribute('href', `assets/icons/sprite.svg#i-panel-right-${collapsed ? 'open' : 'close'}`);
+}
+
+function setSheetHeightVar(height) {
+  const workspace = $('workspace');
+  if (workspace) workspace.style.setProperty('--sheet-height', `${height}px`);
+}
+
+function setSheetSnap(snap, opts = {}) {
+  if (!sheetMode()) return;
+  if (!['peek', 'half', 'full'].includes(snap)) snap = 'half';
+  state.sheetSnap = snap;
+  const m = sheetMetrics();
+  const height = m[snap];
+  const side = $('side');
+  if (side) {
+    side.style.height = `${height}px`;
+    side.classList.remove('is-dragging');
+  }
+  sheetState.height = height;
+  setSheetHeightVar(height);
+  const workspace = $('workspace');
+  if (workspace) workspace.classList.toggle('sheet-full', snap === 'full');
+  syncSheetA11y();
+  if (opts.persist !== false) saveSessionSoon();
+}
+
+function applySideCollapsed(collapsed, opts = {}) {
+  const workspace = $('workspace');
+  state.sideCollapsed = !!collapsed;
+  if (workspace) workspace.classList.toggle('side-collapsed', state.sideCollapsed && !sheetMode());
+  syncSideCollapseUi();
+  if (opts.persist !== false) saveSessionSoon();
+  if (opts.invalidate !== false) {
+    setTimeout(() => {
+      const map = MapView.map();
+      if (map) map.invalidateSize({ pan: false });
+    }, 260);
+  }
+}
+
+function initSheet() {
+  const side = $('side');
+  const workspace = $('workspace');
+  if (!side || !workspace) return;
+  if (sheetMode()) {
+    workspace.classList.remove('side-collapsed');
+    side.style.height = '';
+    if (!['peek', 'half', 'full'].includes(state.sheetSnap)) state.sheetSnap = 'half';
+    const m = sheetMetrics();
+    const height = m[state.sheetSnap];
+    side.style.height = `${height}px`;
+    sheetState.height = height;
+    setSheetHeightVar(height);
+    workspace.classList.toggle('sheet-full', state.sheetSnap === 'full');
+    syncSheetA11y();
+    setTimeout(() => {
+      const map = MapView.map();
+      if (map) map.invalidateSize({ pan: false });
+    }, 40);
+  } else {
+    side.style.height = '';
+    side.classList.remove('is-peek', 'is-dragging');
+    workspace.classList.remove('sheet-full');
+    workspace.style.removeProperty('--sheet-height');
+    if (state.sideCollapsed) applySideCollapsed(true, { persist: false });
+    else {
+      workspace.classList.remove('side-collapsed');
+      syncSideCollapseUi();
+    }
+    setTimeout(() => {
+      const map = MapView.map();
+      if (map) map.invalidateSize({ pan: false });
+    }, 40);
+  }
+}
+
+function toggleSheet() {
+  if (!sheetMode()) return;
+  if (state.sheetSnap === 'peek') setSheetSnap('half');
+  else if (state.sheetSnap === 'full') setSheetSnap('half');
+  else setSheetSnap('peek');
+}
+
+function toggleSide() {
+  if (sheetMode()) return;
+  applySideCollapsed(!state.sideCollapsed);
+}
+
+function bindSheet() {
+  const handle = $('sheet-handle');
+  const head = qs('.sheet-head');
+  const side = $('side');
+  if (!handle || !side || !head) return;
+
+  const finishDrag = () => {
+    if (!sheetState.dragging) return;
+    sheetState.dragging = false;
+    sheetState.pointerId = null;
+    side.classList.remove('is-dragging');
+    head.classList.remove('is-dragging');
+    const m = sheetMetrics();
+    const current = side.getBoundingClientRect().height;
+    const points = [
+      { snap: 'peek', h: m.peek },
+      { snap: 'half', h: m.half },
+      { snap: 'full', h: m.full },
+    ];
+    const nearest = points.reduce((best, p) => Math.abs(p.h - current) < Math.abs(best.h - current) ? p : best, points[0]);
+    if (sheetState.moved) setSheetSnap(nearest.snap);
+    else toggleSheet();
+    sheetState.moved = false;
+  };
+
+  handle.addEventListener('pointerdown', (ev) => {
+    if (!sheetMode()) return;
+    if (ev.button !== undefined && ev.button !== 0) return;
+    ev.preventDefault();
+    sheetState.dragging = true;
+    sheetState.moved = false;
+    sheetState.pointerId = ev.pointerId;
+    sheetState.startY = ev.clientY;
+    sheetState.startHeight = side.getBoundingClientRect().height;
+    side.classList.add('is-dragging');
+    head.classList.add('is-dragging');
+    try { handle.setPointerCapture(ev.pointerId); } catch { /* ignore */ }
+  });
+
+  handle.addEventListener('pointermove', (ev) => {
+    if (!sheetState.dragging || ev.pointerId !== sheetState.pointerId) return;
+    ev.preventDefault();
+    const m = sheetMetrics();
+    const height = clamp(sheetState.startHeight + sheetState.startY - ev.clientY, m.peek, m.full);
+    if (Math.abs(height - sheetState.startHeight) > 3) sheetState.moved = true;
+    side.style.height = `${height}px`;
+    sheetState.height = height;
+    setSheetHeightVar(height);
+    syncSheetA11y();
+  });
+
+  handle.addEventListener('pointerup', finishDrag);
+  handle.addEventListener('pointercancel', finishDrag);
+
+  handle.addEventListener('keydown', (ev) => {
+    if (!sheetMode()) return;
+    const snaps = ['peek', 'half', 'full'];
+    let idx = snaps.indexOf(state.sheetSnap);
+    if (ev.key === 'ArrowUp') idx = Math.min(2, idx + 1);
+    else if (ev.key === 'ArrowDown') idx = Math.max(0, idx - 1);
+    else if (ev.key === 'Home') idx = 0;
+    else if (ev.key === 'End') idx = 2;
+    else if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); ev.stopPropagation(); toggleSheet(); return; }
+    else return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    setSheetSnap(snaps[idx]);
+  });
+
+  window.addEventListener('resize', () => {
+    if (!sheetMode()) {
+      side.style.height = '';
+      syncSideCollapseUi();
+      return;
+    }
+    if (sheetState.dragging) return;
+    const m = sheetMetrics();
+    const height = m[state.sheetSnap] || m.half;
+    side.style.height = `${height}px`;
+    sheetState.height = height;
+    setSheetHeightVar(height);
+    const workspace = $('workspace');
+    if (workspace) workspace.classList.toggle('sheet-full', state.sheetSnap === 'full');
+    syncSheetA11y();
+  });
+
+  if (window.matchMedia) {
+    const mq = window.matchMedia(SHEET_MQ);
+    const onChange = () => initSheet();
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+    else if (mq.addListener) mq.addListener(onChange);
+  }
+
+  initSheet();
 }
 
 // ── Rendering: track pane ──────────────────────────────────────────────
@@ -1743,6 +1990,8 @@ function syncAll() {
   syncHistoryButtons();
   syncPlaybackUI();
   syncLightboxFullscreen();
+  syncSheetA11y();
+  syncSideCollapseUi();
   syncTrackMeta();
   syncStyleInputs();
   syncRoutingInputs();
@@ -2699,6 +2948,7 @@ function bindUi() {
   for (const tab of qsa('.tab')) {
     tab.addEventListener('click', () => {
       state.activeTab = tab.dataset.tab;
+      if (sheetMode() && state.sheetSnap === 'peek') setSheetSnap('half');
       for (const tabEl of qsa('.tab')) {
         const active = tabEl === tab;
         tabEl.classList.toggle('active', active);
@@ -3124,6 +3374,7 @@ function bindUi() {
   bindRangeInteractions();
   bindPlayback();
   bindLightbox();
+  bindSheet();
 
   document.addEventListener('keydown', (ev) => {
     const typing = ev.target instanceof Element && ev.target.matches('input, select, textarea, [contenteditable="true"]');
@@ -3290,6 +3541,8 @@ function runAction(action) {
     case 'toggle-playback': togglePlayback(); break;
     case 'stop-playback': stopPlayback(); break;
     case 'toggle-cp-lock': toggleCpLock(); break;
+    case 'toggle-sheet': toggleSheet(); break;
+    case 'toggle-side': toggleSide(); break;
     case 'add-cp': toggleAddMode(); break;
     case 'toggle-cp-list': toggleCpList(); break;
     case 'toggle-warn-list': toggleWarnList(); break;

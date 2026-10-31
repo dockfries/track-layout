@@ -182,6 +182,11 @@
     "playback.stop": { en: "Stop animation", zh: "停止动画" },
     "lightbox.enterFullscreen": { en: "Fullscreen", zh: "全屏" },
     "lightbox.exitFullscreen": { en: "Exit fullscreen", zh: "退出全屏" },
+    "sheet.resize": { en: "Resize panel height", zh: "调整面板高度" },
+    "sheet.expand": { en: "Expand panel", zh: "展开面板" },
+    "sheet.collapse": { en: "Collapse panel", zh: "收起面板" },
+    "side.expand": { en: "Expand sidebar", zh: "展开侧栏" },
+    "side.collapse": { en: "Collapse sidebar", zh: "收起侧栏" },
     "warning.collapseRoute": { en: "Collapse route notes", zh: "折叠路段提示" },
     "warning.expandRoute": { en: "Expand route notes", zh: "展开路段提示" },
   };
@@ -627,6 +632,11 @@
     '全屏': 'Fullscreen',
     '退出全屏': 'Exit fullscreen',
     '可缩放导出预览': 'Zoomable export preview',
+    '调整面板高度': 'Resize panel height',
+    '展开面板': 'Expand panel',
+    '收起面板': 'Collapse panel',
+    '展开侧栏': 'Expand sidebar',
+    '收起侧栏': 'Collapse sidebar',
     '拖动平移 · 滚轮 / 双指缩放 · 双击切换 · Esc 关闭':
       'Drag to pan · wheel / pinch to zoom · double-click to toggle · Esc to close',
     '启用单键快捷键': 'Enable single-key shortcuts',

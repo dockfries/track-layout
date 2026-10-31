@@ -635,6 +635,47 @@ html.i18n-pending #ui { visibility: hidden; }
   border-left: 1px solid var(--border);
   position: relative;
   z-index: 800;
+  transition: width .24s cubic-bezier(.2,.8,.2,1);
+}
+#workspace.side-collapsed #side { width: 0; border-left: 0; overflow: hidden; }
+.side-toggle { flex-shrink: 0; }
+.sheet-head { display: none; }
+.sheet-handle {
+  width: 100%;
+  height: 100%;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  cursor: grab;
+}
+.sheet-head.is-dragging .sheet-handle { cursor: grabbing; }
+.sheet-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: 6px; }
+.sheet-grip {
+  width: 38px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--border-strong);
+}
+.sheet-toggle {
+  width: 26px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  padding: 0;
+}
+.sheet-toggle:hover { color: var(--text); background: var(--hover-subtle); }
+.sheet-toggle .ico { width: 13px; height: 13px; transition: transform .18s ease; }
+#side.is-peek .sheet-toggle .ico { transform: rotate(180deg); }
+#side.is-dragging { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  #side, .playback-hud, .sheet-toggle .ico { transition: none !important; }
 }
 .tabs {
   flex-shrink: 0;
@@ -1599,12 +1640,46 @@ dialog.preview-lightbox { width: 100vw; height: 100vh; height: 100dvh; max-heigh
     --map-control-edge: 10px;
     --map-control-stack-gap: 9px;
   }
-  #workspace { flex-direction: column; }
-  #map-wrap { flex: 0 0 47%; min-height: 260px; }
-  #side { width: auto; flex: 1; border-left: none; border-top: 1px solid var(--border); }
+  #workspace { display: block; position: relative; overflow: hidden; }
+  #map-wrap { position: absolute; inset: 0; min-height: 0; }
+  #side {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: var(--sheet-height, 55%);
+    max-height: calc(100% - 64px);
+    min-height: 0;
+    flex: none;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -14px 38px rgba(0,0,0,.28);
+    overflow: hidden;
+    transition: height .24s cubic-bezier(.2,.8,.2,1);
+  }
+  #side.is-dragging { transition: none; }
+  .sheet-head {
+    display: flex;
+    flex-shrink: 0;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    height: 26px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .sheet-toggle { position: absolute; right: 8px; top: 1px; }
+  .side-toggle { display: none !important; }
   .brand-sub { display: none; }
   .map-title { left: 16px; top: 14px; max-width: 62%; }
   .map-legend { left: 16px; bottom: 14px; }
+  .playback-hud {
+    bottom: calc(var(--sheet-height, 71px) + 14px);
+    transition: bottom .24s cubic-bezier(.2,.8,.2,1), opacity .18s ease;
+  }
+  #workspace.sheet-full .playback-hud { opacity: 0; visibility: hidden; pointer-events: none; }
   .empty-card { padding: 26px 22px 22px; }
   .empty-card h1 { font-size: 19px; }
 }
