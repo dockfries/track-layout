@@ -2029,7 +2029,7 @@ function updateHexLabels() {
 function formatOutput(path, v) {
   if (v === undefined || v === null || v === '') return '–';
   if (path === 'playback.speed') return `${Number(v).toFixed(1)}×`;
-  if (path.endsWith('opacity') || path.endsWith('Opacity')) return `${Math.round(Number(v) * 100)}%`;
+  if (path.endsWith('opacity') || path.endsWith('Opacity') || path === 'style.map.invert') return `${Math.round(Number(v) * 100)}%`;
   if (path.endsWith('angle') || path.endsWith('hue')) return `${Math.round(Number(v))}°`;
   if (path.endsWith('arrowGap') || path === 'routing.snapRadius') return `${Math.round(Number(v))} m`;
   if (path === 'style.title.position' || path === 'style.legend.position') return v;
@@ -2223,7 +2223,9 @@ function bindRangeInteractions() {
 function updateConditional() {
   const style = state.style;
   const rules = {
-    'route-color2': style.route.paint !== 'solid',
+    'route-color2': style.route.paint !== 'solid' && style.route.paint !== 'rainbow',
+    'route-colors': style.route.paint !== 'rainbow',
+    'route-rainbow': style.route.paint === 'rainbow',
     'route-angle': style.route.paint === 'linear',
     'route-outline': !!style.route.outline,
     'route-glow': !!style.route.glow,

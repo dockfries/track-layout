@@ -55,6 +55,7 @@
       saturate: 0.5,
       hue: 0,
       blur: 0,
+      invert: 0,
       tint: '#0b1b3a',
       tintOpacity: 0.22,
       grid: false,
@@ -160,6 +161,39 @@
         map: { brightness: 0.35, contrast: 1.25, saturate: 0, hue: 0, tint: '#000000', tintOpacity: 0.3, grid: false, gridColor: '#ffffff', gridOpacity: 0.05, background: '#050505' },
         title: { accent: '#ffffff', eyebrow: 'CONTRAST', color: '#ffffff', bgColor: '#050505', bgOpacity: 0.55 },
         legend: { color: '#ffffff', background: 'rgba(5,5,5,0.85)' },
+      },
+    },
+    {
+      key: 'cyberpunk', name: '赛博朋克 2077', en: 'Cyberpunk 2077',
+      note: '夜之城黄青霓虹，硬朗菱形 CP', noteEn: 'Night City yellow/cyan neon, angular CPs', swatch: ['#fcee0a', '#00f0ff', '#0a0a0a'],
+      patch: {
+        route: { paint: 'linear', color: '#fcee0a', color2: '#00f0ff', angle: 135, width: 4, outline: true, outlineColor: '#050505', outlineWidth: 2.5, glow: true, glowColor: '#fcee0a', glowSize: 18, arrows: true, arrowColor: '#00f0ff', arrowOutline: 'rgba(5,5,5,0.8)', arrowGap: 240 },
+        cp: { shape: 'diamond', size: 21, fill: '#0a0a0a', border: '#fcee0a', borderWidth: 2, textColor: '#fcee0a', startColor: '#fcee0a', finishColor: '#ff2a6d', halo: true, haloColor: '#00f0ff', haloOpacity: 0.2 },
+        map: { brightness: 0.46, contrast: 1.28, saturate: 0.8, hue: -8, tint: '#03151a', tintOpacity: 0.35, grid: true, gridColor: '#00f0ff', gridOpacity: 0.08, background: '#05070a' },
+        title: { accent: '#fcee0a', eyebrow: 'NIGHT CITY', color: '#fcee0a', bgColor: '#05070a', bgOpacity: 0.68 },
+        legend: { color: '#d8fbff', background: 'rgba(5,7,10,0.86)' },
+      },
+    },
+    {
+      key: 'inverted', name: '黑白反转', en: 'Inverted Mono',
+      note: '白色底图，黑色路线，纸图反相', noteEn: 'White base map, black route, inverted paper', swatch: ['#111111', '#f7f7f2', '#ffffff'],
+      patch: {
+        route: { paint: 'solid', color: '#050505', color2: '#050505', width: 4.5, outline: true, outlineColor: '#ffffff', outlineWidth: 2.5, glow: false, glowColor: '#ffffff', glowSize: 0, arrows: true, arrowColor: '#050505', arrowOutline: 'rgba(255,255,255,0.8)', arrowGap: 260 },
+        cp: { shape: 'circle', size: 21, fill: '#ffffff', border: '#050505', borderWidth: 2.5, textColor: '#050505', startColor: '#050505', finishColor: '#050505', halo: false },
+        map: { invert: 1, brightness: 1.5, contrast: 0.8, saturate: 0, hue: 0, opacity: 0.82, tint: '#ffffff', tintOpacity: 0, grid: true, gridColor: '#111111', gridOpacity: 0.07, background: '#f7f7f2' },
+        title: { accent: '#050505', eyebrow: 'INVERTED', color: '#050505', bgColor: '#ffffff', bgOpacity: 0.72 },
+        legend: { color: '#050505', background: 'rgba(255,255,255,0.88)' },
+      },
+    },
+    {
+      key: 'rainbow', name: '彩虹光轨', en: 'Rainbow Flow',
+      note: '特斯拉式连续光谱光轨，深色夜空', noteEn: 'Tesla-style full-spectrum route on a dark sky', swatch: ['#ff3b30', '#ffd60a', '#34c759'],
+      patch: {
+        route: { paint: 'rainbow', color: '#ff3b30', color2: '#a855f7', width: 4.5, outline: true, outlineColor: '#05060a', outlineWidth: 2.5, glow: true, glowColor: '#ffffff', glowSize: 12, arrows: true, arrowColor: '#ffffff', arrowOutline: 'rgba(0,0,0,0.7)', arrowGap: 240 },
+        cp: { shape: 'circle', size: 21, fill: '#05060a', border: '#ffffff', borderWidth: 2, textColor: '#ffffff', startColor: '#34c759', finishColor: '#ff3b30', halo: true, haloColor: '#ffffff', haloOpacity: 0.16 },
+        map: { brightness: 0.5, contrast: 1.12, saturate: 0.6, hue: 0, tint: '#07111f', tintOpacity: 0.28, grid: true, gridColor: '#ffffff', gridOpacity: 0.05, background: '#05070c' },
+        title: { accent: '#ffd60a', eyebrow: 'RAINBOW RUN', color: '#ffffff', bgColor: '#05070c', bgOpacity: 0.62 },
+        legend: { color: '#f4f8ff', background: 'rgba(5,7,12,0.84)' },
       },
     },
   ];
@@ -389,14 +423,23 @@
   }
 
   function routeColor(t, style) {
+    if (style.route.paint === 'rainbow') {
+      const hue = ((clampNumber(t, 0, 1) * 360) + 8) % 360;
+      return `hsl(${hue.toFixed(1)}, 92%, 60%)`;
+    }
     return mixColor(style.route.color, style.route.color2, t);
+  }
+
+  function clampNumber(value, min, max) {
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : min;
   }
 
   // Split the route into contiguous colour runs. Used by both the Leaflet map
   // and the exporter so every paint mode matches in the final image.
   function routeRuns(points, zRange, style) {
     const requested = style.route.paint;
-    const mode = ['solid', 'along', 'linear', 'elevation'].includes(requested) ? requested : 'solid';
+    const mode = ['solid', 'along', 'linear', 'elevation', 'rainbow'].includes(requested) ? requested : 'solid';
     if (!points || points.length < 2) return [];
     if (mode === 'solid') return [{ color: style.route.color, points: points.slice() }];
 
@@ -430,7 +473,7 @@
       const seg = Math.hypot(b.x - a.x, b.y - a.y);
       if (seg < 1e-6) continue;
       let t;
-      if (mode === 'along') {
+      if (mode === 'along' || mode === 'rainbow') {
         t = total > 0 ? (cum[i - 1] + seg * 0.5) / total : 0;
       } else if (mode === 'elevation') {
         t = (((a.z || 0) + (b.z || 0)) * 0.5 - zLo) / zSpan;
@@ -451,6 +494,7 @@
 
   function cssFilter(mapStyle, blurScale = 1) {
     const parts = [];
+    if (Number(mapStyle.invert) > 0.001) parts.push(`invert(${Math.min(1, Math.max(0, Number(mapStyle.invert)))})`);
     if (mapStyle.brightness !== 1) parts.push(`brightness(${mapStyle.brightness})`);
     if (mapStyle.contrast !== 1) parts.push(`contrast(${mapStyle.contrast})`);
     if (mapStyle.saturate !== 1) parts.push(`saturate(${mapStyle.saturate})`);

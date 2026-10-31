@@ -403,6 +403,10 @@
     '全部': 'All',
     '端点': 'Endpoints',
     '区分起终点配色': 'Distinguish start / finish colors',
+    '彩虹': 'Rainbow',
+    '反色': 'Invert',
+    '彩虹模式使用连续光谱光轨，主色 / 渐变终点色不参与。':
+      'Rainbow uses a continuous spectrum; primary and gradient-end colours are ignored.',
     '仅影响地图与导出中的 CP 标记，侧栏列表仍保留全部检查点。':
       'Affects map and export markers only; the sidebar list still shows every checkpoint.',
     '边框粗细': 'Border width',

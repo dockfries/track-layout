@@ -332,6 +332,23 @@ test('checkpoint legend mirrors filters and visible count', () => {
   assert.strictEqual(legend.count, 1);
 });
 
+test('new theme presets and rainbow/invert modes', () => {
+  const byKey = Object.fromEntries(S.THEMES.map((theme) => [theme.key, theme]));
+  assert.strictEqual(S.THEMES.length, 9);
+  assert.ok(byKey.cyberpunk);
+  assert.strictEqual(byKey.cyberpunk.patch.route.paint, 'linear');
+  assert.strictEqual(byKey.inverted.patch.map.invert, 1);
+  assert.strictEqual(byKey.rainbow.patch.route.paint, 'rainbow');
+  const filter = S.cssFilter({ invert: 1, brightness: 1, contrast: 1, saturate: 1, hue: 0, blur: 0 });
+  assert.ok(filter.includes('invert(1)'));
+  const style = S.defaultVisual();
+  style.route.paint = 'rainbow';
+  const points = Array.from({ length: 20 }, (_, i) => ({ x: i * 20, y: i % 3 }));
+  const runs = S.routeRuns(points, [0, 0], style);
+  assert.ok(runs.length > 4, 'rainbow should produce multiple runs');
+  assert.ok(new Set(runs.map((run) => run.color)).size > 4, 'rainbow colours should vary');
+});
+
 test('short wide exports scale overlay chrome down to fit', () => {
   const track = T.parseTrack(JSON.stringify({ checkpoints: [[0, 0], [100, 100]] }), 'x.json');
   const route = T.computeRoute(track, null, { mode: 'straight' });

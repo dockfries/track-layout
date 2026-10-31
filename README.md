@@ -18,7 +18,7 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **CP editing**: drag on the map, edit coordinates, move up/down, delete, or add CPs by clicking the map. Show or hide checkpoints in both the map and the export; the sidebar list is collapsible and virtualized for tracks with hundreds of CPs.
 - **CP display filters**: show all markers, endpoints only, start only, or finish only, with an optional uniform color scheme for start/finish markers. The sidebar editing list always keeps every checkpoint.
 - **Large warning sets**: the notes/warnings panel is collapsible too, and both warning lists virtualize their rows so large tracks stay responsive.
-- **Visual customization**: 6 theme presets; solid / along-route / linear / elevation route gradients; outline, glow, dashes, direction arrows; CP shape, size, colors, numbering and labels; base-map brightness / contrast / saturation / hue / blur / tint / grid; title and legend.
+- **Visual customization**: 9 theme presets; solid / along-route / linear / elevation / rainbow route gradients; outline, glow, dashes, direction arrows; CP shape, size, colors, numbering and labels; base-map brightness / contrast / saturation / hue / invert / blur / tint / grid; title and legend.
 - **Custom theme state**: any visual override switches the active theme to **Custom** while remembering the base preset. Changing it back exactly restores the preset automatically; **Restore preset** resets visuals to that base without losing title text, visibility toggles, or a custom base map.
 - **PNG export**: 16:9, 4:3, 1:1, 9:16, 4K, transparent background, and **full track / current view** framing.
 - **SVG export**: route, CPs, title and legend stay vector; the base map is embedded as a raster image, or turn it off for a pure-vector route map.
@@ -166,15 +166,16 @@ Limitation: a custom base map only changes the display, not the coordinate syste
 
 ## Visual Styling
 
-- **Theme presets**: Neon Night, Tactical Radar, Paper Map, Miami Sunset, Blueprint, Mono.
+- **Theme presets**: Neon Night, Tactical Radar, Paper Map, Miami Sunset, Blueprint, Mono, Cyberpunk 2077, Inverted Mono, Rainbow Flow.
 - **Route gradients**:
   - Solid
   - Along route: start color → finish color over route length
   - Linear: gradient in canvas direction
   - Elevation: gradient by CP / route `z`
+  - Rainbow: continuous full-spectrum light trail, Tesla style
 - **Route layer**: outline, glow, dashes, direction arrows (spacing / size / color).
-- **Checkpoints**: show / hide, circle / square / diamond, size, fill, border, numbering, labels, halo, start color, finish color.
-- **Base map**: brightness, contrast, saturation, hue, blur, tint strength, grid, background color, visibility; upload a custom image and set `minX/maxX/minY/maxY`. Custom images are not written to `localStorage` (too large); re-select them after reload, while bounds are saved.
+- **Checkpoints**: show / hide, display range, uniform endpoint colours, circle / square / diamond, size, fill, border, numbering, labels, halo, start color, finish color.
+- **Base map**: brightness, contrast, saturation, hue, invert, blur, tint strength, grid, background color, visibility; upload a custom image and set `minX/maxX/minY/maxY`. Custom images are not written to `localStorage` (too large); re-select them after reload, while bounds are saved.
 - **Title & legend**: show switches, eyebrow, title, subtitle, text/accent/background colors, background opacity, overall scale, title font size, subtitle font size, legend background.
 
 Can visual styles be saved to JSON? Currently they are autosaved in `localStorage` only; **Save JSON** contains track data, not visual styles.

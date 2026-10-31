@@ -1044,6 +1044,7 @@ html.i18n-pending #ui { visibility: hidden; }
 .seg-2 button { flex-basis: 50%; }
 .seg-3 button { flex-basis: 33.33%; }
 .seg-4 button { flex-basis: 25%; font-size: 11px; }
+.seg-5 button { flex-basis: 20%; font-size: 10.5px; padding: 0 2px; }
 
 .field-block { display: flex; flex-direction: column; gap: 5px; }
 .field-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
