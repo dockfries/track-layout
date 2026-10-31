@@ -809,12 +809,79 @@ function toggleSide() {
   applySideCollapsed(!state.sideCollapsed);
 }
 
+function actionsMenuMode() {
+  return window.matchMedia && window.matchMedia('(max-width: 720px)').matches;
+}
+
+function setActionsOpen(open) {
+  const menu = $('top-actions');
+  const btn = $('actions-toggle');
+  const icon = $('actions-toggle-icon');
+  if (!menu || !btn) return;
+  if (!actionsMenuMode()) open = false;
+  menu.classList.toggle('is-open', open);
+  menu.classList.remove('is-sample-open');
+  btn.setAttribute('aria-expanded', String(open));
+  if (icon) icon.setAttribute('href', `assets/icons/sprite.svg#i-${open ? 'x' : 'menu'}`);
+  if (open) {
+    if ($('samples-menu') && $('samples-menu').open) closeMenus();
+    menu.scrollTop = 0;
+    requestAnimationFrame(() => {
+      const first = menu.querySelector('.btn:not(.side-toggle), select');
+      if (first) first.focus({ preventScroll: true });
+    });
+  } else {
+    if (menu.contains(document.activeElement)) btn.focus({ preventScroll: true });
+    if ($('samples-menu') && $('samples-menu').open) closeMenus();
+  }
+}
+
+function bindActionsMenu() {
+  const menu = $('top-actions');
+  const btn = $('actions-toggle');
+  if (!menu || !btn) return;
+
+  btn.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    setActionsOpen(!menu.classList.contains('is-open'));
+  });
+
+  menu.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-action], .sample-item')) setActionsOpen(false);
+  });
+  menu.addEventListener('change', (ev) => {
+    if (ev.target instanceof HTMLSelectElement) setActionsOpen(false);
+  });
+
+  const samplesMenu = $('samples-menu');
+  if (samplesMenu) {
+    samplesMenu.addEventListener('toggle', () => {
+      if (!menu.classList.contains('is-open')) return;
+      menu.classList.toggle('is-sample-open', samplesMenu.open);
+    });
+  }
+
+  document.addEventListener('click', (ev) => {
+    if (!menu.classList.contains('is-open')) return;
+    if (ev.target.closest('#top-actions, #actions-toggle')) return;
+    setActionsOpen(false);
+  });
+
+  if (window.matchMedia) {
+    const mq = window.matchMedia('(max-width: 720px)');
+    const onChange = () => {
+      if (!mq.matches) setActionsOpen(false);
+    };
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+    else if (mq.addListener) mq.addListener(onChange);
+  }
+}
+
 function bindSheet() {
   const handle = $('sheet-handle');
   const head = qs('.sheet-head');
   const side = $('side');
   if (!handle || !side || !head) return;
-
   const finishDrag = () => {
     if (!sheetState.dragging) return;
     sheetState.dragging = false;
@@ -2397,6 +2464,7 @@ function resetSampleSearch() {
 function openSamplesMenu() {
   const menu = $('samples-menu');
   if (!menu) return;
+  if (actionsMenuMode()) setActionsOpen(true);
   menu.open = true;
   renderSampleMenu();
   requestAnimationFrame(() => {
@@ -3375,6 +3443,7 @@ function bindUi() {
   bindPlayback();
   bindLightbox();
   bindSheet();
+  bindActionsMenu();
 
   document.addEventListener('keydown', (ev) => {
     const typing = ev.target instanceof Element && ev.target.matches('input, select, textarea, [contenteditable="true"]');
@@ -3385,6 +3454,7 @@ function bindUi() {
     }
     if (ev.key === 'Escape') {
       if ($('samples-menu') && $('samples-menu').open) { closeMenus(); return; }
+      if ($('top-actions') && $('top-actions').classList.contains('is-open')) { setActionsOpen(false); return; }
       if (state.addMode) {
         setAddMode(false);
         if (typing && ev.target && typeof ev.target.blur === 'function') ev.target.blur();

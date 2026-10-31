@@ -23,7 +23,7 @@
   <meta name="description" content="Import GTA San Andreas track JSON, route CPs along the road graph, style the map, and export PNG / SVG.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0e15'/%3E%3Cpath d='M6 23c5 0 5-14 10-14s5 12 10 12' stroke='%23f97316' stroke-width='3.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=36">
+  <link rel="stylesheet" href="style.css?v=37">
 </head>
 <body>
   <noscript><div style="padding:20px;font-family:sans-serif;color:#fff;background:#0b0e15">Track Layout requires JavaScript. / 需要启用 JavaScript。</div></noscript>
@@ -40,7 +40,7 @@
           <span class="brand-sub">赛道路线图工作台</span>
         </div>
       </div>
-      <div class="top-actions">
+      <div class="top-actions" id="top-actions" role="group" aria-label="操作菜单">
         <button class="btn" data-action="open-json" title="打开 JSON" aria-label="打开 JSON">
           <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-folder-open"></use></svg>
           打开 JSON
@@ -63,6 +63,7 @@
         <div class="separator"></div>
         <button class="btn icon-btn" data-action="fit" title="适配赛道 (F)">
           <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-maximize"></use></svg>
+          <span class="action-label">适配</span>
         </button>
         <select id="lang-select" class="lang-select" title="Language / 语言" aria-label="Language / 语言" data-no-i18n>
           <option value="en">EN</option>
@@ -78,11 +79,16 @@
         </button>
         <button class="btn icon-btn" data-action="help" title="赛道 JSON 格式">
           <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-circle-help"></use></svg>
+          <span class="action-label">帮助</span>
         </button>
         <button class="btn icon-btn" data-action="shortcuts" title="键盘快捷键 (?)" aria-label="键盘快捷键">
           <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-keyboard"></use></svg>
+          <span class="action-label">快捷键</span>
         </button>
       </div>
+      <button class="btn icon-btn actions-toggle" id="actions-toggle" aria-label="操作菜单" title="操作菜单" aria-controls="top-actions" aria-expanded="false">
+        <svg class="ico" aria-hidden="true" focusable="false"><use id="actions-toggle-icon" href="assets/icons/sprite.svg#i-menu"></use></svg>
+      </button>
     </header>
 
     <main id="workspace">
@@ -796,11 +802,11 @@
   <input id="map-input" type="file" accept="image/*" aria-label="选择自定义底图" hidden>
 
   <script src="vendor/leaflet/leaflet.js"></script>
-  <script src="js/track.js?v=36"></script>
-  <script src="js/style.js?v=36"></script>
-  <script src="js/i18n.js?v=36"></script>
-  <script src="js/mapview.js?v=36"></script>
-  <script src="js/export.js?v=36"></script>
-  <script src="js/app.js?v=36"></script>
+  <script src="js/track.js?v=37"></script>
+  <script src="js/style.js?v=37"></script>
+  <script src="js/i18n.js?v=37"></script>
+  <script src="js/mapview.js?v=37"></script>
+  <script src="js/export.js?v=37"></script>
+  <script src="js/app.js?v=37"></script>
 </body>
 </html>

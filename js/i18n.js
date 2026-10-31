@@ -623,6 +623,10 @@
     '完整赛道会自动留白并适配画布比例；当前地图视图会按输出比例居中裁切。':
       'Full track pads to the canvas aspect; the current map view is center-cropped to the output aspect.',
     'GitHub 源码': 'GitHub source',
+    '操作菜单': 'Actions',
+    '适配': 'Fit',
+    '帮助': 'Help',
+    '快捷键': 'Shortcuts',
     '全屏预览': 'Fullscreen preview',
     '打开全屏预览': 'Open fullscreen preview',
     '点击全屏预览': 'Click for fullscreen preview',
