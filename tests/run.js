@@ -269,6 +269,8 @@ test('theme comparison ignores content/toggles and detects visual overrides', ()
   style.legend.show = false;
   style.map.visible = false;
   style.cp.visible = false;
+  style.cp.filter = 'start';
+  style.cp.distinguish = false;
   style.map.source = 'custom';
   assert.ok(S.sameTheme(style, 'neon'), 'content and visibility are not theme overrides');
   style.title.position = 'br';
@@ -278,6 +280,33 @@ test('theme comparison ignores content/toggles and detects visual overrides', ()
   assert.ok(S.sameTheme(tactical, 'tactical'));
   tactical.title.size = 1.2;
   assert.ok(!S.sameTheme(tactical, 'tactical'), 'scale is a visual override');
+});
+
+test('checkpoint filters and uniform role styling', () => {
+  const style = S.defaultVisual();
+  const start = { role: 'start' };
+  const mid = { role: 'cp' };
+  const finish = { role: 'finish' };
+  const loop = { role: 'loop' };
+  assert.ok(S.cpVisible(start, style));
+  assert.ok(S.cpVisible(mid, style));
+  style.cp.filter = 'endpoints';
+  assert.ok(S.cpVisible(start, style));
+  assert.ok(!S.cpVisible(mid, style));
+  assert.ok(S.cpVisible(finish, style));
+  style.cp.filter = 'start';
+  assert.ok(S.cpVisible(loop, style));
+  assert.ok(!S.cpVisible(finish, style));
+  style.cp.filter = 'finish';
+  assert.ok(S.cpVisible(loop, style));
+  assert.ok(!S.cpVisible(start, style));
+  style.cp.filter = 'invalid';
+  assert.strictEqual(S.cpFilter(style), 'all');
+  style.cp.filter = 'all';
+  style.cp.distinguish = false;
+  assert.strictEqual(S.markerFill(start, style), style.cp.fill);
+  assert.strictEqual(S.markerFill(finish, style), style.cp.fill);
+  assert.strictEqual(S.markerTextColor(start, style), style.cp.textColor);
 });
 
 test('short wide exports scale overlay chrome down to fit', () => {

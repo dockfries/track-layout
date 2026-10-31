@@ -2273,6 +2273,8 @@ function setTheme(key) {
     mapSource: state.style.map.source,
     mapVisible: state.style.map.visible,
     cpVisible: state.style.cp.visible,
+    cpFilter: state.style.cp.filter,
+    cpDistinguish: state.style.cp.distinguish,
   };
   state.style = Style.applyTheme(key);
   state.style.theme = key;
@@ -2283,6 +2285,8 @@ function setTheme(key) {
   state.style.legend.show = keep.legendShow;
   state.style.map.visible = keep.mapVisible;
   state.style.cp.visible = keep.cpVisible !== false;
+  state.style.cp.filter = keep.cpFilter || 'all';
+  state.style.cp.distinguish = keep.cpDistinguish !== false;
   if (keep.mapSource === 'custom' && state.base.customUrl) {
     state.style.map.source = 'custom';
     MapView.setBaseMap(state.base.customUrl, state.base.bounds, false);
@@ -2307,6 +2311,8 @@ function resetStyle() {
     mapSource: state.style.map.source,
     mapVisible: state.style.map.visible,
     cpVisible: state.style.cp.visible,
+    cpFilter: state.style.cp.filter,
+    cpDistinguish: state.style.cp.distinguish,
   };
   state.style = Style.applyTheme(base);
   state.style.theme = base;
@@ -2317,6 +2323,8 @@ function resetStyle() {
   state.style.legend.show = keep.legendShow;
   state.style.map.visible = keep.mapVisible;
   state.style.cp.visible = keep.cpVisible !== false;
+  state.style.cp.filter = keep.cpFilter || 'all';
+  state.style.cp.distinguish = keep.cpDistinguish !== false;
   state.style.map.source = keep.mapSource === 'custom' && state.base.customUrl ? 'custom' : 'builtin';
   syncAll();
   MapView.setStyleOnly(state.style);

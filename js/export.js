@@ -296,7 +296,9 @@
     const arrows = Track.sampleArrows(route.points, Math.max(20, style.route.arrowGap), false);
     if (!arrows.length) return;
     const size = clamp(style.route.width * 2.3, 7, 22) * layout.k * style.route.arrowSize;
-    const cpsPx = (style.cp.visible === false ? [] : (track.checkpoints || [])).map((cp) => [layout.xToPx(cp.x), layout.yToPx(cp.y)]);
+    const cpsPx = (track.checkpoints || [])
+      .filter((cp) => Style.cpVisible(cp, style))
+      .map((cp) => [layout.xToPx(cp.x), layout.yToPx(cp.y)]);
     const safe = Math.max(12, style.cp.size * layout.k * 1.15);
 
     ctx.save();
@@ -354,7 +356,6 @@
   }
 
   function drawMarkers(ctx, track, style, layout) {
-    if (style.cp.visible === false) return;
     const cps = track.checkpoints || [];
     if (!cps.length) return;
     const s = style.cp;
@@ -364,6 +365,7 @@
 
     for (let i = 0; i < cps.length; i++) {
       const cp = cps[i];
+      if (!Style.cpVisible(cp, style)) continue;
       const x = layout.xToPx(cp.x);
       const y = layout.yToPx(cp.y);
       const fill = Style.markerFill(cp, style);
@@ -557,21 +559,47 @@
     ctx.restore();
   }
 
+  function visibleCheckpoints(track, style) {
+    return (track.checkpoints || []).filter((cp) => Style.cpVisible(cp, style));
+  }
+
   function legendRows(track, style) {
-    const loop = track.closed;
-    const rows = [];
-    if (style.cp.visible === false) {
-      rows.push([I18n.t('label.route'), style.route.color]);
-      return rows;
+    const routeRow = [I18n.t('label.route'), style.route.color];
+    const visible = visibleCheckpoints(track, style);
+    if (!visible.length) return [routeRow];
+    const filter = Style.cpFilter(style);
+    if (style.cp.distinguish === false) {
+      let label = I18n.t('field.checkpoints');
+      if (track.closed && filter !== 'all') label = I18n.t('label.startFinish');
+      else if (filter === 'start') label = I18n.t('cp.start');
+      else if (filter === 'finish') label = I18n.t('cp.finish');
+      else if (filter === 'endpoints') label = I18n.t('label.endpoints');
+      return [[label, style.cp.border]];
     }
-    if (loop) {
-      rows.push([I18n.t('label.startFinish'), style.cp.startColor]);
-      rows.push([I18n.t('field.checkpoints'), style.cp.border]);
-    } else {
-      rows.push([I18n.t('cp.start'), style.cp.startColor]);
-      rows.push([I18n.t('field.checkpoints'), style.cp.border]);
-      rows.push([I18n.t('cp.finish'), style.cp.finishColor]);
+    if (filter === 'start') {
+      return [track.closed
+        ? [I18n.t('label.startFinish'), style.cp.startColor]
+        : [I18n.t('cp.start'), style.cp.startColor]];
     }
+    if (filter === 'finish') {
+      return [track.closed
+        ? [I18n.t('label.startFinish'), style.cp.startColor]
+        : [I18n.t('cp.finish'), style.cp.finishColor]];
+    }
+    if (filter === 'endpoints') {
+      return track.closed
+        ? [[I18n.t('label.startFinish'), style.cp.startColor]]
+        : [[I18n.t('cp.start'), style.cp.startColor], [I18n.t('cp.finish'), style.cp.finishColor]];
+    }
+    if (track.closed) {
+      return [
+        [I18n.t('label.startFinish'), style.cp.startColor],
+        [I18n.t('field.checkpoints'), style.cp.border],
+      ];
+    }
+    const rows = [[I18n.t('cp.start'), style.cp.startColor]];
+    if (track.checkpoints.length > 2) rows.push([I18n.t('field.checkpoints'), style.cp.border]);
+    rows.push([I18n.t('cp.finish'), style.cp.finishColor]);
     return rows;
   }
 
@@ -613,7 +641,7 @@
 
     ctx.fillStyle = Style.withAlpha(style.legend.color, 0.6);
     ctx.font = `500 ${10 * k}px ${FONT}`;
-    ctx.fillText(`${track.checkpoints.length} CP · ${Track.formatDistance(route ? route.length : 0)}`, x + pad, y + height - pad * 0.65);
+    ctx.fillText(`${visibleCheckpoints(track, style).length} CP · ${Track.formatDistance(route ? route.length : 0)}`, x + pad, y + height - pad * 0.65);
     ctx.restore();
   }
 
@@ -789,7 +817,9 @@
     if (!arrows.length) return '';
     const size = clamp(style.route.width * 2.3, 7, 22) * layout.k * style.route.arrowSize;
     const safe = Math.max(12, style.cp.size * layout.k * 1.15);
-    const cps = (style.cp.visible === false ? [] : (track.checkpoints || [])).map((cp) => [layout.xToPx(cp.x), layout.yToPx(cp.y)]);
+    const cps = (track.checkpoints || [])
+      .filter((cp) => Style.cpVisible(cp, style))
+      .map((cp) => [layout.xToPx(cp.x), layout.yToPx(cp.y)]);
     const outline = style.route.arrowOutline && style.route.arrowOutline !== 'transparent'
       ? ` stroke="${style.route.arrowOutline}" stroke-width="${r2(Math.max(0.5, layout.k * 0.9))}"`
       : '';
@@ -807,7 +837,6 @@
   }
 
   function markersSvg(track, style, layout) {
-    if (style.cp.visible === false) return '';
     const s = style.cp;
     const size = s.size * layout.k;
     const r = size / 2;
@@ -817,6 +846,7 @@
     const cps = track.checkpoints || [];
     for (let i = 0; i < cps.length; i++) {
       const cp = cps[i];
+      if (!Style.cpVisible(cp, style)) continue;
       const x = layout.xToPx(cp.x), y = layout.yToPx(cp.y);
       const fill = Style.markerFill(cp, style);
       const textColor = Style.markerTextColor(cp, style);
@@ -895,7 +925,7 @@
       parts.push(`<circle cx="${r2(x + pad + 4 * k)}" cy="${r2(cy)}" r="${r2(4.5 * k)}" fill="${color}" stroke="${Style.withAlpha(style.legend.color, 0.35)}" stroke-width="${r2(Math.max(0.4, 0.8 * k))}"/>`);
       parts.push(`<text x="${r2(x + pad + 16 * k)}" y="${r2(cy)}" dominant-baseline="central" fill="${style.legend.color}" font-family="${FONT_SVG}" font-size="${r2(12 * k)}" font-weight="500">${Style.escapeXml(label)}</text>`);
     });
-    parts.push(`<text x="${r2(x + pad)}" y="${r2(y + h - pad * 0.65)}" fill="${style.legend.color}" fill-opacity="0.6" font-family="${FONT_SVG}" font-size="${r2(10 * k)}" font-weight="500">${Style.escapeXml(`${track.checkpoints.length} CP · ${Track.formatDistance(route ? route.length : 0)}`)}</text>`);
+    parts.push(`<text x="${r2(x + pad)}" y="${r2(y + h - pad * 0.65)}" fill="${style.legend.color}" fill-opacity="0.6" font-family="${FONT_SVG}" font-size="${r2(10 * k)}" font-weight="500">${Style.escapeXml(`${visibleCheckpoints(track, style).length} CP · ${Track.formatDistance(route ? route.length : 0)}`)}</text>`);
     return parts.join('');
   }
 
@@ -910,7 +940,7 @@
     const bg = resolveBackground(opts, style);
     const defs = [];
     const body = [];
-    if (style.cp.visible !== false && track && track.checkpoints && track.checkpoints.length) {
+    if (track && visibleCheckpoints(track, style).length) {
       defs.push(
         `<filter id="cpShadow" x="-50%" y="-50%" width="200%" height="200%">` +
         `<feDropShadow dx="0" dy="${r2(2 * layout.k)}" stdDeviation="${r2(3.5 * layout.k)}" flood-color="#000000" flood-opacity="0.35"/>` +

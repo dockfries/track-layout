@@ -29,6 +29,8 @@
     },
     cp: {
       visible: true,
+      filter: 'all',          // all | endpoints | start | finish
+      distinguish: true,
       shape: 'circle',       // circle | square | diamond
       size: 22,
       fill: '#070b14',
@@ -191,6 +193,7 @@
   function defaultExport() { return clone(DEFAULT_EXPORT); }
 
   const OVERLAY_POSITIONS = ['tl', 'tc', 'tr', 'bl', 'bc', 'br'];
+  const CP_FILTERS = ['all', 'endpoints', 'start', 'finish'];
 
   function overlayPosition(value, fallback) {
     return OVERLAY_POSITIONS.includes(value) ? value : fallback;
@@ -199,6 +202,21 @@
   function overlayOffset(value) {
     const n = Number(value);
     return Number.isFinite(n) ? Math.max(-50, Math.min(50, n)) : 0;
+  }
+
+  function cpFilter(style) {
+    const value = style && style.cp ? style.cp.filter : 'all';
+    return CP_FILTERS.includes(value) ? value : 'all';
+  }
+
+  function cpVisible(cp, style) {
+    if (!cp || !style || style.cp.visible === false) return false;
+    const filter = cpFilter(style);
+    if (filter === 'all') return true;
+    const endpoint = cp.role === 'start' || cp.role === 'finish' || cp.role === 'loop';
+    if (filter === 'endpoints') return endpoint;
+    if (filter === 'start') return cp.role === 'start' || cp.role === 'loop';
+    return cp.role === 'finish' || cp.role === 'loop';
   }
 
   function applyTheme(key) {
@@ -230,6 +248,8 @@
     'map.source',
     'map.visible',
     'cp.visible',
+    'cp.filter',
+    'cp.distinguish',
   ];
 
   function deletePath(obj, path) {
@@ -408,12 +428,14 @@
   }
 
   function markerFill(cp, style) {
+    if (style.cp.distinguish === false) return style.cp.fill;
     if (cp.role === 'start' || cp.role === 'loop') return style.cp.startColor;
     if (cp.role === 'finish') return style.cp.finishColor;
     return style.cp.fill;
   }
 
   function markerTextColor(cp, style) {
+    if (style.cp.distinguish === false) return style.cp.textColor;
     if (cp.role === 'start' || cp.role === 'loop' || cp.role === 'finish') {
       return contrastText(markerFill(cp, style), '#ffffff', '#08110b');
     }
@@ -472,6 +494,7 @@
     clone, deepMerge, defaultVisual, defaultExport, applyTheme, themeStyle,
     sameTheme,
     OVERLAY_POSITIONS, overlayPosition, overlayOffset,
+    CP_FILTERS, cpFilter, cpVisible,
     parseColor, toHex, mixColor, withAlpha, contrastText, routeColor, routeRuns, cssFilter,
     gridStep,
     markerLabel, markerFill, markerTextColor, markerSvg, markerTotalSize, escapeXml,

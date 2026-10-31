@@ -329,7 +329,8 @@
     if (!route || !route.points || route.points.length < 2 || !r.arrows) return;
     const arrows = Track.sampleArrows(route.points, Math.max(20, r.arrowGap), false);
     const size = clamp(r.width * 2.3, 7, 22) * r.arrowSize;
-    const cps = (style.cp.visible === false ? [] : (state.track ? state.track.checkpoints : []))
+    const cps = (state.track ? state.track.checkpoints : [])
+      .filter((cp) => Style.cpVisible(cp, style))
       .map((cp) => map.latLngToContainerPoint([cp.y, cp.x]));
     const safe = Math.max(12, style.cp.size * 1.15);
     for (const arrow of arrows) {
@@ -377,10 +378,11 @@
     if (!cpGroup || !state.style) return;
     cpGroup.clearLayers();
     const track = state.track;
-    if (!track || state.style.cp.visible === false) return;
+    if (!track) return;
     const style = state.style;
     const total = Style.markerTotalSize(style);
     track.checkpoints.forEach((cp, i) => {
+      if (!Style.cpVisible(cp, style)) return;
       const icon = L.divIcon({
         className: `tl-cp${i === state.selected ? ' is-selected' : ''}${state.cpLocked ? ' is-locked' : ''}`,
         html: cpMarkerHtml(cp, i, style),
@@ -445,6 +447,51 @@
     });
   }
 
+  function visibleCheckpoints(track, style) {
+    return track ? track.checkpoints.filter((cp) => Style.cpVisible(cp, style)) : [];
+  }
+
+  function cpLegendRows(track, style) {
+    const routeRow = [I18n.t('label.route'), style.route.color];
+    if (!track) return [routeRow];
+    const visible = visibleCheckpoints(track, style);
+    if (!visible.length) return [routeRow];
+    const filter = Style.cpFilter(style);
+    if (style.cp.distinguish === false) {
+      let label = I18n.t('field.checkpoints');
+      if (track.closed && filter !== 'all') label = I18n.t('label.startFinish');
+      else if (filter === 'start') label = I18n.t('cp.start');
+      else if (filter === 'finish') label = I18n.t('cp.finish');
+      else if (filter === 'endpoints') label = I18n.t('label.endpoints');
+      return [[label, style.cp.border]];
+    }
+    if (filter === 'start') {
+      return [track.closed
+        ? [I18n.t('label.startFinish'), style.cp.startColor]
+        : [I18n.t('cp.start'), style.cp.startColor]];
+    }
+    if (filter === 'finish') {
+      return [track.closed
+        ? [I18n.t('label.startFinish'), style.cp.startColor]
+        : [I18n.t('cp.finish'), style.cp.finishColor]];
+    }
+    if (filter === 'endpoints') {
+      return track.closed
+        ? [[I18n.t('label.startFinish'), style.cp.startColor]]
+        : [[I18n.t('cp.start'), style.cp.startColor], [I18n.t('cp.finish'), style.cp.finishColor]];
+    }
+    if (track.closed) {
+      return [
+        [I18n.t('label.startFinish'), style.cp.startColor],
+        [I18n.t('field.checkpoints'), style.cp.border],
+      ];
+    }
+    const rows = [[I18n.t('cp.start'), style.cp.startColor]];
+    if (track.checkpoints.length > 2) rows.push([I18n.t('field.checkpoints'), style.cp.border]);
+    rows.push([I18n.t('cp.finish'), style.cp.finishColor]);
+    return rows;
+  }
+
   function updateOverlays() {
     const track = state.track;
     const style = state.style;
@@ -493,17 +540,8 @@
       const show = !!track && style.legend.show;
       legendEl.classList.toggle('hidden', !show);
       if (show) {
-        const rows = [];
-        if (style.cp.visible === false) {
-          rows.push([I18n.t('label.route'), style.route.color]);
-        } else if (track.closed) {
-          rows.push([I18n.t('label.startFinish'), style.cp.startColor]);
-          rows.push([I18n.t('field.checkpoints'), style.cp.border]);
-        } else {
-          rows.push([I18n.t('cp.start'), style.cp.startColor]);
-          rows.push([I18n.t('field.checkpoints'), style.cp.border]);
-          rows.push([I18n.t('cp.finish'), style.cp.finishColor]);
-        }
+        const rows = cpLegendRows(track, style);
+        const visible = visibleCheckpoints(track, style);
         legendEl.style.background = style.legend.background;
         legendEl.style.color = style.legend.color;
         legendEl.dataset.pos = Style.overlayPosition(style.legend.position, 'bl');
@@ -512,7 +550,7 @@
         legendEl.innerHTML = rows.map(([label, color]) =>
           `<div class="ml-row"><span class="ml-dot" style="background:${color}"></span><span>${label}</span></div>`
         ).join('') +
-          `<div class="ml-foot">${track.checkpoints.length} CP · ${Track.formatDistance(route ? route.length : 0)}</div>`;
+          `<div class="ml-foot">${visible.length} CP · ${Track.formatDistance(route ? route.length : 0)}</div>`;
       } else {
         legendEl.innerHTML = '';
       }
