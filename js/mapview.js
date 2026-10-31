@@ -329,8 +329,7 @@
     if (!route || !route.points || route.points.length < 2 || !r.arrows) return;
     const arrows = Track.sampleArrows(route.points, Math.max(20, r.arrowGap), false);
     const size = clamp(r.width * 2.3, 7, 22) * r.arrowSize;
-    const cps = (state.track ? state.track.checkpoints : [])
-      .filter((cp) => Style.cpVisible(cp, style))
+    const cps = Style.visibleCheckpoints(state.track, style)
       .map((cp) => map.latLngToContainerPoint([cp.y, cp.x]));
     const safe = Math.max(12, style.cp.size * 1.15);
     for (const arrow of arrows) {
@@ -382,7 +381,7 @@
     const style = state.style;
     const total = Style.markerTotalSize(style);
     track.checkpoints.forEach((cp, i) => {
-      if (!Style.cpVisible(cp, style)) return;
+      if (!Style.cpVisibleAt(cp, i, track, style)) return;
       const icon = L.divIcon({
         className: `tl-cp${i === state.selected ? ' is-selected' : ''}${state.cpLocked ? ' is-locked' : ''}`,
         html: cpMarkerHtml(cp, i, style),
@@ -504,7 +503,7 @@
         legendEl.innerHTML = legend.rows.map(([label, color]) =>
           `<div class="ml-row"><span class="ml-dot" style="background:${color}"></span><span>${label}</span></div>`
         ).join('') +
-          `<div class="ml-foot">${legend.count} CP · ${Track.formatDistance(route ? route.length : 0)}</div>`;
+          `<div class="ml-foot">${legend.total > legend.count ? `${legend.count} / ${legend.total}` : legend.count} CP · ${Track.formatDistance(route ? route.length : 0)}</div>`;
       } else {
         legendEl.innerHTML = '';
       }

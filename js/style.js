@@ -30,6 +30,7 @@
     cp: {
       visible: true,
       filter: 'all',          // all | endpoints | start | finish
+      interval: 1,            // 1 = every CP; 2 / 5 / 10 / 20 = marker thinning
       distinguish: true,
       shape: 'circle',       // circle | square | diamond
       size: 22,
@@ -228,6 +229,7 @@
 
   const OVERLAY_POSITIONS = ['tl', 'tc', 'tr', 'bl', 'bc', 'br'];
   const CP_FILTERS = ['all', 'endpoints', 'start', 'finish'];
+  const CP_INTERVALS = [1, 2, 5, 10, 20];
 
   function overlayPosition(value, fallback) {
     return OVERLAY_POSITIONS.includes(value) ? value : fallback;
@@ -243,6 +245,11 @@
     return CP_FILTERS.includes(value) ? value : 'all';
   }
 
+  function cpInterval(style) {
+    const value = Number(style && style.cp ? style.cp.interval : 1);
+    return CP_INTERVALS.includes(value) ? value : 1;
+  }
+
   function cpVisible(cp, style) {
     if (!cp || !style || style.cp.visible === false) return false;
     const filter = cpFilter(style);
@@ -253,11 +260,27 @@
     return cp.role === 'finish' || cp.role === 'loop';
   }
 
+  // Marker thinning is a render-only concern. `index` is always the original
+  // checkpoint index, so labels, editing and routing never get renumbered.
+  function cpVisibleAt(cp, index, track, style) {
+    if (!cpVisible(cp, style)) return false;
+    const interval = cpInterval(style);
+    if (interval <= 1) return true;
+    if (cp.role === 'start' || cp.role === 'finish' || cp.role === 'loop') return true;
+    return Number.isInteger(index) && index > 0 && index % interval === 0;
+  }
+
   function visibleCheckpoints(track, style) {
-    return track ? track.checkpoints.filter((cp) => cpVisible(cp, style)) : [];
+    return track ? track.checkpoints.filter((cp, index) => cpVisibleAt(cp, index, track, style)) : [];
   }
 
   function cpLegend(track, style, t) {
+    const legend = buildCpLegend(track, style, t);
+    legend.total = track && Array.isArray(track.checkpoints) ? track.checkpoints.length : 0;
+    return legend;
+  }
+
+  function buildCpLegend(track, style, t) {
     const routeRow = [t('label.route'), style.route.color];
     if (!track) return { rows: [routeRow], count: 0 };
     const visible = visibleCheckpoints(track, style);
@@ -333,6 +356,7 @@
     'cp.visible',
     'cp.filter',
     'cp.distinguish',
+    'cp.interval',
   ];
 
   function deletePath(obj, path) {
@@ -588,6 +612,7 @@
     sameTheme,
     OVERLAY_POSITIONS, overlayPosition, overlayOffset,
     CP_FILTERS, cpFilter, cpVisible,
+    CP_INTERVALS, cpInterval, cpVisibleAt,
     visibleCheckpoints, cpLegend,
     parseColor, toHex, mixColor, withAlpha, contrastText, routeColor, routeRuns, cssFilter,
     gridStep,

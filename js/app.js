@@ -1899,6 +1899,21 @@ function syncStyleInputs() {
   syncCpToggleButton();
   syncMapControlButtons();
   updateHexLabels();
+  updateCpDensityHint();
+}
+
+function updateCpDensityHint() {
+  const el = $('cp-density-hint');
+  if (!el) return;
+  const total = state.track && state.track.checkpoints ? state.track.checkpoints.length : 0;
+  if (!total) {
+    el.textContent = t("cp.densityIdle");
+    return;
+  }
+  const count = Style.visibleCheckpoints(state.track, state.style).length;
+  el.textContent = count === total
+    ? t("cp.densityAll", total)
+    : t("cp.densitySome", count, total);
 }
 
 function syncMapControlButtons() {
@@ -2284,6 +2299,7 @@ function applyStyleChange(path) {
   refreshCpBadges();
   syncCpToggleButton();
   syncMapControlButtons();
+  updateCpDensityHint();
   const overlayOnly = path.startsWith('title.') || path.startsWith('legend.');
   clearTimeout(state.styleTimer);
   state.styleTimer = setTimeout(() => {
@@ -2309,6 +2325,7 @@ function setTheme(key) {
     mapVisible: state.style.map.visible,
     cpVisible: state.style.cp.visible,
     cpFilter: state.style.cp.filter,
+    cpInterval: state.style.cp.interval,
     cpDistinguish: state.style.cp.distinguish,
   };
   state.style = Style.applyTheme(key);
@@ -2321,6 +2338,7 @@ function setTheme(key) {
   state.style.map.visible = keep.mapVisible;
   state.style.cp.visible = keep.cpVisible !== false;
   state.style.cp.filter = keep.cpFilter || 'all';
+  state.style.cp.interval = keep.cpInterval || 1;
   state.style.cp.distinguish = keep.cpDistinguish !== false;
   if (keep.mapSource === 'custom' && state.base.customUrl) {
     state.style.map.source = 'custom';
@@ -2347,6 +2365,7 @@ function resetStyle() {
     mapVisible: state.style.map.visible,
     cpVisible: state.style.cp.visible,
     cpFilter: state.style.cp.filter,
+    cpInterval: state.style.cp.interval,
     cpDistinguish: state.style.cp.distinguish,
   };
   state.style = Style.applyTheme(base);
@@ -2359,6 +2378,7 @@ function resetStyle() {
   state.style.map.visible = keep.mapVisible;
   state.style.cp.visible = keep.cpVisible !== false;
   state.style.cp.filter = keep.cpFilter || 'all';
+  state.style.cp.interval = keep.cpInterval || 1;
   state.style.cp.distinguish = keep.cpDistinguish !== false;
   state.style.map.source = keep.mapSource === 'custom' && state.base.customUrl ? 'custom' : 'builtin';
   syncAll();

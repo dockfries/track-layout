@@ -332,6 +332,34 @@ test('checkpoint legend mirrors filters and visible count', () => {
   assert.strictEqual(legend.count, 1);
 });
 
+test('checkpoint display density thins markers without renumbering', () => {
+  const style = S.defaultVisual();
+  const track = {
+    closed: false,
+    checkpoints: Array.from({ length: 300 }, (_, i) => ({
+      role: i === 0 ? 'start' : i === 299 ? 'finish' : 'cp',
+    })),
+  };
+  assert.strictEqual(S.visibleCheckpoints(track, style).length, 300);
+  style.cp.interval = 10;
+  const visible = S.visibleCheckpoints(track, style);
+  assert.strictEqual(visible.length, 31);
+  assert.ok(S.cpVisibleAt(track.checkpoints[0], 0, track, style));
+  assert.ok(!S.cpVisibleAt(track.checkpoints[1], 1, track, style));
+  assert.ok(S.cpVisibleAt(track.checkpoints[10], 10, track, style));
+  assert.ok(S.cpVisibleAt(track.checkpoints[299], 299, track, style));
+  const legend = S.cpLegend(track, style, globalThis.I18n.t);
+  assert.strictEqual(legend.count, 31);
+  assert.strictEqual(legend.total, 300);
+  style.cp.filter = 'endpoints';
+  assert.strictEqual(S.visibleCheckpoints(track, style).length, 2);
+  style.cp.filter = 'all';
+  style.cp.interval = 20;
+  assert.strictEqual(S.visibleCheckpoints(track, style).length, 16);
+  style.cp.interval = 7;
+  assert.strictEqual(S.cpInterval(style), 1);
+});
+
 test('new theme presets and rainbow/invert modes', () => {
   const byKey = Object.fromEntries(S.THEMES.map((theme) => [theme.key, theme]));
   assert.strictEqual(S.THEMES.length, 9);

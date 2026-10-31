@@ -296,8 +296,7 @@
     const arrows = Track.sampleArrows(route.points, Math.max(20, style.route.arrowGap), false);
     if (!arrows.length) return;
     const size = clamp(style.route.width * 2.3, 7, 22) * layout.k * style.route.arrowSize;
-    const cpsPx = (track.checkpoints || [])
-      .filter((cp) => Style.cpVisible(cp, style))
+    const cpsPx = Style.visibleCheckpoints(track, style)
       .map((cp) => [layout.xToPx(cp.x), layout.yToPx(cp.y)]);
     const safe = Math.max(12, style.cp.size * layout.k * 1.15);
 
@@ -365,7 +364,7 @@
 
     for (let i = 0; i < cps.length; i++) {
       const cp = cps[i];
-      if (!Style.cpVisible(cp, style)) continue;
+      if (!Style.cpVisibleAt(cp, i, track, style)) continue;
       const x = layout.xToPx(cp.x);
       const y = layout.yToPx(cp.y);
       const fill = Style.markerFill(cp, style);
@@ -608,7 +607,7 @@
 
     ctx.fillStyle = Style.withAlpha(style.legend.color, 0.6);
     ctx.font = `500 ${10 * k}px ${FONT}`;
-    ctx.fillText(`${legend.count} CP · ${Track.formatDistance(route ? route.length : 0)}`, x + pad, y + height - pad * 0.65);
+    ctx.fillText(`${legend.total > legend.count ? `${legend.count} / ${legend.total}` : legend.count} CP · ${Track.formatDistance(route ? route.length : 0)}`, x + pad, y + height - pad * 0.65);
     ctx.restore();
   }
 
@@ -784,8 +783,7 @@
     if (!arrows.length) return '';
     const size = clamp(style.route.width * 2.3, 7, 22) * layout.k * style.route.arrowSize;
     const safe = Math.max(12, style.cp.size * layout.k * 1.15);
-    const cps = (track.checkpoints || [])
-      .filter((cp) => Style.cpVisible(cp, style))
+    const cps = Style.visibleCheckpoints(track, style)
       .map((cp) => [layout.xToPx(cp.x), layout.yToPx(cp.y)]);
     const outline = style.route.arrowOutline && style.route.arrowOutline !== 'transparent'
       ? ` stroke="${style.route.arrowOutline}" stroke-width="${r2(Math.max(0.5, layout.k * 0.9))}"`
@@ -813,7 +811,7 @@
     const cps = track.checkpoints || [];
     for (let i = 0; i < cps.length; i++) {
       const cp = cps[i];
-      if (!Style.cpVisible(cp, style)) continue;
+      if (!Style.cpVisibleAt(cp, i, track, style)) continue;
       const x = layout.xToPx(cp.x), y = layout.yToPx(cp.y);
       const fill = Style.markerFill(cp, style);
       const textColor = Style.markerTextColor(cp, style);
@@ -893,7 +891,7 @@
       parts.push(`<circle cx="${r2(x + pad + 4 * k)}" cy="${r2(cy)}" r="${r2(4.5 * k)}" fill="${color}" stroke="${Style.withAlpha(style.legend.color, 0.35)}" stroke-width="${r2(Math.max(0.4, 0.8 * k))}"/>`);
       parts.push(`<text x="${r2(x + pad + 16 * k)}" y="${r2(cy)}" dominant-baseline="central" fill="${style.legend.color}" font-family="${FONT_SVG}" font-size="${r2(12 * k)}" font-weight="500">${Style.escapeXml(label)}</text>`);
     });
-    parts.push(`<text x="${r2(x + pad)}" y="${r2(y + h - pad * 0.65)}" fill="${style.legend.color}" fill-opacity="0.6" font-family="${FONT_SVG}" font-size="${r2(10 * k)}" font-weight="500">${Style.escapeXml(`${legend.count} CP · ${Track.formatDistance(route ? route.length : 0)}`)}</text>`);
+    parts.push(`<text x="${r2(x + pad)}" y="${r2(y + h - pad * 0.65)}" fill="${style.legend.color}" fill-opacity="0.6" font-family="${FONT_SVG}" font-size="${r2(10 * k)}" font-weight="500">${Style.escapeXml(`${legend.total > legend.count ? `${legend.count} / ${legend.total}` : legend.count} CP · ${Track.formatDistance(route ? route.length : 0)}`)}</text>`);
     return parts.join('');
   }
 
