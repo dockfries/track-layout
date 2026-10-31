@@ -447,51 +447,6 @@
     });
   }
 
-  function visibleCheckpoints(track, style) {
-    return track ? track.checkpoints.filter((cp) => Style.cpVisible(cp, style)) : [];
-  }
-
-  function cpLegendRows(track, style) {
-    const routeRow = [I18n.t('label.route'), style.route.color];
-    if (!track) return [routeRow];
-    const visible = visibleCheckpoints(track, style);
-    if (!visible.length) return [routeRow];
-    const filter = Style.cpFilter(style);
-    if (style.cp.distinguish === false) {
-      let label = I18n.t('field.checkpoints');
-      if (track.closed && filter !== 'all') label = I18n.t('label.startFinish');
-      else if (filter === 'start') label = I18n.t('cp.start');
-      else if (filter === 'finish') label = I18n.t('cp.finish');
-      else if (filter === 'endpoints') label = I18n.t('label.endpoints');
-      return [[label, style.cp.border]];
-    }
-    if (filter === 'start') {
-      return [track.closed
-        ? [I18n.t('label.startFinish'), style.cp.startColor]
-        : [I18n.t('cp.start'), style.cp.startColor]];
-    }
-    if (filter === 'finish') {
-      return [track.closed
-        ? [I18n.t('label.startFinish'), style.cp.startColor]
-        : [I18n.t('cp.finish'), style.cp.finishColor]];
-    }
-    if (filter === 'endpoints') {
-      return track.closed
-        ? [[I18n.t('label.startFinish'), style.cp.startColor]]
-        : [[I18n.t('cp.start'), style.cp.startColor], [I18n.t('cp.finish'), style.cp.finishColor]];
-    }
-    if (track.closed) {
-      return [
-        [I18n.t('label.startFinish'), style.cp.startColor],
-        [I18n.t('field.checkpoints'), style.cp.border],
-      ];
-    }
-    const rows = [[I18n.t('cp.start'), style.cp.startColor]];
-    if (track.checkpoints.length > 2) rows.push([I18n.t('field.checkpoints'), style.cp.border]);
-    rows.push([I18n.t('cp.finish'), style.cp.finishColor]);
-    return rows;
-  }
-
   function updateOverlays() {
     const track = state.track;
     const style = state.style;
@@ -540,17 +495,16 @@
       const show = !!track && style.legend.show;
       legendEl.classList.toggle('hidden', !show);
       if (show) {
-        const rows = cpLegendRows(track, style);
-        const visible = visibleCheckpoints(track, style);
+        const legend = Style.cpLegend(track, style, I18n.t);
         legendEl.style.background = style.legend.background;
         legendEl.style.color = style.legend.color;
         legendEl.dataset.pos = Style.overlayPosition(style.legend.position, 'bl');
         legendEl.style.setProperty('--pos-x', `${Style.overlayOffset(style.legend.offsetX)}%`);
         legendEl.style.setProperty('--pos-y', `${Style.overlayOffset(style.legend.offsetY)}%`);
-        legendEl.innerHTML = rows.map(([label, color]) =>
+        legendEl.innerHTML = legend.rows.map(([label, color]) =>
           `<div class="ml-row"><span class="ml-dot" style="background:${color}"></span><span>${label}</span></div>`
         ).join('') +
-          `<div class="ml-foot">${visible.length} CP · ${Track.formatDistance(route ? route.length : 0)}</div>`;
+          `<div class="ml-foot">${legend.count} CP · ${Track.formatDistance(route ? route.length : 0)}</div>`;
       } else {
         legendEl.innerHTML = '';
       }

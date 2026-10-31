@@ -130,7 +130,6 @@
     "toast.mapBoundsUpdated": { en: "Base map bounds updated", zh: "底图范围已更新" },
     "toast.mapLoaded": { en: "Base map loaded: {0}", zh: "已载入底图：{0}" },
     "toast.specCopied": { en: "Example JSON copied", zh: "示例 JSON 已复制" },
-    "toast.styleReset": { en: "Style reset", zh: "样式已重置" },
     "toast.themeRestored": { en: "Restored theme: {0}", zh: "已还原主题：{0}" },
     "toast.themeChanged": { en: "Theme: {0}", zh: "已切换主题：{0}" },
     "theme.custom": { en: "Custom", zh: "自定义" },

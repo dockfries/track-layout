@@ -473,7 +473,7 @@
     return { x, y, margin, pos };
   }
 
-  function titleMetrics(style, layout, title, sub) {
+  function titleMetrics(style, layout, title, sub, eyebrow) {
     const k = layout.overlayK || layout.k;
     const ts = clamp(Number(style.title.size) || 1, 0.5, 2);
     const titleScale = clamp(Number(style.title.titleSize) || 1, 0.5, 2);
@@ -487,11 +487,21 @@
     const subFont = `500 ${subSize}px ${FONT}`;
     const titleText = ellipsizeText(title, titleFont(titleSize), maxW);
     const subText = ellipsizeText(sub, subFont, maxW);
+    const eyebrowSize = 10.5 * k * ts;
+    const eyebrowFont = `700 ${eyebrowSize}px ${FONT}`;
+    const eyebrowText = eyebrow ? ellipsizeText(eyebrow.toUpperCase(), eyebrowFont, maxW) : '';
+    const eyebrowW = eyebrowText
+      ? measureText(eyebrowText, eyebrowFont) + eyebrowText.length * 1.5 * k
+      : 0;
     const eyebrowBaseline = 15 * k * ts;
     const titleBaseline = eyebrowBaseline + titleSize * 1.03;
     const subBaseline = titleBaseline + titleSize * 0.25 + subSize * 0.75 + 4 * k * ts;
     const accentH = Math.max(56 * k * ts, subBaseline + subSize * 0.25 - 4 * k * ts);
-    const measured = Math.max(measureText(titleText, titleFont(titleSize)), measureText(subText, subFont));
+    const measured = Math.max(
+      measureText(titleText, titleFont(titleSize)),
+      measureText(subText, subFont),
+      eyebrowW
+    );
     const scrimW = Math.min(layout.width * 0.94, Math.max(780 * k * ts, Math.min(measured, maxW) + 34 * k));
     const scrimH = Math.max(
       150 * k * ts + Math.max(0, titleScale - 1) * 18 * k + Math.max(0, subScale - 1) * 8 * k,
@@ -499,7 +509,7 @@
     );
     const contentW = 16 * k + measured;
     return {
-      k, ts, titleScale, subScale, margin, maxW, titleSize, subSize,
+      k, ts, titleScale, subScale, margin, maxW, titleSize, subSize, eyebrowSize, eyebrowText,
       titleFont, subFont, titleText, subText,
       eyebrowBaseline, titleBaseline, subBaseline, accentH, scrimW, scrimH, contentW,
     };
@@ -510,8 +520,8 @@
     const opacity = clamp(Number(style.title.bgOpacity) || 0, 0, 1);
     if (opacity <= 0) return;
     const color = style.title.bgColor || bg || style.map.background;
-    const { title, sub } = titleContent(track, route, style);
-    const metrics = titleMetrics(style, layout, title, sub);
+    const { title, sub, eyebrow } = titleContent(track, route, style);
+    const metrics = titleMetrics(style, layout, title, sub, eyebrow);
     const origin = overlayOrigin(style, 'title', layout, metrics.contentW, metrics.scrimH, 'tl');
     const dx = origin.x - metrics.margin;
     const dy = origin.y - metrics.margin;
@@ -529,8 +539,8 @@
   function drawTitle(ctx, track, route, style, layout) {
     if (!style.title.show) return;
     const { title, sub, eyebrow } = titleContent(track, route, style);
-    const metrics = titleMetrics(style, layout, title, sub);
-    const { k, ts } = metrics;
+    const metrics = titleMetrics(style, layout, title, sub, eyebrow);
+    const { k } = metrics;
     const origin = overlayOrigin(style, 'title', layout, metrics.contentW, metrics.scrimH, 'tl');
     ctx.save();
     ctx.translate(origin.x - metrics.margin, origin.y - metrics.margin);
@@ -543,9 +553,9 @@
 
     if (eyebrow) {
       ctx.fillStyle = Style.withAlpha(style.title.accent, 0.92);
-      ctx.font = `700 ${10.5 * k * ts}px ${FONT}`;
+      ctx.font = `700 ${metrics.eyebrowSize}px ${FONT}`;
       if ('letterSpacing' in ctx) ctx.letterSpacing = `${1.5 * k}px`;
-      ctx.fillText(eyebrow.toUpperCase(), x + 16 * k, y + metrics.eyebrowBaseline);
+      ctx.fillText(metrics.eyebrowText, x + 16 * k, y + metrics.eyebrowBaseline);
       if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
     }
 
@@ -559,54 +569,11 @@
     ctx.restore();
   }
 
-  function visibleCheckpoints(track, style) {
-    return (track.checkpoints || []).filter((cp) => Style.cpVisible(cp, style));
-  }
-
-  function legendRows(track, style) {
-    const routeRow = [I18n.t('label.route'), style.route.color];
-    const visible = visibleCheckpoints(track, style);
-    if (!visible.length) return [routeRow];
-    const filter = Style.cpFilter(style);
-    if (style.cp.distinguish === false) {
-      let label = I18n.t('field.checkpoints');
-      if (track.closed && filter !== 'all') label = I18n.t('label.startFinish');
-      else if (filter === 'start') label = I18n.t('cp.start');
-      else if (filter === 'finish') label = I18n.t('cp.finish');
-      else if (filter === 'endpoints') label = I18n.t('label.endpoints');
-      return [[label, style.cp.border]];
-    }
-    if (filter === 'start') {
-      return [track.closed
-        ? [I18n.t('label.startFinish'), style.cp.startColor]
-        : [I18n.t('cp.start'), style.cp.startColor]];
-    }
-    if (filter === 'finish') {
-      return [track.closed
-        ? [I18n.t('label.startFinish'), style.cp.startColor]
-        : [I18n.t('cp.finish'), style.cp.finishColor]];
-    }
-    if (filter === 'endpoints') {
-      return track.closed
-        ? [[I18n.t('label.startFinish'), style.cp.startColor]]
-        : [[I18n.t('cp.start'), style.cp.startColor], [I18n.t('cp.finish'), style.cp.finishColor]];
-    }
-    if (track.closed) {
-      return [
-        [I18n.t('label.startFinish'), style.cp.startColor],
-        [I18n.t('field.checkpoints'), style.cp.border],
-      ];
-    }
-    const rows = [[I18n.t('cp.start'), style.cp.startColor]];
-    if (track.checkpoints.length > 2) rows.push([I18n.t('field.checkpoints'), style.cp.border]);
-    rows.push([I18n.t('cp.finish'), style.cp.finishColor]);
-    return rows;
-  }
-
   function drawLegend(ctx, track, route, style, layout) {
     if (!style.legend.show) return;
     const k = layout.overlayK || layout.k;
-    const rows = legendRows(track, style);
+    const legend = Style.cpLegend(track, style, I18n.t);
+    const rows = legend.rows;
     const pad = 14 * k;
     const rowH = 20 * k;
     const width = 172 * k;
@@ -641,7 +608,7 @@
 
     ctx.fillStyle = Style.withAlpha(style.legend.color, 0.6);
     ctx.font = `500 ${10 * k}px ${FONT}`;
-    ctx.fillText(`${visibleCheckpoints(track, style).length} CP · ${Track.formatDistance(route ? route.length : 0)}`, x + pad, y + height - pad * 0.65);
+    ctx.fillText(`${legend.count} CP · ${Track.formatDistance(route ? route.length : 0)}`, x + pad, y + height - pad * 0.65);
     ctx.restore();
   }
 
@@ -880,8 +847,8 @@
   function titleSvg(track, route, style, layout, bg) {
     if (!style.title.show) return null;
     const { title, sub, eyebrow } = titleContent(track, route, style);
-    const metrics = titleMetrics(style, layout, title, sub);
-    const { k, ts } = metrics;
+    const metrics = titleMetrics(style, layout, title, sub, eyebrow);
+    const { k } = metrics;
     const origin = overlayOrigin(style, 'title', layout, metrics.contentW, metrics.scrimH, 'tl');
     const dx = origin.x - metrics.margin;
     const dy = origin.y - metrics.margin;
@@ -901,7 +868,7 @@
     const x = metrics.margin, y = metrics.margin;
     parts.push(`<rect x="${r2(x)}" y="${r2(y + 4 * k)}" width="${r2(4 * k)}" height="${r2(metrics.accentH)}" fill="${style.title.accent}"/>`);
     if (eyebrow) {
-      parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + metrics.eyebrowBaseline)}" fill="${style.title.accent}" font-family="${FONT_SVG}" font-size="${r2(10.5 * k * ts)}" font-weight="700" letter-spacing="${r2(1.5 * k)}">${Style.escapeXml(eyebrow.toUpperCase())}</text>`);
+      parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + metrics.eyebrowBaseline)}" fill="${style.title.accent}" font-family="${FONT_SVG}" font-size="${r2(metrics.eyebrowSize)}" font-weight="700" letter-spacing="${r2(1.5 * k)}">${Style.escapeXml(metrics.eyebrowText)}</text>`);
     }
     parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + metrics.titleBaseline)}" fill="${style.title.color}" font-family="${FONT_SVG}" font-size="${r2(metrics.titleSize)}" font-weight="700">${Style.escapeXml(metrics.titleText)}</text>`);
     parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + metrics.subBaseline)}" fill="${style.title.color}" fill-opacity="0.7" font-family="${FONT_SVG}" font-size="${r2(metrics.subSize)}" font-weight="500">${Style.escapeXml(metrics.subText)}</text>`);
@@ -911,7 +878,8 @@
   function legendSvg(track, route, style, layout) {
     if (!style.legend.show) return '';
     const k = layout.overlayK || layout.k;
-    const rows = legendRows(track, style);
+    const legend = Style.cpLegend(track, style, I18n.t);
+    const rows = legend.rows;
     const pad = 14 * k;
     const rowH = 20 * k;
     const w = 172 * k;
@@ -925,7 +893,7 @@
       parts.push(`<circle cx="${r2(x + pad + 4 * k)}" cy="${r2(cy)}" r="${r2(4.5 * k)}" fill="${color}" stroke="${Style.withAlpha(style.legend.color, 0.35)}" stroke-width="${r2(Math.max(0.4, 0.8 * k))}"/>`);
       parts.push(`<text x="${r2(x + pad + 16 * k)}" y="${r2(cy)}" dominant-baseline="central" fill="${style.legend.color}" font-family="${FONT_SVG}" font-size="${r2(12 * k)}" font-weight="500">${Style.escapeXml(label)}</text>`);
     });
-    parts.push(`<text x="${r2(x + pad)}" y="${r2(y + h - pad * 0.65)}" fill="${style.legend.color}" fill-opacity="0.6" font-family="${FONT_SVG}" font-size="${r2(10 * k)}" font-weight="500">${Style.escapeXml(`${visibleCheckpoints(track, style).length} CP · ${Track.formatDistance(route ? route.length : 0)}`)}</text>`);
+    parts.push(`<text x="${r2(x + pad)}" y="${r2(y + h - pad * 0.65)}" fill="${style.legend.color}" fill-opacity="0.6" font-family="${FONT_SVG}" font-size="${r2(10 * k)}" font-weight="500">${Style.escapeXml(`${legend.count} CP · ${Track.formatDistance(route ? route.length : 0)}`)}</text>`);
     return parts.join('');
   }
 
@@ -940,7 +908,7 @@
     const bg = resolveBackground(opts, style);
     const defs = [];
     const body = [];
-    if (track && visibleCheckpoints(track, style).length) {
+    if (track && Style.visibleCheckpoints(track, style).length) {
       defs.push(
         `<filter id="cpShadow" x="-50%" y="-50%" width="200%" height="200%">` +
         `<feDropShadow dx="0" dy="${r2(2 * layout.k)}" stdDeviation="${r2(3.5 * layout.k)}" flood-color="#000000" flood-opacity="0.35"/>` +

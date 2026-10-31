@@ -1336,6 +1336,22 @@ details.section[open] > summary .chev { transform: rotate(180deg); }
   gap: 8px;
   pointer-events: none;
 }
+.toast-stack[popover] {
+  inset: auto;
+  top: calc(var(--top, 54px) + 10px);
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  width: min(540px, calc(100vw - 20px));
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+  color: inherit;
+}
+.toast-stack[popover]:not(:popover-open) { display: none; }
 .toast {
   position: relative;
   width: fit-content;
@@ -1777,6 +1793,7 @@ dialog.preview-lightbox { width: 100vw; height: 100vh; height: 100dvh; max-heigh
     bottom: calc(var(--sheet-height, 71px) + 14px);
     transition: bottom .24s cubic-bezier(.2,.8,.2,1), opacity .18s ease;
   }
+  #workspace.sheet-full .map-title,
   #workspace.sheet-full .map-legend,
   #workspace.sheet-full .map-coords,
   #workspace.sheet-full .leaflet-bottom {

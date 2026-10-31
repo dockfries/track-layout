@@ -219,18 +219,67 @@
     return cp.role === 'finish' || cp.role === 'loop';
   }
 
+  function visibleCheckpoints(track, style) {
+    return track ? track.checkpoints.filter((cp) => cpVisible(cp, style)) : [];
+  }
+
+  function cpLegend(track, style, t) {
+    const routeRow = [t('label.route'), style.route.color];
+    if (!track) return { rows: [routeRow], count: 0 };
+    const visible = visibleCheckpoints(track, style);
+    if (!visible.length) return { rows: [routeRow], count: 0 };
+    const filter = cpFilter(style);
+    if (style.cp.distinguish === false) {
+      let label = t('field.checkpoints');
+      if (track.closed && filter !== 'all') label = t('label.startFinish');
+      else if (filter === 'start') label = t('cp.start');
+      else if (filter === 'finish') label = t('cp.finish');
+      else if (filter === 'endpoints') label = t('label.endpoints');
+      return { rows: [[label, style.cp.border]], count: visible.length };
+    }
+    if (filter === 'start') {
+      return {
+        rows: [track.closed
+          ? [t('label.startFinish'), style.cp.startColor]
+          : [t('cp.start'), style.cp.startColor]],
+        count: visible.length,
+      };
+    }
+    if (filter === 'finish') {
+      return {
+        rows: [track.closed
+          ? [t('label.startFinish'), style.cp.startColor]
+          : [t('cp.finish'), style.cp.finishColor]],
+        count: visible.length,
+      };
+    }
+    if (filter === 'endpoints') {
+      return {
+        rows: track.closed
+          ? [[t('label.startFinish'), style.cp.startColor]]
+          : [[t('cp.start'), style.cp.startColor], [t('cp.finish'), style.cp.finishColor]],
+        count: visible.length,
+      };
+    }
+    if (track.closed) {
+      return {
+        rows: [
+          [t('label.startFinish'), style.cp.startColor],
+          [t('field.checkpoints'), style.cp.border],
+        ],
+        count: visible.length,
+      };
+    }
+    const rows = [[t('cp.start'), style.cp.startColor]];
+    if (track.checkpoints.length > 2) rows.push([t('field.checkpoints'), style.cp.border]);
+    rows.push([t('cp.finish'), style.cp.finishColor]);
+    return { rows, count: visible.length };
+  }
+
   function applyTheme(key) {
     const theme = THEMES.find((t) => t.key === key);
     if (!theme) return defaultVisual();
     const next = deepMerge(defaultVisual(), theme.patch);
-    next.theme = key;
-    next.baseTheme = key;
-    return next;
-  }
-
-  // Fill a theme patch into an existing style without dropping export prefs.
-  function themeStyle(key, current) {
-    const next = applyTheme(key);
     next.theme = key;
     next.baseTheme = key;
     return next;
@@ -491,10 +540,11 @@
 
   root.Style = {
     DEFAULT_VISUAL, DEFAULT_EXPORT, THEMES, EXPORT_PRESETS,
-    clone, deepMerge, defaultVisual, defaultExport, applyTheme, themeStyle,
+    clone, deepMerge, defaultVisual, defaultExport, applyTheme,
     sameTheme,
     OVERLAY_POSITIONS, overlayPosition, overlayOffset,
     CP_FILTERS, cpFilter, cpVisible,
+    visibleCheckpoints, cpLegend,
     parseColor, toHex, mixColor, withAlpha, contrastText, routeColor, routeRuns, cssFilter,
     gridStep,
     markerLabel, markerFill, markerTextColor, markerSvg, markerTotalSize, escapeXml,

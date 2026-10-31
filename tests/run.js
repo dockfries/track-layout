@@ -309,6 +309,29 @@ test('checkpoint filters and uniform role styling', () => {
   assert.strictEqual(S.markerTextColor(start, style), style.cp.textColor);
 });
 
+test('checkpoint legend mirrors filters and visible count', () => {
+  const style = S.defaultVisual();
+  const track = {
+    closed: false,
+    checkpoints: [{ role: 'start' }, { role: 'cp' }, { role: 'finish' }],
+  };
+  let legend = S.cpLegend(track, style, globalThis.I18n.t);
+  assert.strictEqual(legend.count, 3);
+  assert.strictEqual(legend.rows.length, 3);
+  style.cp.filter = 'endpoints';
+  legend = S.cpLegend(track, style, globalThis.I18n.t);
+  assert.strictEqual(legend.count, 2);
+  assert.strictEqual(legend.rows.length, 2);
+  style.cp.filter = 'all';
+  style.cp.distinguish = false;
+  legend = S.cpLegend(track, style, globalThis.I18n.t);
+  assert.strictEqual(legend.count, 3);
+  assert.strictEqual(legend.rows.length, 1);
+  style.cp.filter = 'start';
+  legend = S.cpLegend(track, style, globalThis.I18n.t);
+  assert.strictEqual(legend.count, 1);
+});
+
 test('short wide exports scale overlay chrome down to fit', () => {
   const track = T.parseTrack(JSON.stringify({ checkpoints: [[0, 0], [100, 100]] }), 'x.json');
   const route = T.computeRoute(track, null, { mode: 'straight' });

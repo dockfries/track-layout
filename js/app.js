@@ -153,7 +153,11 @@ function openDialog(dlg) {
   dlg._closeTimer = 0;
   dlg.classList.remove('is-closing');
   resetDialogPosition(dlg);
-  if (!dlg.open) dlg.showModal();
+  if (!dlg.open) {
+    dlg.showModal();
+    const stack = $('toast-stack');
+    if (stack && stack.children.length) showToastLayer();
+  }
 }
 
 function closeOpenDialogs() {
@@ -280,6 +284,30 @@ function toastDuration(kind) {
   return kind === 'error' ? 4600 : 2800;
 }
 
+function showToastLayer() {
+  const stack = $('toast-stack');
+  if (!stack) return;
+  if (typeof stack.showPopover !== 'function') {
+    stack.removeAttribute('popover');
+    return;
+  }
+  try {
+    if (stack.matches(':popover-open')) stack.hidePopover();
+    stack.showPopover();
+  } catch {
+    stack.removeAttribute('popover');
+  }
+}
+
+function hideToastLayerIfEmpty() {
+  const stack = $('toast-stack');
+  if (!stack || stack.children.length || !stack.hasAttribute('popover') ||
+      typeof stack.hidePopover !== 'function') return;
+  try {
+    if (stack.matches(':popover-open')) stack.hidePopover();
+  } catch { /* ignore */ }
+}
+
 function scheduleToastDismiss() {
   clearTimeout(toastDismissTimer);
   const stack = $('toast-stack');
@@ -314,6 +342,7 @@ function spawnToast(item) {
   el._createdAt = Date.now();
   el._duration = toastDuration(item.kind);
   stack.appendChild(el);
+  showToastLayer();
   requestAnimationFrame(() => {
     if (el.isConnected) el.classList.add('show');
   });
@@ -339,6 +368,7 @@ function removeToast(el) {
     el.remove();
     toastLastRemovedAt = Date.now();
     drainToastQueue();
+    hideToastLayerIfEmpty();
     scheduleToastDismiss();
   }, TOAST_EXIT_MS);
 }
@@ -964,8 +994,11 @@ function bindActionsMenu() {
   const samplesMenu = $('samples-menu');
   if (samplesMenu) {
     samplesMenu.addEventListener('toggle', () => {
+      const auto = samplesMenu._autoOpenedActions;
+      if (!samplesMenu.open) samplesMenu._autoOpenedActions = false;
       if (!menu.classList.contains('is-open')) return;
       menu.classList.toggle('is-sample-open', samplesMenu.open);
+      if (!samplesMenu.open && auto) setActionsOpen(false);
     });
   }
 
@@ -2329,6 +2362,7 @@ function resetStyle() {
   syncAll();
   MapView.setStyleOnly(state.style);
   saveSessionSoon();
+  if (state.activeTab === 'export') scheduleMiniPreview(120);
   const theme = Style.THEMES.find((item) => item.key === base);
   toast(t("toast.themeRestored", I18n.themeName(theme) || base), 'ok');
 }
@@ -2339,6 +2373,7 @@ function toggleMapVisible() {
   updateConditional();
   MapView.setStyleOnly(state.style);
   saveSessionSoon();
+  if (state.activeTab === 'export') scheduleMiniPreview();
   toast(t(state.style.map.visible ? 'toast.mapShown' : 'toast.mapHidden'));
 }
 
@@ -2349,6 +2384,7 @@ function toggleGrid() {
   updateConditional();
   MapView.setStyleOnly(state.style);
   saveSessionSoon();
+  if (state.activeTab === 'export') scheduleMiniPreview();
   toast(t(state.style.map.grid ? 'toast.gridShown' : 'toast.gridHidden'));
 }
 
@@ -2649,7 +2685,10 @@ function resetSampleSearch() {
 function openSamplesMenu() {
   const menu = $('samples-menu');
   if (!menu) return;
+  const actions = $('top-actions');
+  const wasOpen = actions ? actions.classList.contains('is-open') : false;
   if (actionsMenuMode()) setActionsOpen(true);
+  menu._autoOpenedActions = actionsMenuMode() && !wasOpen;
   menu.open = true;
   renderSampleMenu();
   requestAnimationFrame(() => {
