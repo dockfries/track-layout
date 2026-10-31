@@ -543,6 +543,7 @@ details.menu.is-closing > .menu-panel {
   box-shadow: 0 8px 28px rgba(249,115,22,.35);
   white-space: nowrap;
 }
+#workspace.add-mode .map-title { opacity: 0; visibility: hidden; }
 .add-hint kbd {
   font-family: var(--mono);
   background: rgba(0,0,0,.24);
@@ -1783,11 +1784,11 @@ dialog.preview-lightbox { width: 100vw; height: 100vh; height: 100dvh; max-heigh
 }
 .tl-basemap { transition: opacity .15s ease; }
 .tl-tint { mix-blend-mode: multiply; }
-.tl-cp { background: none; border: none; cursor: grab; filter: drop-shadow(0 3px 7px rgba(0,0,0,.45)); transition: transform .12s ease, filter .12s ease; }
-.tl-cp-wrap { position: relative; width: 100%; height: 100%; }
+.tl-cp { background: none; border: none; cursor: grab; filter: drop-shadow(0 3px 7px rgba(0,0,0,.45)); transition: filter .12s ease; }
+.tl-cp-wrap { position: relative; width: 100%; height: 100%; transform-origin: center; transition: scale .12s ease; }
 .map-heading .tl-cp-wrap { transform: rotate(var(--map-counter-rotate, 0deg)); }
-.map-heading .tl-grid-num { rotate: var(--map-counter-rotate, 0deg); }
-.map-heading .leaflet-tooltip { rotate: var(--map-counter-rotate, 0deg); }
+.map-heading .tl-grid-num span { rotate: var(--map-counter-rotate, 0deg); }
+.map-heading .tl-tip-inner { rotate: var(--map-counter-rotate, 0deg); transform-origin: center; }
 .tl-cp-label {
   position: absolute;
   top: 100%;
@@ -1804,9 +1805,10 @@ dialog.preview-lightbox { width: 100vw; height: 100vh; height: 100dvh; max-heigh
   pointer-events: none;
   text-shadow: 0 1px 4px var(--cp-label-shadow);
 }
-.tl-cp:hover { transform: scale(1.12); filter: drop-shadow(0 5px 12px rgba(0,0,0,.55)); }
+.tl-cp:hover .tl-cp-wrap { scale: 1.12; }
+.tl-cp:hover { filter: drop-shadow(0 5px 12px rgba(0,0,0,.55)); }
 .tl-cp.is-locked { cursor: default; }
-.tl-cp.is-locked:hover { transform: none; }
+.tl-cp.is-locked:hover:not(.is-selected) .tl-cp-wrap { scale: 1; }
 .tl-playback-marker { background: none; border: none; }
 .tl-playback-arrow {
   width: 30px;
@@ -1830,7 +1832,8 @@ dialog.preview-lightbox { width: 100vw; height: 100vh; height: 100dvh; max-heigh
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.tl-cp.is-selected { transform: scale(1.18); filter: drop-shadow(0 0 12px rgba(249,115,22,.85)) drop-shadow(0 4px 10px rgba(0,0,0,.5)); }
+.tl-cp.is-selected .tl-cp-wrap { scale: 1.18; }
+.tl-cp.is-selected { filter: drop-shadow(0 0 12px rgba(249,115,22,.85)) drop-shadow(0 4px 10px rgba(0,0,0,.5)); }
 .tl-cp:active { cursor: grabbing; }
 .tl-arrow { background: none; border: none; pointer-events: none; }
 .tl-tooltip {
@@ -1909,12 +1912,17 @@ dialog.preview-lightbox { width: 100vw; height: 100vh; height: 100dvh; max-heigh
   #workspace.sheet-full .map-title,
   #workspace.sheet-full .map-legend,
   #workspace.sheet-full .map-coords,
+  #workspace.sheet-full .leaflet-top,
   #workspace.sheet-full .leaflet-bottom {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
   }
   #workspace.sheet-full .playback-hud { opacity: 0; visibility: hidden; pointer-events: none; }
+  .map-toolbar { max-height: max(64px, calc(100% - 96px - var(--sheet-height, 0px))); }
+  #workspace.sheet-full .map-toolbar { opacity: 0; visibility: hidden; pointer-events: none; }
+  .empty-state { z-index: 850; bottom: 0; pointer-events: none; }
+  .empty-state .empty-card { pointer-events: auto; }
   .empty-card { padding: 26px 22px 22px; }
   .empty-card h1 { font-size: 19px; }
 }
@@ -1962,6 +1970,7 @@ dialog.preview-lightbox { width: 100vw; height: 100vh; height: 100dvh; max-heigh
   .ml-dot { width: 7px; height: 7px; }
   .ml-foot { margin-top: 4px; padding-top: 4px; font-size: 8.5px; }
   .map-coords { display: none; }
+  #workspace.hud-active .map-legend { opacity: 0; visibility: hidden; pointer-events: none; }
   .map-btn { font-size: 13px; }
   .cp-list { max-height: min(330px, 48vh); }
   .warn-list.virtual { max-height: min(220px, 32vh); }

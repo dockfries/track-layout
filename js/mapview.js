@@ -40,6 +40,7 @@
     cpLocked: true,
     playbackHeading: false,
     playbackBearing: 0,
+    viewInsetBottom: 0,
   };
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
@@ -146,7 +147,6 @@
       clearTimeout(coordsTimer);
       coordsTimer = setTimeout(hideCoords, 1500);
     });
-    map.on('mouseout', hideCoords);
     map.on('dragstart', hideCoords);
     map.getContainer().addEventListener('pointerleave', hideCoords);
     map.on('zoomend', () => {
@@ -402,6 +402,20 @@
     return `<div class="tl-cp-wrap">${Style.markerSvg(cp, index, style)}${labelHtml}</div>`;
   }
 
+  function syncCpDragging() {
+    if (!cpGroup) return;
+    const locked = state.cpLocked || state.playbackHeading;
+    cpGroup.eachLayer((marker) => {
+      marker.options.draggable = !locked;
+      if (marker.dragging) {
+        if (locked) marker.dragging.disable();
+        else marker.dragging.enable();
+      }
+      const el = marker.getElement();
+      if (el) el.classList.toggle('is-locked', locked);
+    });
+  }
+
   function rebuildMarkers() {
     if (!cpGroup || !state.style) return;
     cpGroup.clearLayers();
@@ -458,13 +472,14 @@
       const routeCp = state.route && state.route.cps ? state.route.cps[i] : null;
       const label = cp.label ? `${role} · ${escapeHtml(cp.label)}` : role;
       marker.bindTooltip(
-        `<div class="tl-tip-title">${label}</div><div class="tl-tip-coord">${cp.x.toFixed(1)}, ${cp.y.toFixed(1)}${cp.hasZ ? `, ${cp.z.toFixed(1)}` : ''}</div>` +
-        (routeCp && routeCp.snap && routeCp.snap.dist > 3 ? `<div class="tl-tip-note">${escapeHtml(I18n.t('cp.snapDistanceLong', routeCp.snap.dist.toFixed(0)))}</div>` : ''),
+        `<div class="tl-tip-inner"><div class="tl-tip-title">${label}</div><div class="tl-tip-coord">${cp.x.toFixed(1)}, ${cp.y.toFixed(1)}${cp.hasZ ? `, ${cp.z.toFixed(1)}` : ''}</div>` +
+        (routeCp && routeCp.snap && routeCp.snap.dist > 3 ? `<div class="tl-tip-note">${escapeHtml(I18n.t('cp.snapDistanceLong', routeCp.snap.dist.toFixed(0)))}</div>` : '') +
+        '</div>',
         { direction: 'top', offset: [0, -total / 2], opacity: 1, className: 'tl-tooltip', sticky: false }
       );
       marker.addTo(cpGroup);
-      if (state.cpLocked && marker.dragging) marker.dragging.disable();
     });
+    syncCpDragging();
   }
 
   function setSelected(index) {
@@ -596,7 +611,10 @@
 
   function fitBase() {
     if (!map) return;
-    map.fitBounds([[baseBounds.minY, baseBounds.minX], [baseBounds.maxY, baseBounds.maxX]], { animate: false });
+    map.fitBounds([[baseBounds.minY, baseBounds.minX], [baseBounds.maxY, baseBounds.maxX]], {
+      animate: false,
+      paddingBottomRight: [0, viewInset()],
+    });
   }
 
   function fitRoute() {
@@ -605,12 +623,17 @@
     if (state.route && state.route.points) pts.push(...state.route.points);
     if (state.track) pts.push(...state.track.checkpoints);
     if (!pts.length) return fitBase();
-    map.fitBounds(L.latLngBounds(pts.map((p) => [p.y, p.x])).pad(0.07), { maxZoom: 4, animate: false });
+    map.fitBounds(L.latLngBounds(pts.map((p) => [p.y, p.x])).pad(0.07), {
+      maxZoom: 4,
+      animate: false,
+      paddingBottomRight: [0, viewInset()],
+    });
   }
 
   function focusCp(cp) {
     if (!map || !cp) return;
-    map.setView([cp.y, cp.x], FOCUS_ZOOM, { animate: true });
+    const target = map.project([cp.y, cp.x], FOCUS_ZOOM).add([0, viewInset() / 2]);
+    map.setView(map.unproject(target, FOCUS_ZOOM), FOCUS_ZOOM, { animate: true });
   }
 
   function setAddMode(on) {
@@ -623,21 +646,32 @@
 
   function setCpLocked(locked) {
     state.cpLocked = !!locked;
-    if (!cpGroup) return;
-    cpGroup.eachLayer((marker) => {
-      marker.options.draggable = !state.cpLocked;
-      if (marker.dragging) {
-        if (state.cpLocked) marker.dragging.disable();
-        else marker.dragging.enable();
-      }
-      const el = marker.getElement();
-      if (el) el.classList.toggle('is-locked', state.cpLocked);
-    });
+    syncCpDragging();
   }
 
   function centerOn(point) {
     if (!map || !point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
-    map.panTo([point.y, point.x], { animate: false });
+    const inset = viewInset();
+    if (!inset) {
+      map.panTo([point.y, point.x], { animate: false });
+      return;
+    }
+    const zoom = map.getZoom();
+    const target = map.project([point.y, point.x], zoom).add([0, inset / 2]);
+    map.panTo(map.unproject(target, zoom), { animate: false });
+  }
+
+  function viewInset() {
+    if (!map) return 0;
+    const size = map.getSize();
+    return clamp(state.viewInsetBottom, 0, Math.max(0, size.y - 96));
+  }
+
+  function setViewportInset(bottom) {
+    const next = Number.isFinite(Number(bottom)) ? Math.max(0, Number(bottom)) : 0;
+    if (next === state.viewInsetBottom) return;
+    state.viewInsetBottom = next;
+    if (map && state.playbackHeading) applyPlaybackRotation(state.playbackBearing);
   }
 
   function normalizeBearing(angle) {
@@ -653,7 +687,8 @@
     if (!pane || !container) return;
     const size = map.getSize();
     const north = normalizeBearing(bearing + 90);
-    pane.style.transformOrigin = `${size.x / 2}px ${size.y / 2}px`;
+    const inset = viewInset();
+    pane.style.transformOrigin = `${size.x / 2}px ${(size.y - inset) / 2}px`;
     pane.style.rotate = `${-north}deg`;
     container.style.setProperty('--map-counter-rotate', `${north}deg`);
   }
@@ -668,6 +703,7 @@
     state.playbackHeading = next;
     const container = map.getContainer();
     container.classList.toggle('map-heading', next);
+    syncCpDragging();
     if (next) {
       hideCoords();
       applyPlaybackRotation(state.playbackBearing);
@@ -726,8 +762,32 @@
 
   function getViewBounds() {
     if (!map) return { ...SA_BOUNDS };
-    const b = map.getBounds();
-    return { minX: b.getWest(), maxX: b.getEast(), minY: b.getSouth(), maxY: b.getNorth() };
+    const size = map.getSize();
+    const inset = viewInset();
+    const visibleHeight = Math.max(1, size.y - inset);
+    const cx = size.x / 2;
+    const cy = visibleHeight / 2;
+    if (state.playbackHeading) {
+      // The visual viewport is the CSS-rotated map pane. Walk its four screen
+      // corners back through the inverse rotation before unprojecting, so a
+      // "current view" export still contains everything visible on screen.
+      const rad = normalizeBearing(state.playbackBearing + 90) * Math.PI / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      const pts = [[0, 0], [size.x, 0], [size.x, visibleHeight], [0, visibleHeight]].map(([x, y]) => {
+        const dx = x - cx;
+        const dy = y - cy;
+        return map.containerPointToLatLng([cx + dx * cos - dy * sin, cy + dx * sin + dy * cos]);
+      });
+      const west = Math.min(...pts.map((p) => p.lng));
+      const east = Math.max(...pts.map((p) => p.lng));
+      const south = Math.min(...pts.map((p) => p.lat));
+      const north = Math.max(...pts.map((p) => p.lat));
+      return { minX: west, maxX: east, minY: south, maxY: north };
+    }
+    const nw = map.containerPointToLatLng([0, 0]);
+    const se = map.containerPointToLatLng([size.x, visibleHeight]);
+    return { minX: nw.lng, maxX: se.lng, minY: se.lat, maxY: nw.lat };
   }
 
   function getZoom() { return map ? map.getZoom() : 0; }
@@ -736,7 +796,7 @@
     init, setBaseMap, setData, setRouteOnly, setStyleOnly, setSelected,
     fitRoute, fitBase, focusCp, setAddMode, setCpLocked, getExportMap, getViewBounds,
     setPlaybackMarker, clearPlaybackMarker, centerOn,
-    setPlaybackHeading, setPlaybackBearing,
+    setPlaybackHeading, setPlaybackBearing, setViewportInset,
     ensureBaseReady: () => baseReady,
     refreshOverlays: updateOverlays, getZoom, map: () => map,
   };

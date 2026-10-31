@@ -175,7 +175,7 @@ Limitation: a custom base map only changes the display, not the coordinate syste
   - Rainbow: continuous full-spectrum light trail, Tesla style
 - **Route layer**: outline, glow, dashes, direction arrows (spacing / size / color). Automatic arrow spacing targets ~48 arrows with a 140 m minimum, so full-map routes stay readable.
 - **Checkpoints**: show / hide, display range, marker density, CP-style endpoints, uniform start/finish colours, circle / square / diamond, size, fill, border, numbering, labels, halo, start color, finish color.
-- **Base map**: brightness, contrast, saturation, hue, invert, blur, tint strength, grid (8 × 8 on the standard SA bounds), optional grid numbers (0 at the top-left, row-major), background color, visibility; upload a custom image and set `minX/maxX/minY/maxY`. Custom images are not written to `localStorage` (too large); re-select them after reload, while bounds are saved.
+- **Base map**: brightness, contrast, saturation, hue, invert, blur, tint strength, grid (8 × 8 on the standard SA bounds), optional grid numbers (0 at the top-left, row-major), background color, visibility; upload a custom image and set `minX/maxX/minY/maxY`. Custom images and their bounds are not written to `localStorage` (too large); re-select the image and bounds after reload.
 - **Title & legend**: show switches, eyebrow, title, subtitle, text/accent/background colors, background opacity, overall scale, title font size, subtitle font size, legend background.
 
 Can visual styles be saved to JSON? Currently they are autosaved in `localStorage` only; **Save JSON** contains track data, not visual styles.
