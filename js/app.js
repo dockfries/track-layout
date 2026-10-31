@@ -2391,7 +2391,6 @@ function bindLightbox() {
 
   if (preview) {
     preview.addEventListener('click', openLightbox);
-    preview.addEventListener('dragstart', (ev) => ev.preventDefault());
     preview.addEventListener('keydown', (ev) => {
       if (ev.key !== 'Enter' && ev.key !== ' ') return;
       ev.preventDefault();
@@ -2576,7 +2575,7 @@ function updateMiniPreview(canvas) {
   const el = $('export-mini');
   if (el) {
     const type = state.exportOpts.background === 'transparent' ? 'image/png' : 'image/jpeg';
-    el.innerHTML = `<img src="${mini.toDataURL(type, 0.84)}" alt="${escapeHtml(t("label.exportPreview"))}">`;
+    el.innerHTML = `<img src="${mini.toDataURL(type, 0.84)}" alt="${escapeHtml(t("label.exportPreview"))}" draggable="false">`;
   }
 }
 
@@ -3085,6 +3084,11 @@ function bindUi() {
 
   // Drag & drop
   let dragDepth = 0;
+  // Images are previews, never draggable source files. This also prevents a
+  // preview image from being dropped back into the app as a custom base map.
+  document.addEventListener('dragstart', (ev) => {
+    if (ev.target instanceof HTMLImageElement) ev.preventDefault();
+  });
   window.addEventListener('dragenter', (ev) => {
     if (!ev.dataTransfer || !Array.from(ev.dataTransfer.types || []).includes('Files')) return;
     dragDepth++;
