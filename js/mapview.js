@@ -105,8 +105,8 @@
       options: { position: 'bottomright', width: 100 },
       onAdd(leafletMap) {
         this._map = leafletMap;
-        const container = L.DomUtil.create('div', 'leaflet-control-scale leaflet-control');
-        this._line = L.DomUtil.create('div', 'leaflet-control-scale-line', container);
+        const container = L.DomUtil.create('div', 'leaflet-control tl-scale');
+        this._line = L.DomUtil.create('div', 'tl-scale-line', container);
         leafletMap.on('zoomend moveend resize', this._update, this);
         this._update();
         return container;
