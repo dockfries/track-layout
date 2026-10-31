@@ -23,7 +23,7 @@
   <meta name="description" content="Import GTA San Andreas track JSON, route CPs along the road graph, style the map, and export PNG / SVG.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0e15'/%3E%3Cpath d='M6 23c5 0 5-14 10-14s5 12 10 12' stroke='%23f97316' stroke-width='3.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=61">
+  <link rel="stylesheet" href="style.css?v=62">
 </head>
 <body>
   <noscript><div style="padding:20px;font-family:sans-serif;color:#fff;background:#0b0e15">Track Layout requires JavaScript. / 需要启用 JavaScript。</div></noscript>
@@ -130,7 +130,10 @@
             <span id="playback-hud-state">Playing</span>
             <span id="playback-hud-pct">0%</span>
           </div>
-          <div class="playback-hud-track"><span id="playback-hud-fill"></span></div>
+          <div id="playback-hud-track" class="playback-hud-track" role="slider" tabindex="0"
+               aria-label="播放进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0%" aria-orientation="horizontal">
+            <span id="playback-hud-fill"></span><span id="playback-hud-thumb"></span>
+          </div>
           <div class="playback-hud-actions">
             <button class="playback-hud-btn" data-action="toggle-playback" title="Pause" aria-label="Pause">
               <svg class="ico" aria-hidden="true" focusable="false"><use id="playback-hud-icon" href="assets/icons/sprite.svg#i-pause"></use></svg>
@@ -320,7 +323,7 @@
             <label class="toggle"><input id="playback-follow" type="checkbox" checked> 地图跟随播放</label>
             <label class="toggle"><input id="playback-heading" type="checkbox" disabled> 地图随航向旋转</label>
             <div class="hint">拖动或缩放地图会自动关闭跟随。</div>
-            <div class="hint">开启航向旋转后，地图围绕播放点旋转、箭头始终朝上，并自动使用导航视角。</div>
+            <div class="hint">开启航向旋转后，地图围绕播放点旋转、箭头始终朝上。</div>
             <div class="hint">倍速只改变时间轴，帧率跟随浏览器刷新率；0.1× 时箭头位移很小是正常的。</div>
             <div class="hint">箭头动画仅用于地图预览，不影响导出画面。</div>
           </div>
@@ -910,11 +913,11 @@
   <input id="map-input" type="file" accept="image/*" aria-label="选择自定义底图" hidden>
 
   <script src="vendor/leaflet/leaflet.js"></script>
-  <script src="js/track.js?v=61"></script>
-  <script src="js/style.js?v=61"></script>
-  <script src="js/i18n.js?v=61"></script>
-  <script src="js/mapview.js?v=61"></script>
-  <script src="js/export.js?v=61"></script>
-  <script src="js/app.js?v=61"></script>
+  <script src="js/track.js?v=62"></script>
+  <script src="js/style.js?v=62"></script>
+  <script src="js/i18n.js?v=62"></script>
+  <script src="js/mapview.js?v=62"></script>
+  <script src="js/export.js?v=62"></script>
+  <script src="js/app.js?v=62"></script>
 </body>
 </html>

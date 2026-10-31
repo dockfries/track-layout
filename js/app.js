@@ -59,7 +59,8 @@ const state = {
   redoStack: [],
   playback: {
     playing: false, progress: 0, speed: 1, follow: true, heading: false,
-    bearing: 0, headingActive: false, raf: 0, lastTs: 0, path: null,
+    bearing: 0, headingActive: false, scrubbing: false,
+    raf: 0, lastTs: 0, path: null,
   },
   graph: null,
   netState: 'loading',
@@ -654,11 +655,18 @@ function updatePlaybackStatus() {
   const el = $('playback-status');
   const hudPct = $('playback-hud-pct');
   const hudFill = $('playback-hud-fill');
+  const hudThumb = $('playback-hud-thumb');
+  const track = $('playback-hud-track');
   const pb = state.playback;
   const pct = `${Math.round(pb.progress * 100)}%`;
   if (el) el.textContent = state.route ? pct : '—';
   if (hudPct) hudPct.textContent = pct;
   if (hudFill) hudFill.style.width = pct;
+  if (hudThumb) hudThumb.style.left = pct;
+  if (track) {
+    track.setAttribute('aria-valuenow', String(Math.round(pb.progress * 100)));
+    track.setAttribute('aria-valuetext', pct);
+  }
 }
 
 function syncPlaybackUI() {
@@ -683,8 +691,13 @@ function syncPlaybackUI() {
   if (icon) icon.setAttribute('href', `assets/icons/sprite.svg#i-${pb.playing ? 'pause' : 'play'}`);
   const hud = $('playback-hud');
   if (hud) {
-    hud.classList.toggle('hidden', !hasRoute || (!pb.playing && pb.progress <= 0));
+    hud.classList.toggle('hidden', !hasRoute || (!pb.playing && pb.progress <= 0 && !pb.scrubbing));
     hud.classList.toggle('is-playing', pb.playing);
+    const track = $('playback-hud-track');
+    if (track) {
+      track.title = t('playback.progress');
+      track.setAttribute('aria-label', t('playback.progress'));
+    }
     const hudState = $('playback-hud-state');
     if (hudState) hudState.textContent = t(pb.playing ? 'playback.playing' : finished ? 'playback.finished' : 'playback.paused');
     const hudIcon = $('playback-hud-icon');
@@ -753,6 +766,26 @@ function releasePlaybackHeading() {
   MapView.setPlaybackHeading(false);
 }
 
+function setPlaybackProgress(progress, opts = {}) {
+  const pb = state.playback;
+  if (!pb.path || !Number.isFinite(progress)) return;
+  pb.progress = clamp(progress, 0, 1);
+  pb.lastTs = 0;
+  const point = playbackPoint(pb.progress);
+  if (point && pb.headingActive) {
+    pb.bearing = point.angle;
+    MapView.setPlaybackBearing(pb.bearing);
+  }
+  drawPlayback();
+  updatePlaybackStatus();
+  if (pb.progress >= 1 && pb.playing) {
+    pb.playing = false;
+    cancelAnimationFrame(pb.raf);
+    pb.raf = 0;
+  }
+  if (opts.sync) syncPlaybackUI();
+}
+
 function playbackTick(ts) {
   const pb = state.playback;
   if (!pb.playing) return;
@@ -800,11 +833,14 @@ function pausePlayback() {
 function resetPlayback() {
   const pb = state.playback;
   pb.playing = false;
+  pb.scrubbing = false;
   pb.progress = 0;
   pb.lastTs = 0;
   pb.path = null;
   cancelAnimationFrame(pb.raf);
   pb.raf = 0;
+  const track = $('playback-hud-track');
+  if (track) track.classList.remove('is-scrubbing');
   releasePlaybackHeading();
   MapView.clearPlaybackMarker();
   syncPlaybackUI();
@@ -817,6 +853,62 @@ function stopPlayback() {
 function togglePlayback() {
   if (state.playback.playing) pausePlayback();
   else startPlayback();
+}
+
+function bindPlaybackScrub() {
+  const track = $('playback-hud-track');
+  if (!track) return;
+  const pb = state.playback;
+
+  const seekAt = (clientX) => {
+    const rect = track.getBoundingClientRect();
+    if (!rect.width) return;
+    setPlaybackProgress(clamp((clientX - rect.left) / rect.width, 0, 1));
+  };
+
+  const endScrub = (ev) => {
+    if (!pb.scrubbing) return;
+    pb.scrubbing = false;
+    track.classList.remove('is-scrubbing');
+    try {
+      if (ev && track.hasPointerCapture && track.hasPointerCapture(ev.pointerId)) {
+        track.releasePointerCapture(ev.pointerId);
+      }
+    } catch { /* pointer may already be released */ }
+    syncPlaybackUI();
+  };
+
+  track.addEventListener('pointerdown', (ev) => {
+    if (!pb.path || ev.button !== 0) return;
+    pb.scrubbing = true;
+    track.classList.add('is-scrubbing');
+    track.focus({ preventScroll: true });
+    try { track.setPointerCapture(ev.pointerId); } catch { /* capture is optional */ }
+    seekAt(ev.clientX);
+    ev.preventDefault();
+  });
+  track.addEventListener('pointermove', (ev) => {
+    if (!pb.scrubbing) return;
+    seekAt(ev.clientX);
+    ev.preventDefault();
+  });
+  track.addEventListener('pointerup', endScrub);
+  track.addEventListener('pointercancel', endScrub);
+  track.addEventListener('lostpointercapture', () => {
+    if (pb.scrubbing) endScrub(null);
+  });
+  track.addEventListener('keydown', (ev) => {
+    if (!pb.path) return;
+    const step = ev.shiftKey ? 0.1 : 0.01;
+    let next = null;
+    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowDown') next = pb.progress - step;
+    else if (ev.key === 'ArrowRight' || ev.key === 'ArrowUp') next = pb.progress + step;
+    else if (ev.key === 'Home') next = 0;
+    else if (ev.key === 'End') next = 1;
+    if (next === null) return;
+    ev.preventDefault();
+    setPlaybackProgress(next, { sync: true });
+  });
 }
 
 function bindPlayback() {
@@ -858,6 +950,7 @@ function bindPlayback() {
       }
     });
   }
+  bindPlaybackScrub();
   syncPlaybackUI();
 }
 
@@ -865,7 +958,6 @@ function bindPlaybackFollowGuard() {
   const map = MapView.map();
   if (!map) return;
   const release = () => {
-    if (MapView.isPlaybackHeadingTransition()) return;
     if (!state.playback.follow || state.playback.progress <= 0) return;
     state.playback.follow = false;
     releasePlaybackHeading();

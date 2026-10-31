@@ -9,8 +9,7 @@
   const I18n = root.I18n;
 
   const SA_BOUNDS = { minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 };
-  const FOCUS_ZOOM = 2;
-  const PLAYBACK_NAV_ZOOM = 2;
+  const FOCUS_ZOOM = 0.5;
 
   let map = null;
   let baseOverlay = null;
@@ -28,7 +27,6 @@
   let handlers = {};
   let coordsTimer = 0;
   let playbackMarker = null;
-  let headingZooming = false;
   let baseLoadToken = 0;
   let baseReady = Promise.resolve(null);
 
@@ -612,7 +610,7 @@
 
   function focusCp(cp) {
     if (!map || !cp) return;
-    map.setView([cp.y, cp.x], Math.max(map.getZoom(), FOCUS_ZOOM), { animate: true });
+    map.setView([cp.y, cp.x], FOCUS_ZOOM, { animate: true });
   }
 
   function setAddMode(on) {
@@ -672,11 +670,6 @@
     container.classList.toggle('map-heading', next);
     if (next) {
       hideCoords();
-      if (map.getZoom() < PLAYBACK_NAV_ZOOM) {
-        headingZooming = true;
-        try { map.setZoom(PLAYBACK_NAV_ZOOM, { animate: false }); }
-        finally { headingZooming = false; }
-      }
       applyPlaybackRotation(state.playbackBearing);
       return;
     }
@@ -694,10 +687,6 @@
   function setPlaybackBearing(angle) {
     state.playbackBearing = normalizeBearing(angle);
     if (state.playbackHeading) applyPlaybackRotation(state.playbackBearing);
-  }
-
-  function isPlaybackHeadingTransition() {
-    return headingZooming;
   }
 
   function setPlaybackMarker(point) {
@@ -747,7 +736,7 @@
     init, setBaseMap, setData, setRouteOnly, setStyleOnly, setSelected,
     fitRoute, fitBase, focusCp, setAddMode, setCpLocked, getExportMap, getViewBounds,
     setPlaybackMarker, clearPlaybackMarker, centerOn,
-    setPlaybackHeading, setPlaybackBearing, isPlaybackHeadingTransition,
+    setPlaybackHeading, setPlaybackBearing,
     ensureBaseReady: () => baseReady,
     refreshOverlays: updateOverlays, getZoom, map: () => map,
   };
