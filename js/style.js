@@ -71,12 +71,18 @@
       size: 1,
       titleSize: 1,
       subSize: 1,
+      position: 'tl',
+      offsetX: 0,
+      offsetY: 0,
     },
     legend: {
       show: true,
       color: '#dbe7f5',
       background: 'rgba(5,8,17,0.76)',
       accent: '#ffffff',
+      position: 'bl',
+      offsetX: 0,
+      offsetY: 0,
     },
   };
 
@@ -182,6 +188,17 @@
 
   function defaultVisual() { return clone(DEFAULT_VISUAL); }
   function defaultExport() { return clone(DEFAULT_EXPORT); }
+
+  const OVERLAY_POSITIONS = ['tl', 'tc', 'tr', 'bl', 'bc', 'br'];
+
+  function overlayPosition(value, fallback) {
+    return OVERLAY_POSITIONS.includes(value) ? value : fallback;
+  }
+
+  function overlayOffset(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? Math.max(-50, Math.min(50, n)) : 0;
+  }
 
   function applyTheme(key) {
     const theme = THEMES.find((t) => t.key === key);
@@ -404,6 +421,7 @@
   root.Style = {
     DEFAULT_VISUAL, DEFAULT_EXPORT, THEMES, EXPORT_PRESETS,
     clone, deepMerge, defaultVisual, defaultExport, applyTheme, themeStyle,
+    OVERLAY_POSITIONS, overlayPosition, overlayOffset,
     parseColor, toHex, mixColor, withAlpha, contrastText, routeColor, routeRuns, cssFilter,
     gridStep,
     markerLabel, markerFill, markerTextColor, markerSvg, markerTotalSize, escapeXml,

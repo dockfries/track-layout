@@ -1940,6 +1940,12 @@ function formatOutput(path, v) {
   if (path.endsWith('opacity') || path.endsWith('Opacity')) return `${Math.round(Number(v) * 100)}%`;
   if (path.endsWith('angle') || path.endsWith('hue')) return `${Math.round(Number(v))}°`;
   if (path.endsWith('arrowGap') || path === 'routing.snapRadius') return `${Math.round(Number(v))} m`;
+  if (path === 'style.title.position' || path === 'style.legend.position') return v;
+  if (path === 'style.title.offsetX' || path === 'style.title.offsetY' ||
+      path === 'style.legend.offsetX' || path === 'style.legend.offsetY') {
+    const n = Number(v) || 0;
+    return `${n > 0 ? '+' : ''}${Number.isInteger(n) ? n : n.toFixed(1)}%`;
+  }
   if (path === 'style.route.arrowSize' || path === 'style.title.size' ||
       path === 'style.title.titleSize' || path === 'style.title.subSize') return `${Number(v).toFixed(1)}×`;
   if (path === 'style.map.brightness' || path === 'style.map.contrast' || path === 'style.map.saturate') {

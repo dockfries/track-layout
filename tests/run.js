@@ -250,6 +250,15 @@ test('export title content falls back to track metadata', () => {
   assert.ok(content.sub.includes('2 CP'));
 });
 
+test('overlay positions accept presets and clamp fine offsets', () => {
+  assert.strictEqual(S.overlayPosition('br', 'tl'), 'br');
+  assert.strictEqual(S.overlayPosition('nope', 'tl'), 'tl');
+  assert.strictEqual(S.overlayOffset(12.5), 12.5);
+  assert.strictEqual(S.overlayOffset(200), 50);
+  assert.strictEqual(S.overlayOffset(-200), -50);
+  assert.strictEqual(S.overlayOffset('bad'), 0);
+});
+
 test('short wide exports scale overlay chrome down to fit', () => {
   const track = T.parseTrack(JSON.stringify({ checkpoints: [[0, 0], [100, 100]] }), 'x.json');
   const route = T.computeRoute(track, null, { mode: 'straight' });

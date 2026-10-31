@@ -23,7 +23,7 @@
   <meta name="description" content="Import GTA San Andreas track JSON, route CPs along the road graph, style the map, and export PNG / SVG.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0e15'/%3E%3Cpath d='M6 23c5 0 5-14 10-14s5 12 10 12' stroke='%23f97316' stroke-width='3.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=40">
+  <link rel="stylesheet" href="style.css?v=41">
 </head>
 <body>
   <noscript><div style="padding:20px;font-family:sans-serif;color:#fff;background:#0b0e15">Track Layout requires JavaScript. / 需要启用 JavaScript。</div></noscript>
@@ -526,6 +526,24 @@
                 <label class="field"><span>眉题</span><input class="text" type="text" data-style="title.eyebrow" placeholder="TRACK LAYOUT"></label>
                 <label class="field"><span>标题（留空使用赛道名称）</span><input class="text" type="text" data-style="title.text" placeholder="留空 = 赛道名称"></label>
                 <label class="field"><span>副标题（留空自动生成）</span><input class="text" type="text" data-style="title.sub" placeholder="留空 = CP 数量 · 长度"></label>
+                <label class="field"><span>标题位置</span>
+                  <select class="select" data-style="title.position">
+                    <option value="tl">左上</option>
+                    <option value="tc">上中</option>
+                    <option value="tr">右上</option>
+                    <option value="bl">左下</option>
+                    <option value="bc">下中</option>
+                    <option value="br">右下</option>
+                  </select>
+                </label>
+                <div class="field-block">
+                  <div class="field-line"><label>水平偏移</label><output data-out="style.title.offsetX">0%</output></div>
+                  <input type="range" min="-15" max="15" step="0.5" data-style="title.offsetX">
+                </div>
+                <div class="field-block">
+                  <div class="field-line"><label>垂直偏移</label><output data-out="style.title.offsetY">0%</output></div>
+                  <input type="range" min="-15" max="15" step="0.5" data-style="title.offsetY">
+                </div>
                 <div class="color-grid">
                   <label class="color-field"><span>文字</span><span class="color-input"><input type="color" data-style="title.color"><em data-hex="title.color">#ffffff</em></span></label>
                   <label class="color-field"><span>强调</span><span class="color-input"><input type="color" data-style="title.accent"><em data-hex="title.accent">#ff2d75</em></span></label>
@@ -554,6 +572,25 @@
                   <label class="color-field"><span>图例文字</span><span class="color-input"><input type="color" data-style="legend.color"><em data-hex="legend.color">#dbe7f5</em></span></label>
                   <label class="color-field"><span>图例底色</span><span class="color-input"><input type="color" data-style="legend.background"><em data-hex="legend.background">#050811</em></span></label>
                 </div>
+                <label class="field"><span>图例位置</span>
+                  <select class="select" data-style="legend.position">
+                    <option value="tl">左上</option>
+                    <option value="tc">上中</option>
+                    <option value="tr">右上</option>
+                    <option value="bl">左下</option>
+                    <option value="bc">下中</option>
+                    <option value="br">右下</option>
+                  </select>
+                </label>
+                <div class="field-block">
+                  <div class="field-line"><label>水平偏移</label><output data-out="style.legend.offsetX">0%</output></div>
+                  <input type="range" min="-15" max="15" step="0.5" data-style="legend.offsetX">
+                </div>
+                <div class="field-block">
+                  <div class="field-line"><label>垂直偏移</label><output data-out="style.legend.offsetY">0%</output></div>
+                  <input type="range" min="-15" max="15" step="0.5" data-style="legend.offsetY">
+                </div>
+                <div class="hint">偏移量单位为画布宽高的百分比，正数向右 / 向下。</div>
               </div>
             </div>
           </details>
@@ -808,11 +845,11 @@
   <input id="map-input" type="file" accept="image/*" aria-label="选择自定义底图" hidden>
 
   <script src="vendor/leaflet/leaflet.js"></script>
-  <script src="js/track.js?v=40"></script>
-  <script src="js/style.js?v=40"></script>
-  <script src="js/i18n.js?v=40"></script>
-  <script src="js/mapview.js?v=40"></script>
-  <script src="js/export.js?v=40"></script>
-  <script src="js/app.js?v=40"></script>
+  <script src="js/track.js?v=41"></script>
+  <script src="js/style.js?v=41"></script>
+  <script src="js/i18n.js?v=41"></script>
+  <script src="js/mapview.js?v=41"></script>
+  <script src="js/export.js?v=41"></script>
+  <script src="js/app.js?v=41"></script>
 </body>
 </html>

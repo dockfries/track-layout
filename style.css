@@ -1959,3 +1959,69 @@ dialog.preview-lightbox { width: 100vw; height: 100vh; height: 100dvh; max-heigh
   }
   .top-actions.is-sample-open #samples-menu > summary { display: none; }
 }
+
+/* ── Title / legend anchors + fine offsets ──────────────────────────── */
+#map-title, #map-legend {
+  --overlay-x: 26px;
+  --overlay-y: 22px;
+  --overlay-bottom: 22px;
+  --overlay-control-clear: calc(var(--map-control-edge) + var(--map-control-size) + 10px);
+}
+@media (max-width: 980px) {
+  #map-title, #map-legend {
+    --overlay-x: 16px;
+    --overlay-y: 14px;
+    --overlay-bottom: 16px;
+  }
+}
+@media (max-width: 720px) {
+  #map-legend { --overlay-x: 12px; }
+}
+#map-title[data-pos="tl"],
+#map-legend[data-pos="tl"] {
+  left: calc(var(--overlay-x) + var(--pos-x, 0%));
+  right: auto;
+  top: calc(var(--overlay-y) + var(--pos-y, 0%));
+  bottom: auto;
+  transform: none;
+}
+#map-title[data-pos="tc"],
+#map-legend[data-pos="tc"] {
+  left: calc(50% + var(--pos-x, 0%));
+  right: auto;
+  top: calc(var(--overlay-y) + var(--pos-y, 0%));
+  bottom: auto;
+  transform: translateX(-50%);
+}
+#map-title[data-pos="tr"],
+#map-legend[data-pos="tr"] {
+  left: auto;
+  right: calc(var(--overlay-control-clear) - var(--pos-x, 0%));
+  top: calc(var(--overlay-y) + var(--pos-y, 0%));
+  bottom: auto;
+  transform: none;
+}
+#map-title[data-pos="bl"],
+#map-legend[data-pos="bl"] {
+  left: calc(var(--overlay-x) + var(--pos-x, 0%));
+  right: auto;
+  top: auto;
+  bottom: calc(var(--sheet-height, 0px) + var(--overlay-bottom) - var(--pos-y, 0%));
+  transform: none;
+}
+#map-title[data-pos="bc"],
+#map-legend[data-pos="bc"] {
+  left: calc(50% + var(--pos-x, 0%));
+  right: auto;
+  top: auto;
+  bottom: calc(var(--sheet-height, 0px) + var(--overlay-bottom) - var(--pos-y, 0%));
+  transform: translateX(-50%);
+}
+#map-title[data-pos="br"],
+#map-legend[data-pos="br"] {
+  left: auto;
+  right: calc(var(--overlay-control-clear) - var(--pos-x, 0%));
+  top: auto;
+  bottom: calc(var(--sheet-height, 0px) + var(--overlay-bottom) - var(--pos-y, 0%));
+  transform: none;
+}

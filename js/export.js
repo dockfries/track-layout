@@ -457,6 +457,20 @@
     return lo > 0 ? `${chars.slice(0, lo).join('').trimEnd()}…` : '…';
   }
 
+  function overlayOrigin(style, key, layout, blockW, blockH, fallback) {
+    const cfg = style[key] || {};
+    const k = layout.overlayK || layout.k;
+    const margin = 40 * k;
+    const pos = Style.overlayPosition(cfg.position, fallback);
+    const ox = Style.overlayOffset(cfg.offsetX) / 100 * layout.width;
+    const oy = Style.overlayOffset(cfg.offsetY) / 100 * layout.height;
+    let x = pos[1] === 'l' ? margin : pos[1] === 'c' ? (layout.width - blockW) / 2 : layout.width - margin - blockW;
+    let y = pos[0] === 't' ? margin : layout.height - margin - blockH;
+    x = clamp(x + ox, 0, Math.max(0, layout.width - blockW));
+    y = clamp(y + oy, 0, Math.max(0, layout.height - blockH));
+    return { x, y, margin, pos };
+  }
+
   function titleMetrics(style, layout, title, sub) {
     const k = layout.overlayK || layout.k;
     const ts = clamp(Number(style.title.size) || 1, 0.5, 2);
@@ -481,10 +495,11 @@
       150 * k * ts + Math.max(0, titleScale - 1) * 18 * k + Math.max(0, subScale - 1) * 8 * k,
       subBaseline + subSize * 0.35 + 8 * k
     );
+    const contentW = 16 * k + measured;
     return {
       k, ts, titleScale, subScale, margin, maxW, titleSize, subSize,
       titleFont, subFont, titleText, subText,
-      eyebrowBaseline, titleBaseline, subBaseline, accentH, scrimW, scrimH,
+      eyebrowBaseline, titleBaseline, subBaseline, accentH, scrimW, scrimH, contentW,
     };
   }
 
@@ -494,13 +509,19 @@
     if (opacity <= 0) return;
     const color = style.title.bgColor || bg || style.map.background;
     const { title, sub } = titleContent(track, route, style);
-    const { scrimW, scrimH } = titleMetrics(style, layout, title, sub);
-    const g = ctx.createLinearGradient(0, 0, scrimW, 0);
+    const metrics = titleMetrics(style, layout, title, sub);
+    const origin = overlayOrigin(style, 'title', layout, metrics.contentW, metrics.scrimH, 'tl');
+    const dx = origin.x - metrics.margin;
+    const dy = origin.y - metrics.margin;
+    ctx.save();
+    ctx.translate(dx, dy);
+    const g = ctx.createLinearGradient(0, 0, metrics.scrimW, 0);
     g.addColorStop(0, Style.withAlpha(color, opacity));
     g.addColorStop(0.62, Style.withAlpha(color, opacity * 0.55));
     g.addColorStop(1, Style.withAlpha(color, 0));
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, scrimW, scrimH);
+    ctx.fillRect(0, 0, metrics.scrimW, metrics.scrimH);
+    ctx.restore();
   }
 
   function drawTitle(ctx, track, route, style, layout) {
@@ -508,6 +529,9 @@
     const { title, sub, eyebrow } = titleContent(track, route, style);
     const metrics = titleMetrics(style, layout, title, sub);
     const { k, ts } = metrics;
+    const origin = overlayOrigin(style, 'title', layout, metrics.contentW, metrics.scrimH, 'tl');
+    ctx.save();
+    ctx.translate(origin.x - metrics.margin, origin.y - metrics.margin);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
     const x = metrics.margin;
@@ -530,6 +554,7 @@
     ctx.fillStyle = Style.withAlpha(style.title.color, 0.7);
     ctx.font = metrics.subFont;
     ctx.fillText(metrics.subText, x + 16 * k, y + metrics.subBaseline);
+    ctx.restore();
   }
 
   function legendRows(track, style) {
@@ -553,14 +578,14 @@
   function drawLegend(ctx, track, route, style, layout) {
     if (!style.legend.show) return;
     const k = layout.overlayK || layout.k;
-    const margin = 40 * k;
     const rows = legendRows(track, style);
     const pad = 14 * k;
     const rowH = 20 * k;
     const width = 172 * k;
     const height = pad * 2 + rows.length * rowH + 18 * k;
-    const x = margin;
-    const y = layout.height - margin - height;
+    const origin = overlayOrigin(style, 'legend', layout, width, height, 'bl');
+    const x = origin.x;
+    const y = origin.y;
 
     ctx.save();
     ctx.fillStyle = style.legend.background;
@@ -827,6 +852,9 @@
     const { title, sub, eyebrow } = titleContent(track, route, style);
     const metrics = titleMetrics(style, layout, title, sub);
     const { k, ts } = metrics;
+    const origin = overlayOrigin(style, 'title', layout, metrics.contentW, metrics.scrimH, 'tl');
+    const dx = origin.x - metrics.margin;
+    const dy = origin.y - metrics.margin;
     const parts = [];
     let defs = '';
     let scrim = '';
@@ -838,7 +866,7 @@
         `<stop offset="0.62" stop-color="${scrimColor}" stop-opacity="${r2(scrimOpacity * 0.55)}"/>` +
         `<stop offset="1" stop-color="${scrimColor}" stop-opacity="0"/>` +
         `</linearGradient>`;
-      scrim = `<rect x="0" y="0" width="${r2(metrics.scrimW)}" height="${r2(metrics.scrimH)}" fill="url(#titleScrim)"/>`;
+      scrim = `<g transform="translate(${r2(dx)} ${r2(dy)})"><rect x="0" y="0" width="${r2(metrics.scrimW)}" height="${r2(metrics.scrimH)}" fill="url(#titleScrim)"/></g>`;
     }
     const x = metrics.margin, y = metrics.margin;
     parts.push(`<rect x="${r2(x)}" y="${r2(y + 4 * k)}" width="${r2(4 * k)}" height="${r2(metrics.accentH)}" fill="${style.title.accent}"/>`);
@@ -847,19 +875,19 @@
     }
     parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + metrics.titleBaseline)}" fill="${style.title.color}" font-family="${FONT_SVG}" font-size="${r2(metrics.titleSize)}" font-weight="700">${Style.escapeXml(metrics.titleText)}</text>`);
     parts.push(`<text x="${r2(x + 16 * k)}" y="${r2(y + metrics.subBaseline)}" fill="${style.title.color}" fill-opacity="0.7" font-family="${FONT_SVG}" font-size="${r2(metrics.subSize)}" font-weight="500">${Style.escapeXml(metrics.subText)}</text>`);
-    return { defs, scrim, body: parts.join('') };
+    return { defs, scrim, body: `<g transform="translate(${r2(dx)} ${r2(dy)})">${parts.join('')}</g>` };
   }
 
   function legendSvg(track, route, style, layout) {
     if (!style.legend.show) return '';
     const k = layout.overlayK || layout.k;
-    const margin = 40 * k;
     const rows = legendRows(track, style);
     const pad = 14 * k;
     const rowH = 20 * k;
     const w = 172 * k;
     const h = pad * 2 + rows.length * rowH + 18 * k;
-    const x = margin, y = layout.height - margin - h;
+    const origin = overlayOrigin(style, 'legend', layout, w, h, 'bl');
+    const x = origin.x, y = origin.y;
     const parts = [];
     parts.push(`<rect x="${r2(x)}" y="${r2(y)}" width="${r2(w)}" height="${r2(h)}" rx="${r2(10 * k)}" fill="${style.legend.background}" stroke="${Style.withAlpha(style.legend.color, 0.12)}" stroke-width="${r2(Math.max(0.5, k))}"/>`);
     rows.forEach(([label, color], i) => {

@@ -480,6 +480,9 @@
         titleEl.style.setProperty('--mt-scale', String(style.title.size || 1));
         titleEl.style.setProperty('--mt-title-scale', String(style.title.titleSize || 1));
         titleEl.style.setProperty('--mt-sub-scale', String(style.title.subSize || 1));
+        titleEl.dataset.pos = Style.overlayPosition(style.title.position, 'tl');
+        titleEl.style.setProperty('--pos-x', `${Style.overlayOffset(style.title.offsetX)}%`);
+        titleEl.style.setProperty('--pos-y', `${Style.overlayOffset(style.title.offsetY)}%`);
         titleEl.classList.toggle('is-light', !isDark(style.map.background));
       } else {
         titleEl.innerHTML = '';
@@ -503,6 +506,9 @@
         }
         legendEl.style.background = style.legend.background;
         legendEl.style.color = style.legend.color;
+        legendEl.dataset.pos = Style.overlayPosition(style.legend.position, 'bl');
+        legendEl.style.setProperty('--pos-x', `${Style.overlayOffset(style.legend.offsetX)}%`);
+        legendEl.style.setProperty('--pos-y', `${Style.overlayOffset(style.legend.offsetY)}%`);
         legendEl.innerHTML = rows.map(([label, color]) =>
           `<div class="ml-row"><span class="ml-dot" style="background:${color}"></span><span>${label}</span></div>`
         ).join('') +
