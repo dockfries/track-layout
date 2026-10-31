@@ -535,7 +535,7 @@
   function gridStep(view) {
     const spanX = Math.max(0, Number(view && view.maxX) - Number(view && view.minX));
     const spanY = Math.max(0, Number(view && view.maxY) - Number(view && view.minY));
-    let step = 500;
+    let step = 750;
     let guard = 0;
     while (spanX / step + spanY / step > 2400 && guard++ < 32) step *= 2;
     return step;

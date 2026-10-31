@@ -218,18 +218,18 @@ test('invalid route paint falls back to solid instead of throwing', () => {
 });
 
 test('grid step grows for very large custom bounds', () => {
-  assert.strictEqual(S.gridStep({ minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 }), 500);
-  assert.ok(S.gridStep({ minX: -10000000, maxX: 10000000, minY: -10000000, maxY: 10000000 }) > 500);
+  assert.strictEqual(S.gridStep({ minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 }), 750);
+  assert.ok(S.gridStep({ minX: -10000000, maxX: 10000000, minY: -10000000, maxY: 10000000 }) > 750);
 });
 
 test('grid numbering starts at zero and runs top-left to bottom-right', () => {
   const bounds = { minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 };
-  const cells = S.gridCells(bounds, 500);
-  assert.strictEqual(cells.length, 144);
-  assert.deepStrictEqual(cells[0], { x: -2750, y: 2750, index: 0 });
-  assert.deepStrictEqual(cells[11], { x: 2750, y: 2750, index: 11 });
-  assert.deepStrictEqual(cells[12], { x: -2750, y: 2250, index: 12 });
-  assert.deepStrictEqual(cells[143], { x: 2750, y: -2750, index: 143 });
+  const cells = S.gridCells(bounds, S.gridStep(bounds));
+  assert.strictEqual(cells.length, 64);
+  assert.deepStrictEqual(cells[0], { x: -2625, y: 2625, index: 0 });
+  assert.deepStrictEqual(cells[7], { x: 2625, y: 2625, index: 7 });
+  assert.deepStrictEqual(cells[8], { x: -2625, y: 1875, index: 8 });
+  assert.deepStrictEqual(cells[63], { x: 2625, y: -2625, index: 63 });
   assert.strictEqual(S.defaultVisual().map.gridNumbers, false);
   assert.ok(S.gridNumberAlpha({ gridOpacity: 0.08 }) > 0.28);
 });

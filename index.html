@@ -23,7 +23,7 @@
   <meta name="description" content="Import GTA San Andreas track JSON, route CPs along the road graph, style the map, and export PNG / SVG.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0e15'/%3E%3Cpath d='M6 23c5 0 5-14 10-14s5 12 10 12' stroke='%23f97316' stroke-width='3.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=54">
+  <link rel="stylesheet" href="style.css?v=55">
 </head>
 <body>
   <noscript><div style="padding:20px;font-family:sans-serif;color:#fff;background:#0b0e15">Track Layout requires JavaScript. / 需要启用 JavaScript。</div></noscript>
@@ -545,7 +545,7 @@
                   <input type="range" min="0" max="0.4" step="0.01" data-style="map.gridOpacity">
                 </div>
                 <label class="toggle"><input type="checkbox" data-style="map.gridNumbers"> 显示网格编号</label>
-                <div class="hint">编号从底图左上角的 0 开始，按左上到右下排列；当前视图可能只显示中间一段。</div>
+                <div class="hint">标准地图为 8 × 8 网格，共 64 格；编号从底图左上角的 0 开始，当前视图可能只显示中间一段。</div>
               </div>
             </div>
           </details>
@@ -877,11 +877,11 @@
   <input id="map-input" type="file" accept="image/*" aria-label="选择自定义底图" hidden>
 
   <script src="vendor/leaflet/leaflet.js"></script>
-  <script src="js/track.js?v=54"></script>
-  <script src="js/style.js?v=54"></script>
-  <script src="js/i18n.js?v=54"></script>
-  <script src="js/mapview.js?v=54"></script>
-  <script src="js/export.js?v=54"></script>
-  <script src="js/app.js?v=54"></script>
+  <script src="js/track.js?v=55"></script>
+  <script src="js/style.js?v=55"></script>
+  <script src="js/i18n.js?v=55"></script>
+  <script src="js/mapview.js?v=55"></script>
+  <script src="js/export.js?v=55"></script>
+  <script src="js/app.js?v=55"></script>
 </body>
 </html>
