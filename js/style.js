@@ -232,6 +232,11 @@
   const OVERLAY_POSITIONS = ['tl', 'tc', 'tr', 'bl', 'bc', 'br'];
   const CP_FILTERS = ['all', 'endpoints', 'start', 'finish', 'checkpoints'];
   const CP_INTERVALS = [1, 2, 5, 10, 20];
+  const CP_AUTO_MIN = 12;
+  const CP_AUTO_MAX = 72;
+  const CP_AUTO_METERS = 600;
+  const ARROW_AUTO_TARGET = 48;
+  const ARROW_AUTO_MIN_GAP = 140;
 
   function overlayPosition(value, fallback) {
     return OVERLAY_POSITIONS.includes(value) ? value : fallback;
@@ -254,8 +259,8 @@
       if (total <= 1) return 1;
       const length = Number(routeLength);
       const target = length > 0
-        ? Math.max(12, Math.min(72, Math.round(length / 600)))
-        : 72;
+        ? Math.max(CP_AUTO_MIN, Math.min(CP_AUTO_MAX, Math.round(length / CP_AUTO_METERS)))
+        : CP_AUTO_MAX;
       return Math.max(1, Math.ceil(total / target));
     }
     const value = Number(raw);
@@ -539,7 +544,7 @@
   function effectiveArrowGap(route, style) {
     const length = Number(route && route.length);
     if (style.route.arrowAuto !== false && Number.isFinite(length) && length > 0) {
-      return Math.max(140, length / 48);
+      return Math.max(ARROW_AUTO_MIN_GAP, length / ARROW_AUTO_TARGET);
     }
     return Math.max(20, Number(style.route.arrowGap) || 260);
   }

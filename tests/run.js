@@ -400,6 +400,8 @@ test('checkpoint display density thins markers without renumbering', () => {
 
 test('automatic CP density and arrow spacing use route length', () => {
   const style = S.defaultVisual();
+  assert.strictEqual(style.cp.interval, 'auto');
+  assert.strictEqual(style.route.arrowAuto, true);
   const track = {
     closed: false,
     checkpoints: Array.from({ length: 300 }, (_, i) => ({
@@ -416,6 +418,8 @@ test('automatic CP density and arrow spacing use route length', () => {
   assert.ok(S.effectiveArrowGap({ length: 10000 }, style) > 200);
   assert.ok(S.effectiveArrowGap({ length: 10000 }, style) < 220);
   assert.strictEqual(S.effectiveArrowGap({ length: 1000 }, style), 140);
+  const longGap = S.effectiveArrowGap({ length: 300000 }, style);
+  assert.ok(300000 / longGap <= 48.001);
   style.route.arrowAuto = false;
   style.route.arrowGap = 320;
   assert.strictEqual(S.effectiveArrowGap({ length: 10000 }, style), 320);
