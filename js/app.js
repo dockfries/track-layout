@@ -81,6 +81,7 @@ const state = {
   cpListCollapsed: false,
   cpWindow: null,
   cpScrollRaf: 0,
+  cpRevealTimer: 0,
   warnListCollapsed: false,
   routeWarnCollapsed: false,
 };
@@ -895,6 +896,7 @@ function setSheetSnap(snap, opts = {}) {
   if (side) {
     side.style.height = `${height}px`;
     side.classList.remove('is-dragging');
+    side.scrollTop = 0;
   }
   sheetState.height = height;
   setSheetHeightVar(height);
@@ -1349,6 +1351,18 @@ function refreshCpBadges() {
   }
 }
 
+function revealCpInPane(row) {
+  const pane = row.closest('.pane');
+  if (!pane || !pane.classList.contains('active')) return;
+  const paneRect = pane.getBoundingClientRect();
+  const rowRect = row.getBoundingClientRect();
+  const pad = 12;
+  if (rowRect.top >= paneRect.top + pad && rowRect.bottom <= paneRect.bottom - pad) return;
+  const target = pane.scrollTop + rowRect.top - paneRect.top - pad;
+  const max = Math.max(0, pane.scrollHeight - pane.clientHeight);
+  pane.scrollTop = Math.min(max, Math.max(0, target));
+}
+
 function selectCp(index, opts = {}) {
   if (!state.track || index < 0 || index >= state.track.checkpoints.length) return;
   state.selected = index;
@@ -1356,11 +1370,23 @@ function selectCp(index, opts = {}) {
   MapView.setSelected(index);
   if (opts.focus !== false) MapView.focusCp(state.track.checkpoints[index]);
   if (opts.scroll !== false) {
+    if (sheetMode() && state.activeTab === 'track' && state.sheetSnap === 'peek') setSheetSnap('half');
+    // Scroll only the virtual list and its pane. scrollIntoView() would also
+    // scroll #side (overflow:hidden is still programmatically scrollable),
+    // hiding the sheet handle.
     const row = ensureCpRowVisible(index);
-    if (row) row.scrollIntoView({
-      block: 'nearest',
-      behavior: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-    });
+    if (row) {
+      clearTimeout(state.cpRevealTimer);
+      if (sheetMode()) {
+        // Let the sheet height transition settle before scrolling the pane.
+        state.cpRevealTimer = setTimeout(() => {
+          const target = qs(`.cp-row[data-i="${index}"]`, $('cp-list'));
+          if (target) revealCpInPane(target);
+        }, 260);
+      } else {
+        revealCpInPane(row);
+      }
+    }
   }
 }
 
@@ -3998,7 +4024,12 @@ const mapHandlers = {
     }
   },
   onSelect(index) {
-    if (state.track) selectCp(index, { focus: false, scroll: true });
+    if (!state.track) return;
+    if (sheetMode() && state.activeTab !== 'track') {
+      const trackTab = qs('.tab[data-tab="track"]');
+      if (trackTab) trackTab.click();
+    }
+    selectCp(index, { focus: false, scroll: true });
   },
   onCpDragStart(index) {
     if (state.cpLocked) return;
