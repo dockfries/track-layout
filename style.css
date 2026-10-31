@@ -1637,9 +1637,9 @@ dialog.preview-lightbox { width: 100vw; height: 100vh; height: 100dvh; max-heigh
   touch-action: none;
   cursor: grab;
   background:
-    linear-gradient(45deg, rgba(255,255,255,.028) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.028) 75%) 0 0 / 22px 22px,
-    linear-gradient(45deg, rgba(255,255,255,.028) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.028) 75%) 11px 11px / 22px 22px,
-    #05070d;
+    linear-gradient(45deg, var(--checker-strong) 25%, transparent 25%, transparent 75%, var(--checker-strong) 75%) 0 0 / 22px 22px,
+    linear-gradient(45deg, var(--checker-strong) 25%, transparent 25%, transparent 75%, var(--checker-strong) 75%) 11px 11px / 22px 22px,
+    var(--preview-bg-2);
 }
 .lightbox-stage:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .lightbox-stage.is-dragging { cursor: grabbing; }
