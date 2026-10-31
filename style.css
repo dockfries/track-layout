@@ -1139,6 +1139,7 @@ details.section > summary .chev { display: inline-flex; align-items: center; col
 details.section > summary .chev .ico { width: 12px; height: 12px; }
 details.section[open] > summary .chev { transform: rotate(180deg); }
 .section-body { display: flex; flex-direction: column; gap: 11px; padding: 1px 0 12px; }
+[data-when] { display: flex; flex-direction: column; gap: 11px; }
 .section-body .field { gap: 5px; }
 .section-body .text { height: 31px; }
 
