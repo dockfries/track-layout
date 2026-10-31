@@ -826,6 +826,20 @@ html.i18n-pending #ui { visibility: hidden; }
 
 .cp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .cp-head .group-title { flex: 1; margin-bottom: 0; }
+.cp-collapse.list-toggle {
+  width: auto;
+  height: 32px;
+  flex: 1;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 0 6px 0 4px;
+}
+.cp-collapse.list-toggle .group-title {
+  flex: 1;
+  margin-bottom: 0;
+  text-align: left;
+}
+.cp-collapse.list-toggle:hover .group-title { color: var(--text); }
 .cp-head-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .cp-head-actions .icon-btn { min-width: 26px; padding: 0 6px; }
 .cp-history-btn:disabled { opacity: .35; }
@@ -1798,6 +1812,8 @@ dialog.preview-lightbox { width: 100vw; height: 100vh; height: 100dvh; max-heigh
 
 @media (max-width: 480px) {
   .brand-text { display: none; }
+  .tab { gap: 0; font-size: 0; }
+  .tab-ico, .tab-ico .ico { width: 16px; height: 16px; }
   .top-actions [data-action="fit"] { display: none; }
   .top-actions { gap: 3px; }
   .top-actions .btn { padding: 0 7px; }
