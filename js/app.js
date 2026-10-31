@@ -57,7 +57,10 @@ const state = {
   singleKeyShortcuts: true,
   undoStack: [],
   redoStack: [],
-  playback: { playing: false, progress: 0, speed: 1, follow: true, raf: 0, lastTs: 0, path: null },
+  playback: {
+    playing: false, progress: 0, speed: 1, follow: true, heading: false,
+    bearing: 0, headingActive: false, raf: 0, lastTs: 0, path: null,
+  },
   graph: null,
   netState: 'loading',
   samples: [],
@@ -431,6 +434,7 @@ function restorePrefs() {
   }
   state.cpLocked = typeof saved.cpLocked === 'boolean' ? saved.cpLocked : true;
   state.playback.follow = saved.playbackFollow !== false;
+  state.playback.heading = saved.playbackHeading === true;
   state.sideCollapsed = !!saved.sideCollapsed;
   if (['peek', 'half', 'full'].includes(saved.sheetSnap)) state.sheetSnap = saved.sheetSnap;
   if (saved.base && saved.base.bounds) {
@@ -474,6 +478,7 @@ function saveSession() {
       empty: !state.track || !state.track.checkpoints.length,
       cpLocked: state.cpLocked,
       playbackFollow: state.playback.follow,
+      playbackHeading: state.playback.heading,
       sideCollapsed: state.sideCollapsed,
       sheetSnap: state.sheetSnap,
       routing: state.routing,
@@ -706,16 +711,46 @@ function syncPlaybackUI() {
     follow.disabled = !hasRoute;
     if (document.activeElement !== follow) follow.checked = pb.follow;
   }
+  const heading = $('playback-heading');
+  if (heading) {
+    heading.disabled = !hasRoute || !pb.follow;
+    if (document.activeElement !== heading) heading.checked = pb.heading;
+  }
   const out = $('playback-speed-out');
   if (out) out.textContent = `${Number(pb.speed).toFixed(1)}×`;
   updatePlaybackStatus();
 }
 
 function drawPlayback() {
-  const point = playbackPoint(state.playback.progress);
+  const pb = state.playback;
+  const point = playbackPoint(pb.progress);
   if (!point) return;
+  if (pb.follow && pb.heading) {
+    if (!pb.headingActive) {
+      pb.headingActive = true;
+      pb.bearing = point.angle;
+      MapView.setPlaybackBearing(pb.bearing);
+      MapView.setPlaybackHeading(true);
+    } else {
+      const delta = ((point.angle - pb.bearing + 540) % 360) - 180;
+      pb.bearing += delta * 0.22;
+      pb.bearing = ((pb.bearing + 540) % 360) - 180;
+      MapView.setPlaybackBearing(pb.bearing);
+    }
+  } else if (pb.headingActive) {
+    pb.headingActive = false;
+    pb.bearing = 0;
+    MapView.setPlaybackHeading(false);
+  }
   MapView.setPlaybackMarker(point);
-  if (state.playback.follow) MapView.centerOn(point);
+  if (pb.follow) MapView.centerOn(point);
+}
+
+function releasePlaybackHeading() {
+  const pb = state.playback;
+  pb.headingActive = false;
+  pb.bearing = 0;
+  MapView.setPlaybackHeading(false);
 }
 
 function playbackTick(ts) {
@@ -770,6 +805,7 @@ function resetPlayback() {
   pb.path = null;
   cancelAnimationFrame(pb.raf);
   pb.raf = 0;
+  releasePlaybackHeading();
   MapView.clearPlaybackMarker();
   syncPlaybackUI();
 }
@@ -803,9 +839,23 @@ function bindPlayback() {
   if (follow) {
     follow.addEventListener('change', () => {
       state.playback.follow = follow.checked;
+      if (!state.playback.follow) releasePlaybackHeading();
       syncPlaybackUI();
       saveSessionSoon();
       if (state.playback.follow && state.playback.path) drawPlayback();
+    });
+  }
+  const heading = $('playback-heading');
+  if (heading) {
+    heading.addEventListener('change', () => {
+      state.playback.heading = heading.checked;
+      if (!state.playback.heading) releasePlaybackHeading();
+      syncPlaybackUI();
+      saveSessionSoon();
+      if (state.playback.heading && state.playback.follow &&
+          state.playback.path && state.playback.progress > 0) {
+        drawPlayback();
+      }
     });
   }
   syncPlaybackUI();
@@ -815,8 +865,10 @@ function bindPlaybackFollowGuard() {
   const map = MapView.map();
   if (!map) return;
   const release = () => {
+    if (MapView.isPlaybackHeadingTransition()) return;
     if (!state.playback.follow || state.playback.progress <= 0) return;
     state.playback.follow = false;
+    releasePlaybackHeading();
     syncPlaybackUI();
     saveSessionSoon();
   };

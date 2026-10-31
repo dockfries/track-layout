@@ -1750,6 +1750,9 @@ dialog.preview-lightbox { width: 100vw; height: 100vh; height: 100dvh; max-heigh
 .tl-tint { mix-blend-mode: multiply; }
 .tl-cp { background: none; border: none; cursor: grab; filter: drop-shadow(0 3px 7px rgba(0,0,0,.45)); transition: transform .12s ease, filter .12s ease; }
 .tl-cp-wrap { position: relative; width: 100%; height: 100%; }
+.map-heading .tl-cp-wrap { transform: rotate(var(--map-counter-rotate, 0deg)); }
+.map-heading .tl-grid-num { rotate: var(--map-counter-rotate, 0deg); }
+.map-heading .leaflet-tooltip { rotate: var(--map-counter-rotate, 0deg); }
 .tl-cp-label {
   position: absolute;
   top: 100%;

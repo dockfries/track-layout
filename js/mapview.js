@@ -10,6 +10,7 @@
 
   const SA_BOUNDS = { minX: -3000, maxX: 3000, minY: -3000, maxY: 3000 };
   const FOCUS_ZOOM = 2;
+  const PLAYBACK_NAV_ZOOM = 2;
 
   let map = null;
   let baseOverlay = null;
@@ -27,6 +28,7 @@
   let handlers = {};
   let coordsTimer = 0;
   let playbackMarker = null;
+  let headingZooming = false;
   let baseLoadToken = 0;
   let baseReady = Promise.resolve(null);
 
@@ -38,6 +40,8 @@
     addMode: false,
     dragging: false,
     cpLocked: true,
+    playbackHeading: false,
+    playbackBearing: 0,
   };
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
@@ -132,9 +136,11 @@
     new SimpleScale().addTo(map);
 
     map.on('click', (e) => {
+      if (state.playbackHeading) return;
       if (handlers.onMapClick) handlers.onMapClick({ x: e.latlng.lng, y: e.latlng.lat });
     });
     map.on('mousemove', (e) => {
+      if (state.playbackHeading) { hideCoords(); return; }
       const el = document.getElementById('map-coords');
       if (!el) return;
       el.textContent = `x ${e.latlng.lng.toFixed(1)}  ·  y ${e.latlng.lat.toFixed(1)}`;
@@ -155,6 +161,9 @@
     if (typeof ResizeObserver !== 'undefined' && wrap) {
       new ResizeObserver(() => map.invalidateSize({ pan: false })).observe(wrap);
     }
+    map.on('resize', () => {
+      if (state.playbackHeading) applyPlaybackRotation(state.playbackBearing);
+    });
     return map;
   }
 
@@ -633,6 +642,64 @@
     map.panTo([point.y, point.x], { animate: false });
   }
 
+  function normalizeBearing(angle) {
+    const n = Number(angle);
+    if (!Number.isFinite(n)) return 0;
+    return ((n + 540) % 360) - 180;
+  }
+
+  function applyPlaybackRotation(bearing) {
+    if (!map) return;
+    const pane = map.getPane('mapPane');
+    const container = map.getContainer();
+    if (!pane || !container) return;
+    const size = map.getSize();
+    const north = normalizeBearing(bearing + 90);
+    pane.style.transformOrigin = `${size.x / 2}px ${size.y / 2}px`;
+    pane.style.rotate = `${-north}deg`;
+    container.style.setProperty('--map-counter-rotate', `${north}deg`);
+  }
+
+  function setPlaybackHeading(on) {
+    if (!map) return;
+    const next = !!on;
+    if (next === state.playbackHeading) {
+      if (next) applyPlaybackRotation(state.playbackBearing);
+      return;
+    }
+    state.playbackHeading = next;
+    const container = map.getContainer();
+    container.classList.toggle('map-heading', next);
+    if (next) {
+      hideCoords();
+      if (map.getZoom() < PLAYBACK_NAV_ZOOM) {
+        headingZooming = true;
+        try { map.setZoom(PLAYBACK_NAV_ZOOM, { animate: false }); }
+        finally { headingZooming = false; }
+      }
+      applyPlaybackRotation(state.playbackBearing);
+      return;
+    }
+    const pane = map.getPane('mapPane');
+    if (pane) {
+      pane.style.rotate = '';
+      pane.style.transformOrigin = '';
+    }
+    container.style.setProperty('--map-counter-rotate', '0deg');
+    state.playbackBearing = 0;
+    const last = playbackMarker && playbackMarker._lastPoint;
+    if (last) setPlaybackMarker(last);
+  }
+
+  function setPlaybackBearing(angle) {
+    state.playbackBearing = normalizeBearing(angle);
+    if (state.playbackHeading) applyPlaybackRotation(state.playbackBearing);
+  }
+
+  function isPlaybackHeadingTransition() {
+    return headingZooming;
+  }
+
   function setPlaybackMarker(point) {
     if (!map || !point) return;
     if (!playbackMarker) {
@@ -651,8 +718,12 @@
       playbackMarker._arrowEl = playbackMarker.getElement()?.querySelector('.tl-playback-arrow') || null;
     }
     playbackMarker.setLatLng([point.y, point.x]);
+    playbackMarker._lastPoint = { x: point.x, y: point.y, angle: point.angle };
     const arrow = playbackMarker._arrowEl;
-    if (arrow) arrow.style.transform = `rotate(${point.angle}deg)`;
+    if (arrow) {
+      const angle = state.playbackHeading ? state.playbackBearing : point.angle;
+      arrow.style.transform = `rotate(${angle}deg)`;
+    }
   }
 
   function clearPlaybackMarker() {
@@ -676,6 +747,7 @@
     init, setBaseMap, setData, setRouteOnly, setStyleOnly, setSelected,
     fitRoute, fitBase, focusCp, setAddMode, setCpLocked, getExportMap, getViewBounds,
     setPlaybackMarker, clearPlaybackMarker, centerOn,
+    setPlaybackHeading, setPlaybackBearing, isPlaybackHeadingTransition,
     ensureBaseReady: () => baseReady,
     refreshOverlays: updateOverlays, getZoom, map: () => map,
   };

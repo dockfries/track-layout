@@ -656,6 +656,9 @@
     '展开路段提示': 'Expand route notes',
     '停止动画': 'Stop animation',
     '地图跟随播放': 'Follow playback',
+    '地图随航向旋转': 'Rotate map with heading',
+    '开启航向旋转后，地图围绕播放点旋转、箭头始终朝上，并自动使用导航视角。':
+      'With heading rotation, the map turns around the playback point, the arrow stays up, and a navigation zoom is used.',
     '拖动或缩放地图会自动关闭跟随。': 'Dragging or zooming the map turns following off.',
     '画布尺寸预设': 'Canvas size preset',
     '选择赛道 JSON': 'Choose a track JSON file',
