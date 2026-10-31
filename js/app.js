@@ -270,7 +270,7 @@ function modeLabel(mode) {
 // ── Toast / status ──────────────────────────────────────────────────────
 const TOAST_MAX = 5;
 const TOAST_QUEUE_MAX = 30;
-const TOAST_EXIT_MS = 180;
+const TOAST_EXIT_MS = 220;
 const TOAST_STAGGER_MS = 240;
 const toastQueue = [];
 let toastDismissTimer = 0;
@@ -305,7 +305,12 @@ function spawnToast(item) {
   if (!stack) return;
   const el = document.createElement('div');
   el.className = `toast${item.kind ? ` ${item.kind}` : ''}`;
-  el.textContent = item.message;
+  const icon = item.kind === 'ok' ? 'i-circle-check' : item.kind === 'error' ? 'i-circle-x' : 'i-info';
+  el.innerHTML =
+    `<span class="toast-icon" aria-hidden="true"><svg class="ico" focusable="false"><use href="assets/icons/sprite.svg#${icon}"></use></svg></span>` +
+    `<span class="toast-message"></span>`;
+  const message = el.querySelector('.toast-message');
+  if (message) message.textContent = item.message;
   el._createdAt = Date.now();
   el._duration = toastDuration(item.kind);
   stack.appendChild(el);
