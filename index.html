@@ -23,7 +23,7 @@
   <meta name="description" content="Import GTA San Andreas track JSON, route CPs along the road graph, style the map, and export PNG / SVG.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0e15'/%3E%3Cpath d='M6 23c5 0 5-14 10-14s5 12 10 12' stroke='%23f97316' stroke-width='3.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=51">
+  <link rel="stylesheet" href="style.css?v=52">
 </head>
 <body>
   <noscript><div style="padding:20px;font-family:sans-serif;color:#fff;background:#0b0e15">Track Layout requires JavaScript. / 需要启用 JavaScript。</div></noscript>
@@ -406,11 +406,12 @@
               <label class="toggle"><input type="checkbox" data-style="cp.visible"> 显示检查点</label>
               <div class="field-block">
                 <div class="field-line"><label>显示范围</label></div>
-                <div class="seg seg-4" data-bind="style.cp.filter" role="group" aria-label="显示范围">
+                <div class="seg seg-5" data-bind="style.cp.filter" role="group" aria-label="显示范围">
                   <button data-value="all">全部</button>
                   <button data-value="endpoints">起终点</button>
                   <button data-value="start">起点</button>
                   <button data-value="finish">终点</button>
+                  <button data-value="checkpoints">仅检查点</button>
                 </div>
               </div>
               <div class="field-block">
@@ -423,8 +424,9 @@
                   <option value="20">每 20 个</option>
                 </select>
               </div>
-              <label class="toggle"><input type="checkbox" data-style="cp.distinguish"> 区分起终点配色</label>
+              <label class="toggle" data-when="cp-distinguish"><input type="checkbox" data-style="cp.distinguish"> 区分起终点配色</label>
               <div class="hint">显示范围与标记密度只影响地图 / 导出标记；侧栏保留全部 CP，路径计算和编号不变。</div>
+              <div class="hint" data-when="cp-checkpoint-style">「仅检查点」会把起点和终点也画成普通检查点，不显示 S/F 默认配色。</div>
               <div class="hint" id="cp-density-hint" data-no-i18n></div>
               <div class="field-block">
                 <div class="field-line"><label>形状</label></div>
@@ -873,11 +875,11 @@
   <input id="map-input" type="file" accept="image/*" aria-label="选择自定义底图" hidden>
 
   <script src="vendor/leaflet/leaflet.js"></script>
-  <script src="js/track.js?v=51"></script>
-  <script src="js/style.js?v=51"></script>
-  <script src="js/i18n.js?v=51"></script>
-  <script src="js/mapview.js?v=51"></script>
-  <script src="js/export.js?v=51"></script>
-  <script src="js/app.js?v=51"></script>
+  <script src="js/track.js?v=52"></script>
+  <script src="js/style.js?v=52"></script>
+  <script src="js/i18n.js?v=52"></script>
+  <script src="js/mapview.js?v=52"></script>
+  <script src="js/export.js?v=52"></script>
+  <script src="js/app.js?v=52"></script>
 </body>
 </html>

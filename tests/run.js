@@ -309,6 +309,31 @@ test('checkpoint filters and uniform role styling', () => {
   assert.strictEqual(S.markerTextColor(start, style), style.cp.textColor);
 });
 
+test('checkpoint style filter normalizes start and finish', () => {
+  const style = S.defaultVisual();
+  const track = {
+    closed: false,
+    checkpoints: [
+      { role: 'start', x: 0, y: 0 },
+      { role: 'cp', x: 1, y: 0 },
+      { role: 'finish', x: 2, y: 0 },
+    ],
+  };
+  style.cp.filter = 'checkpoints';
+  assert.ok(S.cpVisible(track.checkpoints[0], style));
+  assert.ok(S.cpVisible(track.checkpoints[2], style));
+  assert.strictEqual(S.visibleCheckpoints(track, style).length, 3);
+  assert.strictEqual(S.markerFill(track.checkpoints[0], style), style.cp.fill);
+  assert.strictEqual(S.markerFill(track.checkpoints[2], style), style.cp.fill);
+  assert.strictEqual(S.markerTextColor(track.checkpoints[0], style), style.cp.textColor);
+  assert.strictEqual(S.markerLabel(track.checkpoints[0], 0, style), '0');
+  assert.strictEqual(S.markerLabel(track.checkpoints[2], 2, style), '2');
+  const legend = S.cpLegend(track, style, globalThis.I18n.t);
+  assert.strictEqual(legend.rows.length, 1);
+  assert.strictEqual(legend.count, 3);
+  assert.strictEqual(legend.total, 3);
+});
+
 test('checkpoint legend mirrors filters and visible count', () => {
   const style = S.defaultVisual();
   const track = {

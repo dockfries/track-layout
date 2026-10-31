@@ -366,7 +366,7 @@
   }
 
   function cpMarkerHtml(cp, index, style) {
-    const label = cp.label || I18n.roleLabel(cp, index);
+    const label = cp.label || (Style.cpFilter(style) === 'checkpoints' ? `CP ${index}` : I18n.roleLabel(cp, index));
     const labelHtml = style.cp.showLabels
       ? `<span class="tl-cp-label" style="color:${style.cp.labelColor}">${escapeHtml(label)}</span>`
       : '';
@@ -425,7 +425,7 @@
         if (handlers.onCpDragEnd) handlers.onCpDragEnd(i, ll.lng, ll.lat);
       });
 
-      const role = I18n.roleLabel(cp, i);
+      const role = Style.cpFilter(style) === 'checkpoints' ? `CP ${i}` : I18n.roleLabel(cp, i);
       const routeCp = state.route && state.route.cps ? state.route.cps[i] : null;
       const label = cp.label ? `${role} · ${escapeHtml(cp.label)}` : role;
       marker.bindTooltip(

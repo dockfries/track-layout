@@ -369,7 +369,7 @@
       const y = layout.yToPx(cp.y);
       const fill = Style.markerFill(cp, style);
       const textColor = Style.markerTextColor(cp, style);
-      const label = Style.markerLabel(cp, i);
+      const label = Style.markerLabel(cp, i, style);
 
       if (s.halo) {
         ctx.beginPath();
@@ -402,7 +402,7 @@
       }
 
       if (s.showLabels) {
-        const labelText = cp.label || I18n.roleLabel(cp, i);
+        const labelText = cp.label || (Style.cpFilter(style) === 'checkpoints' ? `CP ${i}` : I18n.roleLabel(cp, i));
         ctx.font = `600 ${Math.max(8, 11.5 * layout.k)}px ${FONT}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
@@ -815,7 +815,7 @@
       const x = layout.xToPx(cp.x), y = layout.yToPx(cp.y);
       const fill = Style.markerFill(cp, style);
       const textColor = Style.markerTextColor(cp, style);
-      const label = Style.markerLabel(cp, i);
+      const label = Style.markerLabel(cp, i, style);
       const parts = [];
       if (s.halo) {
         parts.push(`<circle r="${r2(r + 7 * layout.k)}" fill="${s.haloColor}" opacity="${s.haloOpacity}"/>`);
@@ -833,7 +833,7 @@
         parts.push(`<text x="0" y="${r2(fontSize * 0.02)}" text-anchor="middle" dominant-baseline="central" fill="${textColor}" font-family="${FONT_SVG}" font-size="${r2(fontSize)}" font-weight="700">${Style.escapeXml(label)}</text>`);
       }
       if (s.showLabels) {
-        const labelText = cp.label || I18n.roleLabel(cp, i);
+        const labelText = cp.label || (Style.cpFilter(style) === 'checkpoints' ? `CP ${i}` : I18n.roleLabel(cp, i));
         const fs = Math.max(8, 11.5 * layout.k);
         parts.push(`<text x="0" y="${r2(r + 7 * layout.k)}" text-anchor="middle" dominant-baseline="hanging" fill="${s.labelColor}" font-family="${FONT_SVG}" font-size="${r2(fs)}" font-weight="600" stroke="rgba(0,0,0,0.55)" stroke-width="${r2(3 * layout.k)}" paint-order="stroke">${Style.escapeXml(labelText)}</text>`);
       }

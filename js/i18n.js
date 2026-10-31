@@ -404,6 +404,7 @@
     '终点': 'Finish',
     '显示范围': 'Display range',
     '全部': 'All',
+    '仅检查点': 'CP style',
     '标记密度': 'Marker density',
     '每 2 个': 'Every 2nd',
     '每 5 个': 'Every 5th',
@@ -411,6 +412,8 @@
     '每 20 个': 'Every 20th',
     '显示范围与标记密度只影响地图 / 导出标记；侧栏保留全部 CP，路径计算和编号不变。':
       'Display range and marker density only affect map / export markers; the sidebar keeps every CP and routing / indices stay unchanged.',
+    '「仅检查点」会把起点和终点也画成普通检查点，不显示 S/F 默认配色。':
+      'CP style renders start and finish as ordinary checkpoints, without the default S/F colours.',
     '区分起终点配色': 'Distinguish start / finish colors',
     '彩虹': 'Rainbow',
     '反色': 'Invert',

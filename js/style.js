@@ -228,7 +228,7 @@
   function defaultExport() { return clone(DEFAULT_EXPORT); }
 
   const OVERLAY_POSITIONS = ['tl', 'tc', 'tr', 'bl', 'bc', 'br'];
-  const CP_FILTERS = ['all', 'endpoints', 'start', 'finish'];
+  const CP_FILTERS = ['all', 'endpoints', 'start', 'finish', 'checkpoints'];
   const CP_INTERVALS = [1, 2, 5, 10, 20];
 
   function overlayPosition(value, fallback) {
@@ -253,7 +253,7 @@
   function cpVisible(cp, style) {
     if (!cp || !style || style.cp.visible === false) return false;
     const filter = cpFilter(style);
-    if (filter === 'all') return true;
+    if (filter === 'all' || filter === 'checkpoints') return true;
     const endpoint = cp.role === 'start' || cp.role === 'finish' || cp.role === 'loop';
     if (filter === 'endpoints') return endpoint;
     if (filter === 'start') return cp.role === 'start' || cp.role === 'loop';
@@ -286,6 +286,9 @@
     const visible = visibleCheckpoints(track, style);
     if (!visible.length) return { rows: [routeRow], count: 0 };
     const filter = cpFilter(style);
+    if (filter === 'checkpoints') {
+      return { rows: [[t('field.checkpoints'), style.cp.border]], count: visible.length };
+    }
     if (style.cp.distinguish === false) {
       let label = t('field.checkpoints');
       if (track.closed && filter !== 'all') label = t('label.startFinish');
@@ -537,7 +540,8 @@
     return step;
   }
 
-  function markerLabel(cp, index) {
+  function markerLabel(cp, index, style) {
+    if (style && cpFilter(style) === 'checkpoints') return String(index);
     if (cp.role === 'start') return 'S';
     if (cp.role === 'finish') return 'F';
     if (cp.role === 'loop') return 'S/F';
@@ -545,14 +549,14 @@
   }
 
   function markerFill(cp, style) {
-    if (style.cp.distinguish === false) return style.cp.fill;
+    if (style.cp.distinguish === false || cpFilter(style) === 'checkpoints') return style.cp.fill;
     if (cp.role === 'start' || cp.role === 'loop') return style.cp.startColor;
     if (cp.role === 'finish') return style.cp.finishColor;
     return style.cp.fill;
   }
 
   function markerTextColor(cp, style) {
-    if (style.cp.distinguish === false) return style.cp.textColor;
+    if (style.cp.distinguish === false || cpFilter(style) === 'checkpoints') return style.cp.textColor;
     if (cp.role === 'start' || cp.role === 'loop' || cp.role === 'finish') {
       return contrastText(markerFill(cp, style), '#ffffff', '#08110b');
     }
@@ -571,7 +575,7 @@
     const c = total / 2;
     const fill = markerFill(cp, style);
     const textColor = markerTextColor(cp, style);
-    const label = markerLabel(cp, index);
+    const label = markerLabel(cp, index, style);
     const fontSize = label.length > 1 ? size * 0.34 : size * 0.46;
 
     const shape = (extra = '') => {

@@ -2242,6 +2242,8 @@ function updateConditional() {
     'route-colors': style.route.paint !== 'rainbow',
     'route-rainbow': style.route.paint === 'rainbow',
     'route-angle': style.route.paint === 'linear',
+    'cp-distinguish': style.cp.filter !== 'checkpoints',
+    'cp-checkpoint-style': style.cp.filter === 'checkpoints',
     'route-outline': !!style.route.outline,
     'route-glow': !!style.route.glow,
     'route-arrows': !!style.route.arrows,
