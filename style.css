@@ -1311,6 +1311,7 @@ details.section[open] > summary .chev { transform: rotate(180deg); }
 .dialog.is-closing { pointer-events: none; animation: dialogOut .16s ease forwards; }
 .dialog.is-closing::backdrop { animation: backdropOut .16s ease forwards; }
 .dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(6px); }
+html:has(dialog[open]), body:has(dialog[open]) { overflow: hidden; }
 @keyframes dialogIn {
   from { opacity: 0; transform: translateY(14px) scale(.985); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -1403,7 +1404,88 @@ details.section[open] > summary .chev { transform: rotate(180deg); }
     var(--preview-bg-2);
   overflow: hidden;
 }
-.preview-frame img { display: block; max-width: 100%; max-height: calc(88vh - 200px); object-fit: contain; }
+.preview-frame img { display: block; max-width: 100%; max-height: calc(88vh - 200px); object-fit: contain; cursor: zoom-in; }
+.preview-frame img:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+.preview-lightbox {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  background: #05070d;
+  color: #e8edf7;
+  box-shadow: none;
+}
+dialog.preview-lightbox { width: 100vw; height: 100vh; height: 100dvh; max-height: none; }
+.lightbox-shell { width: 100%; height: 100%; display: flex; flex-direction: column; background: #05070d; }
+.lightbox-shell:fullscreen { width: 100vw; height: 100vh; height: 100dvh; }
+.preview-lightbox[open] { display: flex; flex-direction: column; animation: none; }
+.preview-lightbox.is-closing { animation: dialogOut .16s ease forwards; }
+.preview-lightbox::backdrop { background: #000; }
+.lightbox-head {
+  flex-shrink: 0;
+  height: calc(46px + env(safe-area-inset-top));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: env(safe-area-inset-top) 10px 0 14px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  background: rgba(5,7,13,.96);
+}
+.lightbox-head h2 { font-size: 13px; font-weight: 650; letter-spacing: .01em; }
+.lightbox-zoom { margin-left: auto; color: rgba(232,237,247,.55); font-family: var(--mono); font-size: 10.5px; }
+.lightbox-actions { display: flex; align-items: center; gap: 2px; }
+.lightbox-head .icon-x { color: rgba(232,237,247,.68); }
+.lightbox-head .icon-x:hover { color: #fff; background: rgba(255,255,255,.09); }
+.lightbox-btn { width: 30px; height: 30px; }
+.lightbox-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  background:
+    linear-gradient(45deg, rgba(255,255,255,.028) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.028) 75%) 0 0 / 22px 22px,
+    linear-gradient(45deg, rgba(255,255,255,.028) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.028) 75%) 11px 11px / 22px 22px,
+    #05070d;
+}
+.lightbox-stage:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.lightbox-stage.is-dragging { cursor: grabbing; }
+#lightbox-img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  transform-origin: center center;
+  will-change: transform;
+}
+.lightbox-hint {
+  flex-shrink: 0;
+  padding: 7px 10px max(7px, env(safe-area-inset-bottom));
+  color: rgba(232,237,247,.45);
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: .02em;
+}
+@media (max-width: 720px) {
+  .lightbox-head { height: calc(44px + env(safe-area-inset-top)); padding-left: 10px; gap: 6px; }
+  .lightbox-head h2 { font-size: 12px; }
+  .lightbox-zoom { font-size: 9.5px; }
+  .lightbox-btn { width: 28px; height: 28px; }
+  .lightbox-hint { font-size: 9.5px; }
+}
 
 /* ── Leaflet bits ────────────────────────────────────── */
 .leaflet-container { font-family: var(--font); background: transparent; }

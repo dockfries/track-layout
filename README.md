@@ -32,6 +32,7 @@ Track Layout is a fully static **GTA San Andreas race-route map builder**. Give 
 - **Collapsible route notes**: route warnings can be folded away and use the same virtualized list rendering for long runs.
 - **Clear local cache**: the sidebar footer has a cache reset action that removes this app's `localStorage` and Cache Storage data, then reloads.
 - **Export watermark**: the bottom-right `GTA: SAN ANDREAS · TRACK LAYOUT` credit can be enabled or disabled in the Export pane.
+- **Fullscreen preview**: click the preview image to open a full-viewport lightbox with wheel/trackpad zoom, pinch zoom on touch screens, drag-to-pan, double-click reset, and an optional native Fullscreen API button. Keyboard: `+`/`-` zoom, arrows pan, `0` reset, `Esc` close.
 - **Source link**: the sidebar footer GitHub icon opens the source repository.
 - **Internationalization**: first visit follows the browser locale (`zh*` → Simplified Chinese, everything else → English); the `EN / 中文` picker in the top bar overrides it. UI, map title/legend, CP list, notices, help and PNG/SVG export text all follow the active language.
 - **Dark / light UI**: choose **System / Dark / Light** in the top bar. **System** follows `prefers-color-scheme` live, and the choice is remembered in this browser. This only affects the app chrome, not the route-map artwork itself.

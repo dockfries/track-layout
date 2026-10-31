@@ -180,6 +180,8 @@
     "playback.replay": { en: "Replay route animation", zh: "重播路线动画" },
     "playback.replayShort": { en: "Replay", zh: "重播" },
     "playback.stop": { en: "Stop animation", zh: "停止动画" },
+    "lightbox.enterFullscreen": { en: "Fullscreen", zh: "全屏" },
+    "lightbox.exitFullscreen": { en: "Exit fullscreen", zh: "退出全屏" },
     "warning.collapseRoute": { en: "Collapse route notes", zh: "折叠路段提示" },
     "warning.expandRoute": { en: "Expand route notes", zh: "展开路段提示" },
   };
@@ -617,6 +619,17 @@
     '完整赛道会自动留白并适配画布比例；当前地图视图会按输出比例居中裁切。':
       'Full track pads to the canvas aspect; the current map view is center-cropped to the output aspect.',
     'GitHub 源码': 'GitHub source',
+    '全屏预览': 'Fullscreen preview',
+    '打开全屏预览': 'Open fullscreen preview',
+    '点击全屏预览': 'Click for fullscreen preview',
+    '缩小': 'Zoom out',
+    '放大': 'Zoom in',
+    '重置缩放': 'Reset zoom',
+    '全屏': 'Fullscreen',
+    '退出全屏': 'Exit fullscreen',
+    '可缩放导出预览': 'Zoomable export preview',
+    '拖动平移 · 滚轮 / 双指缩放 · 双击切换 · Esc 关闭':
+      'Drag to pan · wheel / pinch to zoom · double-click to toggle · Esc to close',
     '启用单键快捷键': 'Enable single-key shortcuts',
     '关闭后仍可使用 Ctrl / Cmd 组合键、Delete 和 Esc。':
       'Ctrl / Cmd shortcuts, Delete, and Esc still work when this is off.',

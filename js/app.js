@@ -1742,6 +1742,7 @@ function syncAll() {
   syncCpLockButton();
   syncHistoryButtons();
   syncPlaybackUI();
+  syncLightboxFullscreen();
   syncTrackMeta();
   syncStyleInputs();
   syncRoutingInputs();
@@ -2273,6 +2274,289 @@ function updatePreviewLabels() {
   const note = $('preview-note');
   if (meta) meta.textContent = `${width} × ${height} · ${t("label.pngPreview")}`;
   if (note) note.textContent = includeMap ? t("label.mapIncluded") : t("label.mapExcluded");
+}
+
+// ── Fullscreen preview / pan-zoom ──────────────────────────────────────
+const lightboxState = {
+  scale: 1,
+  tx: 0,
+  ty: 0,
+  minScale: 0.5,
+  maxScale: 8,
+  pointers: new Map(),
+  drag: null,
+  pinch: null,
+  dragging: false,
+};
+
+function lightboxApply() {
+  const img = $('lightbox-img');
+  const zoom = $('lightbox-zoom');
+  if (img) img.style.transform = `translate3d(${lightboxState.tx}px, ${lightboxState.ty}px, 0) scale(${lightboxState.scale})`;
+  if (zoom) zoom.textContent = `${Math.round(lightboxState.scale * 100)}%`;
+}
+
+function lightboxClamp() {
+  const stage = $('lightbox-stage');
+  const img = $('lightbox-img');
+  if (!stage || !img) return;
+  const iw = img.clientWidth || 0;
+  const ih = img.clientHeight || 0;
+  const maxX = Math.max(0, (iw * lightboxState.scale - stage.clientWidth) / 2);
+  const maxY = Math.max(0, (ih * lightboxState.scale - stage.clientHeight) / 2);
+  lightboxState.tx = clamp(lightboxState.tx, -maxX, maxX);
+  lightboxState.ty = clamp(lightboxState.ty, -maxY, maxY);
+}
+
+function lightboxZoomAt(nextScale, clientX, clientY) {
+  const stage = $('lightbox-stage');
+  const img = $('lightbox-img');
+  if (!stage || !img) return;
+  const scale = clamp(nextScale, lightboxState.minScale, lightboxState.maxScale);
+  const rect = stage.getBoundingClientRect();
+  const cx = clientX === undefined ? rect.left + rect.width / 2 : clientX;
+  const cy = clientY === undefined ? rect.top + rect.height / 2 : clientY;
+  const localX = cx - (rect.left + rect.width / 2);
+  const localY = cy - (rect.top + rect.height / 2);
+  const px = (localX - lightboxState.tx) / lightboxState.scale;
+  const py = (localY - lightboxState.ty) / lightboxState.scale;
+  lightboxState.scale = scale;
+  lightboxState.tx = localX - px * scale;
+  lightboxState.ty = localY - py * scale;
+  lightboxClamp();
+  lightboxApply();
+}
+
+function lightboxReset() {
+  lightboxState.scale = 1;
+  lightboxState.tx = 0;
+  lightboxState.ty = 0;
+  lightboxClamp();
+  lightboxApply();
+}
+
+function openLightbox() {
+  const preview = $('preview-img');
+  const dlg = $('preview-lightbox');
+  const img = $('lightbox-img');
+  if (!preview || !dlg || !img || !preview.src) return;
+  img.src = preview.src;
+  img.alt = preview.alt || t("label.pngPreview");
+  lightboxReset();
+  openDialog(dlg);
+  requestAnimationFrame(() => {
+    lightboxReset();
+    const stage = $('lightbox-stage');
+    if (stage) stage.focus({ preventScroll: true });
+  });
+}
+
+function syncLightboxFullscreen() {
+  const target = $('lightbox-fullscreen-target');
+  const btn = $('lightbox-fullscreen');
+  const icon = $('lightbox-fullscreen-icon');
+  if (!target || !btn) return;
+  const active = document.fullscreenElement === target || document.webkitFullscreenElement === target;
+  const label = t(active ? 'lightbox.exitFullscreen' : 'lightbox.enterFullscreen');
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+  if (icon) icon.setAttribute('href', `assets/icons/sprite.svg#i-${active ? 'minimize' : 'maximize'}`);
+}
+
+async function toggleLightboxFullscreen() {
+  const target = $('lightbox-fullscreen-target');
+  if (!target) return;
+  const active = document.fullscreenElement === target || document.webkitFullscreenElement === target;
+  try {
+    if (active) {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } else if (target.requestFullscreen) {
+      await target.requestFullscreen();
+    } else if (target.webkitRequestFullscreen) {
+      target.webkitRequestFullscreen();
+    }
+  } catch { /* Fullscreen may be denied by the browser */ }
+  syncLightboxFullscreen();
+}
+
+function bindLightbox() {
+  const dlg = $('preview-lightbox');
+  const stage = $('lightbox-stage');
+  const img = $('lightbox-img');
+  const preview = $('preview-img');
+  const fullscreenBtn = $('lightbox-fullscreen');
+  const fullscreenTarget = $('lightbox-fullscreen-target');
+  if (!dlg || !stage || !img) return;
+
+  if (preview) {
+    preview.addEventListener('click', openLightbox);
+    preview.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'Enter' && ev.key !== ' ') return;
+      ev.preventDefault();
+      openLightbox();
+    });
+  }
+
+  if (fullscreenBtn) {
+    const supported = !!(fullscreenTarget && (fullscreenTarget.requestFullscreen || fullscreenTarget.webkitRequestFullscreen));
+    fullscreenBtn.hidden = !supported;
+    fullscreenBtn.addEventListener('click', toggleLightboxFullscreen);
+  }
+
+  stage.addEventListener('wheel', (ev) => {
+    ev.preventDefault();
+    const factor = Math.exp(-ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0018));
+    lightboxZoomAt(lightboxState.scale * factor, ev.clientX, ev.clientY);
+  }, { passive: false });
+
+  stage.addEventListener('pointerdown', (ev) => {
+    if (ev.button !== undefined && ev.button !== 0) return;
+    ev.preventDefault();
+    lightboxState.pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    try { stage.setPointerCapture(ev.pointerId); } catch { /* ignore */ }
+    if (lightboxState.pointers.size === 1) {
+      lightboxState.drag = { x: ev.clientX, y: ev.clientY, tx: lightboxState.tx, ty: lightboxState.ty };
+      lightboxState.pinch = null;
+      lightboxState.dragging = true;
+      stage.classList.add('is-dragging');
+    } else if (lightboxState.pointers.size === 2) {
+      const pts = Array.from(lightboxState.pointers.values());
+      const rect = stage.getBoundingClientRect();
+      lightboxState.pinch = {
+        dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1,
+        scale: lightboxState.scale,
+        tx: lightboxState.tx,
+        ty: lightboxState.ty,
+        midX: (pts[0].x + pts[1].x) / 2 - (rect.left + rect.width / 2),
+        midY: (pts[0].y + pts[1].y) / 2 - (rect.top + rect.height / 2),
+      };
+      lightboxState.drag = null;
+      lightboxState.dragging = false;
+      stage.classList.add('is-dragging');
+    }
+  });
+
+  stage.addEventListener('pointermove', (ev) => {
+    if (!lightboxState.pointers.has(ev.pointerId)) return;
+    lightboxState.pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (lightboxState.pointers.size === 1 && lightboxState.drag) {
+      lightboxState.tx = lightboxState.drag.tx + ev.clientX - lightboxState.drag.x;
+      lightboxState.ty = lightboxState.drag.ty + ev.clientY - lightboxState.drag.y;
+      lightboxClamp();
+      lightboxApply();
+    } else if (lightboxState.pointers.size === 2 && lightboxState.pinch) {
+      const pts = Array.from(lightboxState.pointers.values());
+      const rect = stage.getBoundingClientRect();
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+      const scale = clamp(lightboxState.pinch.scale * dist / lightboxState.pinch.dist, lightboxState.minScale, lightboxState.maxScale);
+      const midX = (pts[0].x + pts[1].x) / 2 - (rect.left + rect.width / 2);
+      const midY = (pts[0].y + pts[1].y) / 2 - (rect.top + rect.height / 2);
+      const px = (lightboxState.pinch.midX - lightboxState.pinch.tx) / lightboxState.pinch.scale;
+      const py = (lightboxState.pinch.midY - lightboxState.pinch.ty) / lightboxState.pinch.scale;
+      lightboxState.scale = scale;
+      lightboxState.tx = midX - px * scale;
+      lightboxState.ty = midY - py * scale;
+      lightboxClamp();
+      lightboxApply();
+    }
+  });
+
+  const endPointer = (ev) => {
+    lightboxState.pointers.delete(ev.pointerId);
+    try { stage.releasePointerCapture(ev.pointerId); } catch { /* ignore */ }
+    if (lightboxState.pointers.size === 1) {
+      const p = Array.from(lightboxState.pointers.values())[0];
+      lightboxState.drag = { x: p.x, y: p.y, tx: lightboxState.tx, ty: lightboxState.ty };
+      lightboxState.pinch = null;
+    } else if (lightboxState.pointers.size === 0) {
+      lightboxState.drag = null;
+      lightboxState.pinch = null;
+      lightboxState.dragging = false;
+      stage.classList.remove('is-dragging');
+    }
+  };
+  stage.addEventListener('pointerup', endPointer);
+  stage.addEventListener('pointercancel', endPointer);
+
+  stage.addEventListener('dblclick', (ev) => {
+    ev.preventDefault();
+    const next = lightboxState.scale > 1.05 ? 1 : 2.2;
+    lightboxZoomAt(next, ev.clientX, ev.clientY);
+  });
+
+  stage.addEventListener('keydown', (ev) => {
+    if (ev.key === '+' || ev.key === '=') {
+      ev.preventDefault();
+      ev.stopPropagation();
+      lightboxZoomAt(lightboxState.scale * 1.25);
+    } else if (ev.key === '-') {
+      ev.preventDefault();
+      ev.stopPropagation();
+      lightboxZoomAt(lightboxState.scale * 0.8);
+    } else if (ev.key === '0') {
+      ev.preventDefault();
+      ev.stopPropagation();
+      lightboxReset();
+    } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(ev.key)) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const step = ev.shiftKey ? 80 : 32;
+      if (ev.key === 'ArrowUp') lightboxState.ty += step;
+      else if (ev.key === 'ArrowDown') lightboxState.ty -= step;
+      else if (ev.key === 'ArrowLeft') lightboxState.tx += step;
+      else lightboxState.tx -= step;
+      lightboxClamp();
+      lightboxApply();
+    }
+  });
+
+  for (const type of ['gesturestart', 'gesturechange']) {
+    stage.addEventListener(type, (ev) => ev.preventDefault(), { passive: false });
+  }
+
+  img.addEventListener('load', () => {
+    if (!dlg.open) return;
+    lightboxReset();
+    lightboxApply();
+  });
+
+  dlg.addEventListener('close', () => {
+    lightboxState.pointers.clear();
+    lightboxState.drag = null;
+    lightboxState.pinch = null;
+    lightboxState.dragging = false;
+    stage.classList.remove('is-dragging');
+    const fs = document.fullscreenElement === fullscreenTarget || document.webkitFullscreenElement === fullscreenTarget;
+    if (fs) {
+      if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+    syncLightboxFullscreen();
+  });
+
+  document.addEventListener('fullscreenchange', () => {
+    syncLightboxFullscreen();
+    requestAnimationFrame(() => {
+      if (!dlg.open) return;
+      lightboxClamp();
+      lightboxApply();
+    });
+  });
+  document.addEventListener('webkitfullscreenchange', () => {
+    syncLightboxFullscreen();
+    requestAnimationFrame(() => {
+      if (!dlg.open) return;
+      lightboxClamp();
+      lightboxApply();
+    });
+  });
+  window.addEventListener('resize', () => {
+    if (!dlg.open) return;
+    lightboxClamp();
+    lightboxApply();
+  });
+  syncLightboxFullscreen();
 }
 
 function updateMiniPreview(canvas) {
@@ -2832,6 +3116,7 @@ function bindUi() {
   }
   bindRangeInteractions();
   bindPlayback();
+  bindLightbox();
 
   document.addEventListener('keydown', (ev) => {
     const typing = ev.target instanceof Element && ev.target.matches('input, select, textarea, [contenteditable="true"]');
@@ -2847,6 +3132,7 @@ function bindUi() {
         if (typing && ev.target && typeof ev.target.blur === 'function') ev.target.blur();
         return;
       }
+      if ($('preview-lightbox').open) { ev.preventDefault(); closeDialog($('preview-lightbox')); return; }
       if ($('preview-dialog').open) { closeDialog($('preview-dialog')); return; }
       if ($('help-dialog').open) { closeDialog($('help-dialog')); return; }
       if ($('shortcuts-dialog').open) { closeDialog($('shortcuts-dialog')); return; }
@@ -3014,6 +3300,10 @@ function runAction(action) {
     case 'upload-map': $('map-input').click(); break;
     case 'apply-bounds': applyCustomBounds(); break;
     case 'preview': openPreview(); break;
+    case 'lightbox-zoom-in': lightboxZoomAt(lightboxState.scale * 1.25); break;
+    case 'lightbox-zoom-out': lightboxZoomAt(lightboxState.scale * 0.8); break;
+    case 'lightbox-reset': lightboxReset(); break;
+    case 'lightbox-fullscreen': toggleLightboxFullscreen(); break;
     case 'download-png': downloadPNG(); break;
     case 'download-svg': downloadSVG(); break;
     case 'copy-spec': copyText(SPEC_EXAMPLE); break;

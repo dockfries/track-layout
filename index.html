@@ -23,7 +23,7 @@
   <meta name="description" content="Import GTA San Andreas track JSON, route CPs along the road graph, style the map, and export PNG / SVG.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0e15'/%3E%3Cpath d='M6 23c5 0 5-14 10-14s5 12 10 12' stroke='%23f97316' stroke-width='3.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
-  <link rel="stylesheet" href="style.css?v=29">
+  <link rel="stylesheet" href="style.css?v=30">
 </head>
 <body>
   <noscript><div style="padding:20px;font-family:sans-serif;color:#fff;background:#0b0e15">Track Layout requires JavaScript. / 需要启用 JavaScript。</div></noscript>
@@ -742,7 +742,7 @@
       </button>
     </div>
     <div class="dialog-body preview-body">
-      <div id="preview-frame" class="preview-frame"><img id="preview-img" alt="导出预览"></div>
+      <div id="preview-frame" class="preview-frame"><img id="preview-img" alt="导出预览" tabindex="0" role="button" aria-label="打开全屏预览" title="点击全屏预览"></div>
     </div>
     <div class="dialog-foot">
       <span id="preview-note" class="muted small" data-no-i18n></span>
@@ -752,15 +752,45 @@
     </div>
   </dialog>
 
+  <dialog id="preview-lightbox" class="dialog preview-lightbox" aria-labelledby="preview-lightbox-title">
+    <div id="lightbox-fullscreen-target" class="lightbox-shell">
+    <div class="lightbox-head">
+      <h2 id="preview-lightbox-title">全屏预览</h2>
+      <span id="lightbox-zoom" class="lightbox-zoom" data-no-i18n>100%</span>
+      <div class="lightbox-actions">
+        <button class="icon-x lightbox-btn" data-action="lightbox-zoom-out" title="缩小" aria-label="缩小">
+          <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-zoom-out"></use></svg>
+        </button>
+        <button class="icon-x lightbox-btn" data-action="lightbox-zoom-in" title="放大" aria-label="放大">
+          <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-zoom-in"></use></svg>
+        </button>
+        <button class="icon-x lightbox-btn" data-action="lightbox-reset" title="重置缩放" aria-label="重置缩放">
+          <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-rotate-ccw"></use></svg>
+        </button>
+        <button class="icon-x lightbox-btn" id="lightbox-fullscreen" data-action="lightbox-fullscreen" title="全屏" aria-label="全屏">
+          <svg class="ico" aria-hidden="true" focusable="false"><use id="lightbox-fullscreen-icon" href="assets/icons/sprite.svg#i-maximize"></use></svg>
+        </button>
+        <button class="icon-x" data-close-dialog="preview-lightbox" aria-label="关闭">
+          <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-x"></use></svg>
+        </button>
+      </div>
+    </div>
+    <div id="lightbox-stage" class="lightbox-stage" tabindex="0" role="region" aria-label="可缩放导出预览">
+      <img id="lightbox-img" alt="导出预览" draggable="false">
+    </div>
+    <div class="lightbox-hint">拖动平移 · 滚轮 / 双指缩放 · 双击切换 · Esc 关闭</div>
+    </div>
+  </dialog>
+
   <input id="file-input" type="file" accept=".json,application/json" aria-label="选择赛道 JSON" hidden>
   <input id="map-input" type="file" accept="image/*" aria-label="选择自定义底图" hidden>
 
   <script src="vendor/leaflet/leaflet.js"></script>
-  <script src="js/track.js?v=29"></script>
-  <script src="js/style.js?v=29"></script>
-  <script src="js/i18n.js?v=29"></script>
-  <script src="js/mapview.js?v=29"></script>
-  <script src="js/export.js?v=29"></script>
-  <script src="js/app.js?v=29"></script>
+  <script src="js/track.js?v=30"></script>
+  <script src="js/style.js?v=30"></script>
+  <script src="js/i18n.js?v=30"></script>
+  <script src="js/mapview.js?v=30"></script>
+  <script src="js/export.js?v=30"></script>
+  <script src="js/app.js?v=30"></script>
 </body>
 </html>
