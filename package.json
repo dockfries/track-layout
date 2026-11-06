@@ -11,6 +11,7 @@
     "start": "node server.js 8173",
     "serve": "npx --yes serve . -l 8173",
     "samples": "node tools/make-samples.js",
+    "stamp": "node tools/stamp-assets.js",
     "test": "node tests/run.js"
   }
 }
