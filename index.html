@@ -169,11 +169,15 @@
           <div class="empty-card">
             <div class="empty-kicker">TRACK LAYOUT</div>
             <h1>把 CP 点变成一张赛道路线图</h1>
-            <p>拖入赛道 JSON，工具会沿 San Andreas 路网自动寻路，按你的风格渲染，并导出 PNG / SVG。</p>
+            <p>拖入赛道 JSON，工具会沿 San Andreas 路网自动寻路；也可以新建空白赛道，在地图上逐个放置检查点。</p>
             <div class="empty-actions">
               <button class="btn primary" data-action="open-json">
                 <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-folder-open"></use></svg>
                 打开赛道 JSON
+              </button>
+              <button class="btn" data-action="new-track">
+                <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-map-pin-plus"></use></svg>
+                从空白开始
               </button>
               <button class="btn" data-action="load-sample" data-sample="los-santos-loop">
                 <svg class="ico" aria-hidden="true" focusable="false"><use href="assets/icons/sprite.svg#i-sparkles"></use></svg>
@@ -216,11 +220,12 @@
             <label class="field"><span>作者</span><input id="track-author" class="text" type="text" placeholder="可选" spellcheck="false"></label>
           </div>
 
-          <div class="row row-tight">
+          <div class="row row-tight track-actions">
             <button class="btn primary" data-action="open-json">打开 JSON</button>
             <button class="btn" data-action="save-json">保存 JSON</button>
             <button class="btn" data-action="new-track">新建</button>
             <button class="btn" data-action="help">格式说明</button>
+            <button class="btn" data-action="close-track" title="关闭当前赛道，返回开始页">关闭赛道</button>
           </div>
 
           <div class="group">

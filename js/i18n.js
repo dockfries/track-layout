@@ -10,6 +10,7 @@
 
   // Semantic message keys. English is the source language; zh values are the translations.
   const MESSAGES = {
+    "action.addOnMap": { en: "Add on map", zh: "地图添加" },
     "action.delete": { en: "Delete", zh: "删除" },
     "action.moveDown": { en: "Move down", zh: "下移" },
     "action.moveUp": { en: "Move up", zh: "上移" },
@@ -22,6 +23,8 @@
     "aria.numericInput": { en: "Enter a numeric value", zh: "手动输入数值" },
     "common.loading": { en: "Loading…", zh: "载入中…" },
     "cp.added": { en: "Added {0}", zh: "已添加 {0}" },
+    "cp.closeConfirm": { en: "Close this track? It is removed from the workspace and the local autosave is cleared.", zh: "关闭后会从工作区移除这条赛道（本地自动保存也会清除），继续？" },
+    "cp.closed": { en: "Track closed · Ctrl/Cmd+Z to undo", zh: "已关闭赛道 · Ctrl/Cmd+Z 可撤销" },
     "cp.densityAll": { en: "All {0} CP markers are shown. Routing and CP numbering still use the full checkpoint list.", zh: "当前显示全部 {0} 个 CP 标记；路径计算与 CP 编号仍使用完整检查点列表。" },
     "cp.densitySome": { en: "Showing {0} / {1} CP markers. Routing and CP numbering still use all {1} checkpoints.", zh: "当前显示 {0} / {1} 个 CP 标记；路径计算与 CP 编号仍使用全部 {1} 个检查点。" },
     "cp.densityAutoOne": { en: "Auto by route length: no thinning.", zh: "按里程自动：不抽稀。" },
@@ -29,7 +32,8 @@
     "route.arrowAutoHint": { en: "Auto by route length: about {0} m apart, ~{1} arrows.", zh: "按里程自动：约每 {0} m 一个箭头，约 {1} 个。" },
     "route.arrowAutoIdle": { en: "Auto spacing will be calculated after a route is loaded.", zh: "载入赛道后自动计算箭头间距。" },
     "cp.densityIdle": { en: "Load a track to thin CP markers without changing routing or CP indices.", zh: "载入赛道后可调整 CP 标记密度，不影响路径计算和 CP 编号。" },
-    "cp.empty": { en: "No checkpoints yet. Open a JSON file or use \"Add on map\".", zh: "还没有检查点。打开 JSON，或点「地图添加」。" },
+    "cp.empty": { en: "This blank track has no checkpoints yet. Place the first one on the map.", zh: "空白赛道还没有检查点。点「地图添加」在地图上放置第一个。" },
+    "cp.emptyNoTrack": { en: "No checkpoints yet. Open a JSON file or use \"Add on map\".", zh: "还没有检查点。打开 JSON，或点「地图添加」。" },
     "cp.finish": { en: "Finish", zh: "终点" },
     "cp.keepAtLeastOne": { en: "Keep at least one checkpoint", zh: "至少保留一个检查点" },
     "cp.loaded": { en: "Loaded {0} · {1} checkpoints", zh: "已载入 {0} · {1} 个检查点" },
@@ -57,7 +61,7 @@
     "error.jsonParse": { en: "JSON parse failed: {0}", zh: "JSON 解析失败：{0}" },
     "error.jsonParseNear": { en: "JSON parse failed near character {0}: {1}", zh: "JSON 解析失败（第 {0} 个字符附近）：{1}" },
     "error.load": { en: "Load failed: {0}", zh: "载入失败：{0}" },
-    "error.loadTrackFirst": { en: "Load or create a track first", zh: "先载入或创建一个赛道" },
+    "error.loadTrackFirst": { en: "Add a checkpoint or load a track first", zh: "先添加检查点或载入赛道" },
     "error.noCheckpoints": { en: "No checkpoint array found: use checkpoints / cps / points, or a top-level JSON array", zh: "找不到检查点数组：需要 checkpoints / cps / points 其中之一，或直接使用 JSON 数组" },
     "error.pngCreate": { en: "The browser could not create the PNG", zh: "浏览器无法生成 PNG" },
     "error.pngExport": { en: "PNG export failed: {0}", zh: "PNG 导出失败：{0}" },
@@ -157,8 +161,8 @@
     "warning.autoSpline": { en: "Could not snap the whole track to the road graph; using a smooth spline", zh: "未能全程吸附到路网，已自动改用平滑曲线" },
     "warning.duplicate": { en: "{0} is at the same position as the previous one", zh: "{0} 与上一个位置重复" },
     "warning.duplicateStart": { en: "{0} is at the same position as the start", zh: "{0} 与起点位置重复" },
-    "warning.emptyRoute": { en: "Load a track to see segments that could not be routed.", zh: "载入赛道后，这里会列出无法寻路的路段。" },
-    "warning.emptyTrack": { en: "Load a track to see checkpoint and snapping notes.", zh: "载入赛道后，这里会列出检查点与路网吸附的提示。" },
+    "warning.emptyRoute": { en: "Load or create a track to see segments that could not be routed.", zh: "载入或新建赛道后，这里会列出无法寻路的路段。" },
+    "warning.emptyTrack": { en: "Load or create a track to see checkpoint and snapping notes.", zh: "载入或新建赛道后，这里会列出检查点与路网吸附的提示。" },
     "warning.noIssues": { en: "No obvious issues.", zh: "没有发现明显问题。" },
     "warning.noRoadAtAll": { en: "No segment could use the road graph; connected with straight lines", zh: "没有任何路段能使用路网，已用直线连接" },
     "warning.noSnap": { en: "{0}: no drivable road node within {1}m", zh: "{0}：{1}m 内没有可驾驶道路节点" },
@@ -299,9 +303,10 @@
 
     // ── empty state ──
     '把 CP 点变成一张赛道路线图': 'Turn checkpoint data into a race route map',
-    '拖入赛道 JSON，工具会沿 San Andreas 路网自动寻路，按你的风格渲染，并导出 PNG / SVG。':
-      'Drop a track JSON. It routes along the San Andreas road graph, styles the map, and exports PNG / SVG.',
+    '拖入赛道 JSON，工具会沿 San Andreas 路网自动寻路；也可以新建空白赛道，在地图上逐个放置检查点。':
+      'Drop a track JSON and it routes along the San Andreas road graph; or start from a blank track and place checkpoints on the map.',
     '打开赛道 JSON': 'Open track JSON',
+    '从空白开始': 'Start blank',
     '载入示例': 'Load sample',
     '格式：': 'Format:',
     '查看说明': 'View docs',
@@ -319,6 +324,8 @@
     '可选': 'Optional',
     '保存 JSON': 'Save JSON',
     '新建': 'New',
+    '关闭赛道': 'Close track',
+    '关闭当前赛道，返回开始页': 'Close the current track and return to the start screen',
     '格式说明': 'Format docs',
     '示例赛道': 'Sample tracks',
     '检查点': 'Checkpoints',
@@ -328,8 +335,8 @@
     '展开检查点': 'Expand checkpoints',
     '折叠提示': 'Collapse notes',
     '展开提示': 'Expand notes',
-    '还没有检查点。打开 JSON，或点「地图添加」。':
-      'No checkpoints yet. Open a JSON file or use "Add on map".',
+    '空白赛道还没有检查点。点「地图添加」在地图上放置第一个。':
+      'This blank track has no checkpoints yet. Place the first one on the map.',
     '首点为起点，末点为终点。拖动地图上的编号可微调位置，↑↓ 调整顺序；点击侧栏中的检查点行可在地图上高亮。':
       'The first point is the start and the last is the finish. Drag a number on the map to adjust it, use ↑↓ to reorder; click a checkpoint row in the sidebar to highlight it on the map.',
     '提示': 'Notes',
@@ -565,7 +572,7 @@
     '没有可用示例': 'No samples available',
     '还没有赛道': 'No track loaded',
     '赛道 JSON 已保存': 'Track JSON saved',
-    '先载入或创建一个赛道': 'Load or create a track first',
+    '先添加检查点或载入赛道': 'Add a checkpoint or load a track first',
     '渲染预览…': 'Rendering preview…',
     '预览已生成': 'Preview ready',
     '预览失败': 'Preview failed',

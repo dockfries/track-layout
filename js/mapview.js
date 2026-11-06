@@ -524,14 +524,16 @@
         if (!sub) {
           const parts = [];
           if (track.author) parts.push(I18n.authorLine(track.author));
-          parts.push(`${track.checkpoints.length} CP`);
-          parts.push(Track.formatDistance(route ? route.length : 0));
+          if (track.checkpoints.length) {
+            parts.push(`${track.checkpoints.length} CP`);
+            parts.push(Track.formatDistance(route ? route.length : 0));
+          }
           sub = parts.join('  ·  ');
         }
         titleEl.innerHTML =
           `<div class="mt-eyebrow">${escapeHtml(I18n.localizeEyebrow((style.title.eyebrow || '').trim()))}</div>` +
           `<div class="mt-title">${escapeHtml(title)}</div>` +
-          `<div class="mt-sub">${escapeHtml(sub)}</div>`;
+          (sub ? `<div class="mt-sub">${escapeHtml(sub)}</div>` : '');
         titleEl.style.setProperty('--mt-accent', style.title.accent);
         titleEl.style.setProperty('--mt-color', style.title.color);
         const titleBgOpacity = Number.isFinite(Number(style.title.bgOpacity))
@@ -553,7 +555,7 @@
     }
 
     if (legendEl) {
-      const show = !!track && style.legend.show;
+      const show = !!track && track.checkpoints.length > 0 && style.legend.show;
       legendEl.classList.toggle('hidden', !show);
       if (show) {
         const legend = Style.cpLegend(track, style, I18n.t, route ? route.length : 0);
